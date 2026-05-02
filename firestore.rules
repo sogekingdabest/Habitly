@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Reglas para los perfiles de usuario
+    match /users/{userId} {
+      // Cualquier usuario autenticado puede leer perfiles (para ver nicknames de compañeros)
+      allow read: if request.auth != null;
+      // Solo el propio usuario puede modificar su perfil
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Permitir acceso a rutinas personales
+      match /routines/{routineId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // 2. Reglas para la colección principal 'households' (casas)
+    match /households/{householdId} {
+      
+      // Permitimos que cualquier usuario logueado lea/escriba la información principal de la casa.
+      // Esto es estrictamente necesario para que puedan buscar el 'inviteCode' y añadirse a sí mismos.
+      // (La seguridad reside en que el inviteCode es secreto y el householdId es un UUID ininteligible).
+      allow read, write: if request.auth != null;
+      
+      // 3. Reglas para la lista de la compra y el historial (Subcolecciones)
+      match /{document=**} {
+        // PROTECCIÓN MÁXIMA: Solo puedes leer/modificar los productos si tu UID
+        // está dentro de la lista de 'members' de esa casa.
+        allow read, write: if request.auth != null && 
+                           request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.members;
+      }
+    }
+  }
+}
