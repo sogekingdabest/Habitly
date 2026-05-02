@@ -11,19 +11,28 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiModelConfig
+import java.util.Locale
+
 @Composable
 fun ModelDownloadCard(
+    modelConfig: AiModelConfig?,
     progress: Float,
     isDownloading: Boolean,
     onDownload: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val sizeText = remember(modelConfig) {
+        modelConfig?.let { formatBytes(it.sizeBytes) } ?: "~2GB"
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -61,16 +70,24 @@ fun ModelDownloadCard(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "~280MB",
+                        text = sizeText,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
                 Button(onClick = onDownload) {
-                    Text("Descargar Modelo (~280MB)")
+                    Text("Descargar Modelo ($sizeText)")
                 }
             }
         }
     }
+}
+
+private fun formatBytes(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val exp = (Math.log(bytes.toDouble()) / Math.log(1024.0)).toInt()
+    val prefix = arrayOf("B", "KB", "MB", "GB", "TB")
+    val value = bytes / Math.pow(1024.0, exp.toDouble())
+    return String.format(Locale.US, "%.1f %s", value, prefix[exp])
 }

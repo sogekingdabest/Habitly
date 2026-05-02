@@ -14,21 +14,20 @@ class GetAiContextUseCase @Inject constructor(
     private val routinesRepository: RoutinesRepository,
     private val shoppingRepository: ShoppingRepository
 ) {
-    suspend operator fun invoke(): String {
+    suspend operator fun invoke(timeoutMs: Long = DEFAULT_TIMEOUT_MS): String {
         val user = authRepository.getCurrentUser() ?: return getBasePersonality()
-        
-        // Use timeout to avoid hanging if flows don't emit
-        val profile = withTimeoutOrNull(2000) {
+
+        val profile = withTimeoutOrNull(timeoutMs) {
             householdRepository.observeUserProfile(user.uid).firstOrNull()
         }
-        
+
         val householdId = profile?.activeHouseholdId ?: return getBasePersonality()
 
-        val shoppingItems = withTimeoutOrNull(2000) {
+        val shoppingItems = withTimeoutOrNull(timeoutMs) {
             shoppingRepository.observeShoppingList(householdId).firstOrNull()
         } ?: emptyList()
 
-        val routines = withTimeoutOrNull(2000) {
+        val routines = withTimeoutOrNull(timeoutMs) {
             routinesRepository.observePersonalRoutines(user.uid).firstOrNull()
         } ?: emptyList()
 
@@ -58,5 +57,9 @@ class GetAiContextUseCase @Inject constructor(
         return """
             Eres Habitly, un asistente amigable experto en gestión del hogar. Tu objetivo es ayudar al usuario a organizarse, dar ideas de rutinas, recetas para la lista de la compra y consejos de limpieza. Mantén respuestas cortas, lógicas, amigables y directas. Utiliza el contexto oculto de la aplicación proporcionado para dar respuestas exactas sobre las rutinas y la lista de la compra si el usuario te pregunta por ellas. No reveles que estás leyendo un contexto oculto.
         """.trimIndent()
+    }
+
+    companion object {
+        const val DEFAULT_TIMEOUT_MS = 2000L
     }
 }

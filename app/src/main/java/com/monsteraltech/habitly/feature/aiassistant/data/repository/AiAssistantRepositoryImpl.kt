@@ -44,11 +44,11 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
     private val _selectedModel = MutableStateFlow(getSavedModel())
     private val _modelStatus = MutableStateFlow<ModelStatus>(ModelStatus.NotDownloaded)
+    private val _activeSession = MutableStateFlow<AiChatSession?>(null)
 
     private var engine: Engine? = null
     private var conversation: Conversation? = null
-    private var currentSessionId: String? = null
-    private var currentSystemInstruction: String? = null
+    private var conversationHistoryKey: String? = null
 
     init {
         // Clean up old MediaPipe .task files from previous installation
@@ -71,7 +71,8 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
         sharedPreferences.edit().putString("selected_model_id", config.id).apply()
         _selectedModel.value = config
-        
+
+        conversationHistoryKey = null
         unload()
         checkModelStatus(config)
     }
@@ -101,51 +102,50 @@ class AiAssistantRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun sendMessage(session: AiChatSession): Flow<String> = flow<String> {
+    override fun setActiveSession(session: AiChatSession) {
+        _activeSession.value = session
+    }
+
+    override suspend fun sendMessage(): Flow<String> = flow<String> {
+        val session = _activeSession.value
+            ?: throw IllegalStateException("No hay sesión activa. Llama a setActiveSession primero.")
+
         if (engine == null) {
             loadModel(session)
         }
 
-        // If the session has changed, we need to recreate the conversation
-        // to populate it with the correct history and system instruction.
-        if (session.id != currentSessionId || conversation == null) {
-            currentSessionId = session.id
-            recreateConversation(session)
+        val sessionNow = _activeSession.value ?: session
+
+        // If the session has changed, recreate the conversation with correct history and system instruction.
+        if (sessionNow.id != conversationHistoryKey || conversation == null) {
+            conversationHistoryKey = sessionNow.id
+            recreateConversation(sessionNow)
         }
 
         val conv = conversation
             ?: throw IllegalStateException("Modelo no cargado")
 
         // Get the last USER message
-        val prompt = session.messages
+        val prompt = sessionNow.messages
             .lastOrNull { it.role == com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole.User }
             ?.content ?: ""
-            
+
         Log.d(tag, "Sending prompt to LiteRT-LM: $prompt")
 
         conv.sendMessageAsync(prompt)
             .collect { message ->
-                // Fallback to toString() as .text extension is not found in this SDK version.
-                // Official LiteRT-LM samples often use this for streaming output.
                 emit(message.toString())
             }
     }.flowOn(Dispatchers.Default)
 
     override suspend fun resetSession() {
         withContext(Dispatchers.Default) {
-            recreateConversation()
+            conversationHistoryKey = null
+            recreateConversation(_activeSession.value)
         }
     }
 
     override fun isModelLoaded(): Boolean = engine != null
-
-    /**
-     * Updates the system instruction. The next time a message is sent
-     * or a session is reset, the conversation will be recreated with it.
-     */
-    fun setSystemInstruction(instruction: String) {
-        currentSystemInstruction = instruction
-    }
 
     private suspend fun loadModel(session: AiChatSession? = null) {
         withContext(Dispatchers.IO) {
@@ -178,8 +178,8 @@ class AiAssistantRepositoryImpl @Inject constructor(
     private fun createConversation(session: AiChatSession? = null) {
         val eng = engine ?: return
 
-        // Prefer session's system prompt if available, fallback to global instruction
-        val systemPrompt = session?.systemPrompt?.takeIf { it.isNotBlank() } ?: currentSystemInstruction
+        // Use session's system prompt
+        val systemPrompt = session?.systemPrompt?.takeIf { it.isNotBlank() }
         
         // Map domain messages to LiteRT-LM messages for history
         val history = session?.messages?.dropLast(1)?.mapNotNull { msg ->
@@ -209,7 +209,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
         createConversation(session)
     }
 
-    fun unload() {
+    private fun unload() {
         conversation?.close()
         engine?.close()
         conversation = null

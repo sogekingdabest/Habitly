@@ -57,7 +57,6 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStat
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ChatMessageItem
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ModelDownloadCard
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.PromptInput
-import com.monsteraltech.habitly.feature.aiassistant.presentation.components.QuickPrompt
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -75,15 +74,9 @@ fun AiAssistantScreen(
     val scope = rememberCoroutineScope()
     var expandedModelMenu by remember { mutableStateOf(false) }
 
-    val quickPrompts = listOf(
-        QuickPrompt("Recetas con pollo", "Tengo pollo y arroz, que puedo cocinar?"),
-        QuickPrompt("Lista semanal", "Genera lista de compra para la semana"),
-        QuickPrompt("Recetas vegetarianas", "Que puedo cocinar con huevos y patatas?"),
-        QuickPrompt("Cena rapida", "Dame ideas de cenas rapidas y faciles")
-    )
-
-    LaunchedEffect(uiState.chatSession.messages.size) {
-        if (uiState.chatSession.messages.isNotEmpty()) {
+    LaunchedEffect(uiState.chatSession.messages.count { it.role == com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole.User }) {
+        val userMessageCount = uiState.chatSession.messages.count { it.role == com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole.User }
+        if (userMessageCount > 0) {
             listState.animateScrollToItem(uiState.chatSession.messages.size - 1)
         }
     }
@@ -229,6 +222,7 @@ fun AiAssistantScreen(
                 when (uiState.modelStatus) {
                     is ModelStatus.NotDownloaded -> {
                         ModelDownloadCard(
+                            modelConfig = uiState.selectedModel,
                             progress = 0f,
                             isDownloading = false,
                             onDownload = { viewModel.onDownloadModel() },
@@ -238,6 +232,7 @@ fun AiAssistantScreen(
                     is ModelStatus.Downloading -> {
                         val progress = (uiState.modelStatus as ModelStatus.Downloading).progress
                         ModelDownloadCard(
+                            modelConfig = uiState.selectedModel,
                             progress = progress,
                             isDownloading = true,
                             onDownload = {},
@@ -333,7 +328,7 @@ fun AiAssistantScreen(
                             input = uiState.currentInput,
                             onInputChange = { viewModel.onInputChange(it) },
                             onSend = { viewModel.onSendMessage() },
-                            quickPrompts = quickPrompts,
+                            quickPrompts = uiState.quickPrompts,
                             onQuickPrompt = { viewModel.onQuickPrompt(it) }
                         )
                     }

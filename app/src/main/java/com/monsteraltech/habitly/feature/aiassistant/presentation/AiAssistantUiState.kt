@@ -3,6 +3,7 @@ package com.monsteraltech.habitly.feature.aiassistant.presentation
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiModelConfig
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStatus
+import com.monsteraltech.habitly.feature.aiassistant.presentation.components.QuickPrompt
 
 data class AiAssistantUiState(
     val chatSession: AiChatSession = AiChatSession(),
@@ -12,5 +13,6 @@ data class AiAssistantUiState(
     val modelStatus: ModelStatus = ModelStatus.NotDownloaded,
     val availableModels: List<AiModelConfig> = emptyList(),
     val selectedModel: AiModelConfig? = null,
-    val chatHistory: List<AiChatSession> = emptyList()
+    val chatHistory: List<AiChatSession> = emptyList(),
+    val quickPrompts: List<QuickPrompt> = emptyList()
 )

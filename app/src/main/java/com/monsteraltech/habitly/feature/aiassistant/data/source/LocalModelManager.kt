@@ -5,12 +5,23 @@ import android.util.Log
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiModelConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okio.buffer
+import okio.sink
+import okio.source
 import java.io.File
-import java.io.FileOutputStream
-import java.net.URL
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 @Singleton
 class LocalModelManager @Inject constructor(
@@ -18,10 +29,16 @@ class LocalModelManager @Inject constructor(
 ) {
     private val tag = "LocalModelManager"
 
+    private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.MINUTES)
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .build()
+
     private val modelDir: File
         get() = File(context.filesDir, "litertlm-models").also { it.mkdirs() }
 
-    /** Legacy directory used by the old MediaPipe implementation. */
     private val legacyModelDir: File
         get() = File(context.filesDir, "litert-models")
 
@@ -52,44 +69,42 @@ class LocalModelManager @Inject constructor(
         modelFile.parentFile?.mkdirs()
 
         try {
-            var url = URL(config.downloadUrl)
-            var connection = url.openConnection() as java.net.HttpURLConnection
-            var redirectCount = 0
+            var request = Request.Builder().url(config.downloadUrl).build()
+            var response = executeCall(okHttpClient.newCall(request))
 
-            // Follow cross-domain redirects (Hugging Face to CDN LFS)
-            while (true) {
-                connection.instanceFollowRedirects = false
-                val status = connection.responseCode
-                if (status != java.net.HttpURLConnection.HTTP_MOVED_TEMP
-                    && status != java.net.HttpURLConnection.HTTP_MOVED_PERM
-                    && status != java.net.HttpURLConnection.HTTP_SEE_OTHER) {
-                    break
-                }
+            var redirectCount = 0
+            while (response.code in listOf(301, 302, 303, 307, 308)) {
                 redirectCount++
-                if (redirectCount > 5) throw java.io.IOException("Demasiados redireccionamientos")
-                
-                val newUrl = connection.getHeaderField("Location")
-                connection.disconnect()
-                url = URL(newUrl)
-                connection = url.openConnection() as java.net.HttpURLConnection
+                if (redirectCount > 5) throw IOException("Demasiados redireccionamientos")
+
+                val location = response.header("Location")
+                    ?: throw IOException("Redirect sin Location")
+                response.close()
+
+                request = Request.Builder().url(location).build()
+                response = executeCall(okHttpClient.newCall(request))
             }
 
-            val contentLength = connection.contentLengthLong.coerceAtLeast(config.sizeBytes)
+            val contentLength = (response.body?.contentLength() ?: 0L).coerceAtLeast(config.sizeBytes)
 
-            connection.inputStream.use { input ->
-                FileOutputStream(tempFile).use { output ->
+            response.body?.source()?.use { source ->
+                tempFile.sink().buffer().use { sink ->
                     val buffer = ByteArray(8192)
-                    var bytesRead: Int
                     var totalRead = 0L
-                    while (input.read(buffer).also { bytesRead = it } != -1) {
-                        output.write(buffer, 0, bytesRead)
+                    var bytesRead: Int
+
+                    while (source.read(buffer).also { bytesRead = it } != -1) {
+                        ensureActive()
+                        sink.write(buffer, 0, bytesRead)
                         totalRead += bytesRead
                         val progress = (totalRead.toFloat() / contentLength).coerceIn(0f, 1f)
                         onProgress(progress)
                     }
+                    sink.flush()
                 }
             }
 
+            response.close()
             tempFile.renameTo(modelFile)
 
             Log.d(tag, "Model downloaded successfully: ${modelFile.absolutePath} " +
@@ -102,14 +117,32 @@ class LocalModelManager @Inject constructor(
         }
     }
 
+    private suspend fun executeCall(call: Call): okhttp3.Response = suspendCancellableCoroutine { continuation ->
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                if (continuation.isActive) {
+                    continuation.resumeWithException(e)
+                }
+            }
+
+            override fun onResponse(call: Call, response: okhttp3.Response) {
+                if (continuation.isActive) {
+                    continuation.resume(response)
+                } else {
+                    response.close()
+                }
+            }
+        })
+
+        continuation.invokeOnCancellation {
+            call.cancel()
+        }
+    }
+
     fun deleteModel(config: AiModelConfig): Boolean {
         return getModelFile(config).delete()
     }
 
-    /**
-     * Removes old .task files from the legacy MediaPipe directory.
-     * Called once during migration to free up storage.
-     */
     fun cleanupLegacyModels() {
         if (legacyModelDir.exists()) {
             val deleted = legacyModelDir.deleteRecursively()

@@ -21,7 +21,8 @@ interface AiAssistantRepository {
     suspend fun downloadModel()
 
     // Chat Execution
-    suspend fun sendMessage(session: AiChatSession): Flow<String>
+    fun setActiveSession(session: AiChatSession)
+    suspend fun sendMessage(): Flow<String>
     suspend fun resetSession()
     fun isModelLoaded(): Boolean
 

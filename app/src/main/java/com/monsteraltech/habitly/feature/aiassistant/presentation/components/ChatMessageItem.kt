@@ -11,15 +11,16 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiMessage
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun ChatMessageItem(
@@ -64,7 +65,7 @@ fun ChatMessageItem(
                         MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = formatTimestamp(message.timestamp),
+                    text = remember(message.timestamp) { formatTimestamp(message.timestamp) },
                     style = MaterialTheme.typography.labelSmall,
                     color = if (isUser)
                         MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
@@ -77,7 +78,10 @@ fun ChatMessageItem(
     }
 }
 
+private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
 private fun formatTimestamp(timestamp: Long): String {
-    val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-    return formatter.format(Date(timestamp))
+    return Instant.ofEpochMilli(timestamp)
+        .atZone(ZoneId.systemDefault())
+        .format(timeFormatter)
 }

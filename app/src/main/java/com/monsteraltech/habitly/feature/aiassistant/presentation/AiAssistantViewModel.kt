@@ -3,11 +3,14 @@ package com.monsteraltech.habitly.feature.aiassistant.presentation
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.monsteraltech.habitly.feature.aiassistant.data.repository.AiAssistantRepositoryImpl
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiAssistantRepository
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateRecipeSuggestionsUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateShoppingListUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetAiContextUseCase
+import com.monsteraltech.habitly.feature.aiassistant.presentation.components.QuickPrompt
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +22,9 @@ import javax.inject.Inject
 @HiltViewModel
 class AiAssistantViewModel @Inject constructor(
     private val repository: AiAssistantRepository,
-    private val getAiContextUseCase: GetAiContextUseCase
+    private val getAiContextUseCase: GetAiContextUseCase,
+    private val generateRecipeSuggestionsUseCase: GenerateRecipeSuggestionsUseCase,
+    private val generateShoppingListUseCase: GenerateShoppingListUseCase
 ) : ViewModel() {
 
     private val tag = "AiAssistantViewModel"
@@ -27,8 +32,20 @@ class AiAssistantViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AiAssistantUiState())
     val uiState: StateFlow<AiAssistantUiState> = _uiState.asStateFlow()
 
+    private var chatOperationJob: Job? = null
+
     init {
-        _uiState.update { it.copy(availableModels = repository.getAvailableModels()) }
+        _uiState.update {
+            it.copy(
+                availableModels = repository.getAvailableModels(),
+                quickPrompts = listOf(
+                    QuickPrompt("Recetas con pollo", generateRecipeSuggestionsUseCase()),
+                    QuickPrompt("Lista semanal", generateShoppingListUseCase()),
+                    QuickPrompt("Recetas vegetarianas", "Que puedo cocinar con huevos y patatas?"),
+                    QuickPrompt("Cena rapida", "Dame ideas de cenas rapidas y faciles")
+                )
+            )
+        }
 
         viewModelScope.launch {
             repository.observeSelectedModel().collectLatest { model ->
@@ -67,7 +84,8 @@ class AiAssistantViewModel @Inject constructor(
         val input = _uiState.value.currentInput.trim()
         if (input.isBlank() || _uiState.value.isGenerating) return
 
-        viewModelScope.launch {
+        chatOperationJob?.cancel()
+        chatOperationJob = viewModelScope.launch {
             _uiState.update { it.copy(currentInput = "", isGenerating = true, error = null) }
 
             var session = _uiState.value.chatSession.addUserMessage(input)
@@ -78,24 +96,25 @@ class AiAssistantViewModel @Inject constructor(
                 val aiContext = getAiContextUseCase()
                 session = session.copy(systemPrompt = aiContext)
             }
-            
+
             session = session.addAssistantMessage("")
             _uiState.update { it.copy(chatSession = session) }
+            repository.setActiveSession(session)
             repository.saveSession(session)
 
             try {
                 val responseBuilder = StringBuilder()
-                repository.sendMessage(session).collect { partial ->
+                repository.sendMessage().collect { partial ->
                     responseBuilder.append(partial)
                     // LiteRT-LM handles chat templates internally,
                     // so no manual token cleanup is needed.
                     val text = responseBuilder.toString().trimStart()
                     session = session.updateLastAssistantMessage(text)
                     _uiState.update { it.copy(chatSession = session) }
+                    repository.setActiveSession(session)
                 }
                 repository.saveSession(session)
             } catch (e: Exception) {
-                Log.e(tag, "Error sending message", e)
                 _uiState.update {
                     it.copy(error = e.message ?: "Error al generar respuesta")
                 }
@@ -129,20 +148,24 @@ class AiAssistantViewModel @Inject constructor(
     }
 
     fun onNewChat() {
-        val newSession = AiChatSession(modelId = _uiState.value.selectedModel?.id ?: "")
-        viewModelScope.launch {
+        chatOperationJob?.cancel()
+        chatOperationJob = viewModelScope.launch {
+            val newSession = AiChatSession(modelId = _uiState.value.selectedModel?.id ?: "")
+            repository.setActiveSession(newSession)
             repository.resetSession()
             repository.saveSession(newSession)
-        }
-        _uiState.update {
-            it.copy(chatSession = newSession, error = null)
+            _uiState.update {
+                it.copy(chatSession = newSession, error = null)
+            }
         }
     }
 
     fun onLoadChat(sessionId: String) {
-        viewModelScope.launch {
+        chatOperationJob?.cancel()
+        chatOperationJob = viewModelScope.launch {
             val session = repository.getSession(sessionId)
             if (session != null) {
+                repository.setActiveSession(session)
                 repository.resetSession()
                 // Auto switch model if different
                 if (session.modelId != _uiState.value.selectedModel?.id) {
@@ -154,7 +177,8 @@ class AiAssistantViewModel @Inject constructor(
     }
 
     fun onDeleteChat(sessionId: String) {
-        viewModelScope.launch {
+        chatOperationJob?.cancel()
+        chatOperationJob = viewModelScope.launch {
             repository.deleteSession(sessionId)
             if (_uiState.value.chatSession.id == sessionId) {
                 onNewChat()
