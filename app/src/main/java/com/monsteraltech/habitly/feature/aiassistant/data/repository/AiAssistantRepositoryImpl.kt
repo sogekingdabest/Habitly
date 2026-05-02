@@ -192,9 +192,9 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
         val configBuilder = ConversationConfig(
             samplerConfig = SamplerConfig(
-                topK = 40,
+                topK = 64,
                 topP = 0.95,
-                temperature = 0.8
+                temperature = 0.9
             ),
             systemInstruction = systemPrompt?.let { Contents.of(it) },
             initialMessages = history

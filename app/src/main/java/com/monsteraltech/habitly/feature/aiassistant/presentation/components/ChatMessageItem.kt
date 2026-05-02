@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiMessage
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
+import dev.jeziellago.compose.markdowntext.MarkdownText
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -56,14 +57,21 @@ fun ChatMessageItem(
             Column(
                 modifier = Modifier.padding(12.dp)
             ) {
-                Text(
-                    text = message.content,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (isUser)
-                        MaterialTheme.colorScheme.onPrimary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (isUser) {
+                    Text(
+                        text = message.content,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    MarkdownText(
+                        markdown = message.content,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        linkColor = MaterialTheme.colorScheme.primary
+                    )
+                }
                 Text(
                     text = remember(message.timestamp) { formatTimestamp(message.timestamp) },
                     style = MaterialTheme.typography.labelSmall,

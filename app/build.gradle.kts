@@ -102,4 +102,5 @@ dependencies {
     ksp(libs.room.compiler)
     implementation(libs.gson)
     implementation(libs.okhttp)
+    implementation(libs.compose.markdown)
 }
