@@ -3,8 +3,6 @@ package com.monsteraltech.habitly.feature.shopping.presentation
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -25,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShoppingScreen(
     onNavigateToHistory: () -> Unit = {},
@@ -269,98 +267,33 @@ fun ShoppingScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 uiState.pendingItemsByStore.forEach { (store, items) ->
-                    stickyHeader {
-                        Surface(
-                            color = MaterialTheme.colorScheme.background,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = store,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    "${items.size} producto${if (items.size != 1) "s" else ""}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                    items(items, key = { it.id }) { item ->
-                        ShoppingItemCard(
-                            item = item,
-                            onToggle = { viewModel.onToggleItem(item.id, !item.isChecked) },
-                            onDelete = { viewModel.onDeleteItem(item.id) }
+                    item(key = "pending-$store") {
+                        StoreSectionCard(
+                            store = store,
+                            items = items,
+                            onToggle = { itemId -> viewModel.onToggleItem(itemId, true) },
+                            onDelete = { viewModel.onDeleteItem(it) }
                         )
                     }
                 }
 
                 if (uiState.completedItems.isNotEmpty()) {
-                    stickyHeader {
-                        Surface(
-                            color = MaterialTheme.colorScheme.background,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                TextButton(onClick = { viewModel.onToggleCompletedSection() }) {
-                                    Text(
-                                        "Completados (${uiState.completedItems.size})",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Icon(
-                                        if (uiState.showCompletedSection) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                        contentDescription = null
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    if (uiState.showCompletedSection) {
-                        uiState.completedItemsByStore.forEach { (store, items) ->
-                            item {
-                                Text(
-                                    store,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
-                                )
-                            }
-                            items(items, key = { it.id }) { item ->
-                                ShoppingItemCard(
-                                    item = item,
-                                    onToggle = { viewModel.onToggleItem(item.id, !item.isChecked) },
-                                    onDelete = { viewModel.onDeleteItem(item.id) },
-                                    isCompleted = true
-                                )
-                            }
-                        }
+                    item(key = "completed-section") {
+                        CompletedSectionCard(
+                            completedItemsByStore = uiState.completedItemsByStore,
+                            showCompletedSection = uiState.showCompletedSection,
+                            onToggleSection = { viewModel.onToggleCompletedSection() },
+                            onToggle = { itemId -> viewModel.onToggleItem(itemId, false) },
+                            onDelete = { viewModel.onDeleteItem(it) }
+                        )
                     }
                 }
 
                 item {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     if (uiState.pendingItems.isNotEmpty() || uiState.completedItems.isNotEmpty()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -392,6 +325,183 @@ fun ShoppingScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun StoreSectionCard(
+    store: String,
+    items: List<com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem>,
+    onToggle: (String) -> Unit,
+    onDelete: (String) -> Unit
+) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = store,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    "${items.size} producto${if (items.size != 1) "s" else ""}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+            items.forEach { item ->
+                ShoppingItemRow(
+                    item = item,
+                    onToggle = { onToggle(item.id) },
+                    onDelete = { onDelete(item.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CompletedSectionCard(
+    completedItemsByStore: Map<String, List<com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem>>,
+    showCompletedSection: Boolean,
+    onToggleSection: () -> Unit,
+    onToggle: (String) -> Unit,
+    onDelete: (String) -> Unit
+) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        )
+    ) {
+        Column {
+            TextButton(
+                onClick = onToggleSection,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Completados",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val totalCompleted = completedItemsByStore.values.sumOf { it.size }
+                        Text(
+                            "($totalCompleted)",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(end = 4.dp)
+                        )
+                        Icon(
+                            if (showCompletedSection) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+            )
+            AnimatedVisibility(
+                visible = showCompletedSection,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column {
+                    completedItemsByStore.forEach { (store, items) ->
+                        Text(
+                            store,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
+                        )
+                        items.forEach { item ->
+                            ShoppingItemRow(
+                                item = item,
+                                onToggle = { onToggle(item.id) },
+                                onDelete = { onDelete(item.id) },
+                                isCompleted = true
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ShoppingItemRow(
+    item: com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem,
+    onToggle: () -> Unit,
+    onDelete: () -> Unit,
+    isCompleted: Boolean = false
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = item.isChecked,
+            onCheckedChange = { onToggle() },
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.name,
+                style = MaterialTheme.typography.bodyLarge,
+                textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
+                color = if (item.isChecked) 
+                    MaterialTheme.colorScheme.onSurfaceVariant 
+                else 
+                    MaterialTheme.colorScheme.onSurface
+            )
+            if (item.quantity > 1 || item.unit != "unidad") {
+                Text(
+                    text = "${item.quantity} ${item.unit}${if (item.quantity > 1 && item.unit != "unidad") "s" else ""}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+        }
+        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+            Icon(
+                Icons.Filled.Delete,
+                contentDescription = "Eliminar",
+                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
