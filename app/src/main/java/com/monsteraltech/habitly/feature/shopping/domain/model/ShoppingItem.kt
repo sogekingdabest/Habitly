@@ -10,5 +10,7 @@ data class ShoppingItem(
     var isChecked: Boolean = false,
     var store: String = "Cualquiera",
     var authorId: String = "",
-    var createdAt: Long = System.currentTimeMillis()
+    var createdAt: Long = System.currentTimeMillis(),
+    var quantity: Int = 1,
+    var unit: String = "unidad"
 )

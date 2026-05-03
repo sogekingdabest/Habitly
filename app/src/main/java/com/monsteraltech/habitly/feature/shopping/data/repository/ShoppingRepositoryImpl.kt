@@ -45,7 +45,7 @@ class ShoppingRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun addShoppingItem(householdId: String, name: String, store: String, authorId: String): Result<Unit> {
+    override suspend fun addShoppingItem(householdId: String, name: String, store: String, authorId: String, quantity: Int, unit: String): Result<Unit> {
         return try {
             val item = ShoppingItem(
                 id = UUID.randomUUID().toString(),
@@ -53,7 +53,9 @@ class ShoppingRepositoryImpl @Inject constructor(
                 isChecked = false,
                 store = store,
                 authorId = authorId,
-                createdAt = System.currentTimeMillis()
+                createdAt = System.currentTimeMillis(),
+                quantity = quantity,
+                unit = unit
             )
             firestore.collection("households")
                 .document(householdId)
@@ -170,6 +172,7 @@ class ShoppingRepositoryImpl @Inject constructor(
                 return@addSnapshotListener
             }
             if (snapshot != null && snapshot.exists()) {
+                @Suppress("UNCHECKED_CAST")
                 val stores = snapshot.get("customStores") as? List<String> ?: emptyList()
                 trySend(stores)
             } else {
@@ -184,6 +187,111 @@ class ShoppingRepositoryImpl @Inject constructor(
             val docRef = firestore.collection("households").document(householdId)
             docRef.set(mapOf("customStores" to FieldValue.arrayUnion(storeName)), SetOptions.merge()).await()
             Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun bulkToggleItems(householdId: String, itemIds: List<String>, isChecked: Boolean): Result<Unit> {
+        return try {
+            val batch = firestore.batch()
+            for (itemId in itemIds) {
+                val docRef = firestore.collection("households")
+                    .document(householdId)
+                    .collection("shopping_items")
+                    .document(itemId)
+                batch.update(docRef, "isChecked", isChecked)
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteCheckedItems(householdId: String): Result<Unit> {
+        return try {
+            val snapshot = firestore.collection("households")
+                .document(householdId)
+                .collection("shopping_items")
+                .whereEqualTo("isChecked", true)
+                .get()
+                .await()
+            
+            if (snapshot.isEmpty) return Result.success(Unit)
+            
+            val batch = firestore.batch()
+            for (doc in snapshot.documents) {
+                batch.delete(doc.reference)
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun restoreHistory(householdId: String, historyId: String): Result<Unit> {
+        return try {
+            val historyDoc = firestore.collection("households")
+                .document(householdId)
+                .collection("shopping_history")
+                .document(historyId)
+                .get()
+                .await()
+            
+            val history = historyDoc.toObject(ShoppingHistory::class.java)
+                ?: return Result.failure(Exception("Historial no encontrado"))
+            
+            val batch = firestore.batch()
+            
+            for (item in history.items) {
+                val newItemId = UUID.randomUUID().toString()
+                val newItem = item.copy(
+                    id = newItemId,
+                    isChecked = false,
+                    createdAt = System.currentTimeMillis()
+                )
+                val itemRef = firestore.collection("households")
+                    .document(householdId)
+                    .collection("shopping_items")
+                    .document(newItemId)
+                batch.set(itemRef, newItem)
+            }
+            
+            batch.delete(historyDoc.reference)
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getFrequentItems(householdId: String, limit: Int): Result<List<String>> {
+        return try {
+            val snapshot = firestore.collection("households")
+                .document(householdId)
+                .collection("shopping_history")
+                .limit(20)
+                .get()
+                .await()
+            
+            val itemCounts = mutableMapOf<String, Int>()
+            for (doc in snapshot.documents) {
+                val history = doc.toObject(ShoppingHistory::class.java)
+                if (history != null) {
+                    for (item in history.items) {
+                        itemCounts[item.name] = itemCounts.getOrDefault(item.name, 0) + 1
+                    }
+                }
+            }
+            
+            val frequent = itemCounts.entries
+                .sortedByDescending { it.value }
+                .take(limit)
+                .map { it.key }
+            
+            Result.success(frequent)
         } catch (e: Exception) {
             Result.failure(e)
         }

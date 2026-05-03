@@ -21,12 +21,36 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ShoppingUiState(
-    val itemsByStore: Map<String, List<ShoppingItem>> = emptyMap(),
+    val allItems: List<ShoppingItem> = emptyList(),
     val availableStores: List<String> = listOf("Mercadona", "Lidl", "Carrefour", "Cualquiera"),
     val selectedStore: String = "Cualquiera",
     val isLoading: Boolean = true,
-    val error: String? = null
-)
+    val error: String? = null,
+    val showCompletedSection: Boolean = false,
+    val frequentItems: List<String> = emptyList(),
+    val isLoadingFrequent: Boolean = false
+) {
+    val pendingItems: List<ShoppingItem>
+        get() = allItems.filter { !it.isChecked }
+    
+    val completedItems: List<ShoppingItem>
+        get() = allItems.filter { it.isChecked }
+    
+    val pendingItemsByStore: Map<String, List<ShoppingItem>>
+        get() = pendingItems.groupBy { it.store }.toSortedMap()
+    
+    val completedItemsByStore: Map<String, List<ShoppingItem>>
+        get() = completedItems.groupBy { it.store }.toSortedMap()
+    
+    val totalItems: Int
+        get() = allItems.size
+    
+    val checkedCount: Int
+        get() = completedItems.size
+    
+    val progress: Float
+        get() = if (totalItems == 0) 0f else checkedCount.toFloat() / totalItems.toFloat()
+}
 
 @HiltViewModel
 class ShoppingViewModel @Inject constructor(
@@ -38,6 +62,9 @@ class ShoppingViewModel @Inject constructor(
     private val observeCustomStoresUseCase: ObserveCustomStoresUseCase,
     private val addCustomStoreUseCase: AddCustomStoreUseCase,
     private val observeUserProfileUseCase: ObserveUserProfileUseCase,
+    private val checkAllItemsUseCase: CheckAllItemsUseCase,
+    private val deleteCheckedItemsUseCase: DeleteCheckedItemsUseCase,
+    private val getFrequentItemsUseCase: GetFrequentItemsUseCase,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -59,6 +86,7 @@ class ShoppingViewModel @Inject constructor(
                 .collectLatest { householdId ->
                     currentHouseholdId = householdId
                     startObserving(householdId)
+                    loadFrequentItems(householdId)
                 }
         }
     }
@@ -83,13 +111,21 @@ class ShoppingViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, error = e.message) }
                 }
                 .collect { items ->
-                    val grouped = items.groupBy { it.store }
-                        .toSortedMap()
-                        .mapValues { entry -> 
-                            entry.value.sortedBy { it.isChecked } 
-                        }
-                    _uiState.update { it.copy(itemsByStore = grouped, isLoading = false, error = null) }
+                    _uiState.update { it.copy(allItems = items, isLoading = false, error = null) }
                 }
+        }
+    }
+
+    private fun loadFrequentItems(householdId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingFrequent = true) }
+            val result = getFrequentItemsUseCase(householdId, 8)
+            _uiState.update { 
+                it.copy(
+                    frequentItems = result.getOrDefault(emptyList()),
+                    isLoadingFrequent = false
+                ) 
+            }
         }
     }
 
@@ -109,10 +145,10 @@ class ShoppingViewModel @Inject constructor(
         }
     }
 
-    fun onAddItem(name: String) {
+    fun onAddItem(name: String, quantity: Int = 1, unit: String = "unidad") {
         val householdId = currentHouseholdId ?: return
         viewModelScope.launch {
-            addShoppingItemUseCase(householdId, name, _uiState.value.selectedStore, currentUserId)
+            addShoppingItemUseCase(householdId, name, _uiState.value.selectedStore, currentUserId, quantity, unit)
         }
     }
 
@@ -146,5 +182,30 @@ class ShoppingViewModel @Inject constructor(
                 Log.e("ShoppingViewModel", "Archive failed", result.exceptionOrNull())
             }
         }
+    }
+
+    fun onCheckAll() {
+        val householdId = currentHouseholdId ?: return
+        val pendingIds = _uiState.value.pendingItems.map { it.id }
+        if (pendingIds.isEmpty()) return
+        
+        viewModelScope.launch {
+            checkAllItemsUseCase(householdId, pendingIds, true)
+        }
+    }
+
+    fun onDeleteChecked() {
+        val householdId = currentHouseholdId ?: return
+        viewModelScope.launch {
+            deleteCheckedItemsUseCase(householdId)
+        }
+    }
+
+    fun onToggleCompletedSection() {
+        _uiState.update { it.copy(showCompletedSection = !it.showCompletedSection) }
+    }
+
+    fun onQuickAdd(itemName: String) {
+        onAddItem(itemName)
     }
 }
