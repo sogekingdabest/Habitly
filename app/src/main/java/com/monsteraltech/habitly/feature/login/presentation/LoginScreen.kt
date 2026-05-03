@@ -17,30 +17,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import android.content.Context
-import android.content.ContextWrapper
-import android.app.Activity
-import androidx.credentials.CredentialManager
-import androidx.credentials.CustomCredential
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.exceptions.GetCredentialException
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.monsteraltech.habitly.R
-import kotlinx.coroutines.launch
-import java.security.MessageDigest
-import java.util.UUID
-
-fun Context.findActivity(): Activity {
-    var context = this
-    while (context is ContextWrapper) {
-        if (context is Activity) return context
-        context = context.baseContext
-    }
-    throw IllegalStateException("No se pudo encontrar la Activity para el CredentialManager")
-}
+import com.monsteraltech.habitly.feature.login.presentation.findActivity
 
 @Composable
 fun LoginScreen(
@@ -51,7 +30,6 @@ fun LoginScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
 
     if (state.isLoginSuccessful) {
         LaunchedEffect(Unit) {
@@ -189,46 +167,8 @@ fun LoginScreen(
 
             OutlinedButton(
                 onClick = {
-                    coroutineScope.launch {
-                        try {
-                            val credentialManager = CredentialManager.create(context)
-                            val webClientId = context.getString(R.string.default_web_client_id)
-                            
-                            val rawNonce = UUID.randomUUID().toString()
-                            val bytes = rawNonce.toByteArray()
-                            val md = MessageDigest.getInstance("SHA-256")
-                            val digest = md.digest(bytes)
-                            val hashedNonce = digest.joinToString("") { "%02x".format(it) }
-                            
-                            val googleIdOption = GetGoogleIdOption.Builder()
-                                .setFilterByAuthorizedAccounts(false)
-                                .setServerClientId(webClientId)
-                                .setNonce(hashedNonce)
-                                .setAutoSelectEnabled(false)
-                                .build()
-                                
-                            val request = GetCredentialRequest.Builder()
-                                .addCredentialOption(googleIdOption)
-                                .build()
-                                
-                            val activityContext = context.findActivity()
-                            val result = credentialManager.getCredential(activityContext, request)
-                            val credential = result.credential
-                            
-                            if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                                val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-                                viewModel.onEvent(LoginEvent.GoogleAuthTokenReceived(googleIdTokenCredential.idToken))
-                            } else {
-                                viewModel.onEvent(LoginEvent.GoogleLoginError("Credencial no válida"))
-                            }
-                        } catch (e: GetCredentialException) {
-                            viewModel.onEvent(LoginEvent.GoogleLoginError("GetCredentialException: ${e.message}"))
-                        } catch(e: GoogleIdTokenParsingException) {
-                            viewModel.onEvent(LoginEvent.GoogleLoginError("ParsingException: ${e.message}"))
-                        } catch (e: Exception) {
-                            viewModel.onEvent(LoginEvent.GoogleLoginError("Exception [${e.javaClass.simpleName}]: ${e.message}"))
-                        }
-                    }
+                    val activity = context.findActivity()
+                    viewModel.performGoogleSignIn(activity)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
