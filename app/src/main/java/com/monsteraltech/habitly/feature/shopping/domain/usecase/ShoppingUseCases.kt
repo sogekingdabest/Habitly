@@ -17,9 +17,9 @@ class ObserveShoppingListUseCase @Inject constructor(
 class AddShoppingItemUseCase @Inject constructor(
     private val repository: ShoppingRepository
 ) {
-    suspend operator fun invoke(householdId: String, name: String, store: String, authorId: String, quantity: Int = 1, unit: String = "unidad"): Result<Unit> {
+    suspend operator fun invoke(householdId: String, name: String, store: String, authorId: String, quantity: Int = 1, unit: String = "unidad", category: String = "", notes: String = ""): Result<Unit> {
         if (name.isBlank()) return Result.failure(Exception("El nombre no puede estar vacío"))
-        return repository.addShoppingItem(householdId, name, store, authorId, quantity, unit)
+        return repository.addShoppingItem(householdId, name, store, authorId, quantity, unit, category, notes)
     }
 }
 

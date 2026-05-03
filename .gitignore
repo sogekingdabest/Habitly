@@ -94,6 +94,8 @@ google-services.json
 .env
 .env.*
 secrets/
+.secrets
+.secrets/
 *.properties.bak
 local.properties.bak
 
@@ -107,6 +109,7 @@ qwen_header.bin
 .cursorrules
 .claudeignore
 .opencode/
+opencode.json
 
 # Crashlytics
 crashlytics-buildproperties

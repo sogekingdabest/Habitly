@@ -27,18 +27,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun ShoppingScreen(
     onNavigateToHistory: () -> Unit = {},
+    onNavigateToAddProduct: () -> Unit = {},
     viewModel: ShoppingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    
-    var newItemName by remember { mutableStateOf("") }
-    var newItemQuantity by remember { mutableIntStateOf(1) }
+
     var showAddStoreDialog by remember { mutableStateOf(false) }
     var newStoreName by remember { mutableStateOf("") }
-    var showQuantitySelector by remember { mutableStateOf(false) }
-
-    val units = listOf("unidad", "kg", "g", "L", "ml", "docena", "paquete")
-    var selectedUnit by remember { mutableStateOf("unidad") }
 
     if (showAddStoreDialog) {
         AlertDialog(
@@ -67,262 +62,206 @@ fun ShoppingScreen(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .padding(top = 16.dp, bottom = 8.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onNavigateToAddProduct,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Añadir producto")
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .padding(top = 16.dp, bottom = 8.dp)
+                .padding(paddingValues)
         ) {
-            Column {
-                Text(
-                    "Lista de la Compra",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                if (uiState.totalItems > 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
                     Text(
-                        "${uiState.checkedCount}/${uiState.totalItems} productos",
-                        style = MaterialTheme.typography.labelMedium,
+                        "Lista de la Compra",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (uiState.totalItems > 0) {
+                        Text(
+                            "${uiState.checkedCount}/${uiState.totalItems} productos",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Row {
+                    IconButton(onClick = onNavigateToHistory) {
+                        Icon(Icons.Filled.History, contentDescription = "Ver historial")
+                    }
+                    IconButton(onClick = { viewModel.onArchiveList() }) {
+                        Icon(Icons.Filled.Archive, contentDescription = "Guardar en historial")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (uiState.totalItems > 0) {
+                LinearProgressIndicator(
+                    progress = { uiState.progress },
+                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(uiState.availableStores, key = { it }) { store ->
+                    FilterChip(
+                        selected = uiState.selectedStore == store,
+                        onClick = { viewModel.onSelectStore(store) },
+                        label = { Text(store) }
+                    )
+                }
+                item {
+                    AssistChip(
+                        onClick = { showAddStoreDialog = true },
+                        label = { Text("Nuevo") },
+                        leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (uiState.frequentItems.isNotEmpty()) {
+                Text(
+                    "Añade rápido:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(uiState.frequentItems) { itemName ->
+                        AssistChip(
+                            onClick = { viewModel.onQuickAdd(itemName) },
+                            label = { Text(itemName, style = MaterialTheme.typography.bodySmall) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                            )
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (uiState.allItems.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.Filled.ShoppingCart,
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Tu lista está vacía",
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-            }
-            Row {
-                IconButton(onClick = onNavigateToHistory) {
-                    Icon(Icons.Filled.History, contentDescription = "Ver historial")
-                }
-                IconButton(onClick = { viewModel.onArchiveList() }) {
-                    Icon(Icons.Filled.Archive, contentDescription = "Guardar en historial")
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (uiState.totalItems > 0) {
-            LinearProgressIndicator(
-                progress = { uiState.progress },
-                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            items(uiState.availableStores, key = { it }) { store ->
-                FilterChip(
-                    selected = uiState.selectedStore == store,
-                    onClick = { viewModel.onSelectStore(store) },
-                    label = { Text(store) }
-                )
-            }
-            item {
-                AssistChip(
-                    onClick = { showAddStoreDialog = true },
-                    label = { Text("Nuevo") },
-                    leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (uiState.frequentItems.isNotEmpty()) {
-            Text(
-                "Añade rápido:",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(uiState.frequentItems) { itemName ->
-                    AssistChip(
-                        onClick = { viewModel.onQuickAdd(itemName) },
-                        label = { Text(itemName, style = MaterialTheme.typography.bodySmall) },
-                        leadingIcon = {
-                            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                        )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Añade tu primer producto para empezar",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = newItemName,
-                onValueChange = { newItemName = it },
-                modifier = Modifier.weight(1f),
-                label = { Text("Añadir a ${uiState.selectedStore}...") },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                trailingIcon = {
-                    IconButton(onClick = { showQuantitySelector = !showQuantitySelector }) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Cantidad")
-                    }
-                }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = {
-                    if (newItemName.isNotBlank()) {
-                        viewModel.onAddItem(newItemName, newItemQuantity, selectedUnit)
-                        newItemName = ""
-                        newItemQuantity = 1
-                        showQuantitySelector = false
-                    }
-                },
-                modifier = Modifier.height(56.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Añadir")
-            }
-        }
-
-        AnimatedVisibility(
-            visible = showQuantitySelector,
-            enter = expandVertically(),
-            exit = shrinkVertically()
-        ) {
-            Column(modifier = Modifier.padding(top = 8.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Cantidad:", style = MaterialTheme.typography.labelMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        listOf(1, 2, 3, 5).forEach { qty ->
-                            FilterChip(
-                                selected = newItemQuantity == qty,
-                                onClick = { newItemQuantity = qty },
-                                label = { Text("${qty}x") },
-                                modifier = Modifier.width(48.dp)
+                    uiState.pendingItemsByStore.forEach { (store, items) ->
+                        item(key = "pending-$store") {
+                            StoreSectionCard(
+                                store = store,
+                                items = items,
+                                onToggle = { itemId -> viewModel.onToggleItem(itemId, true) },
+                                onDelete = { itemId -> viewModel.onDeleteItem(itemId) }
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text("Unidad:", style = MaterialTheme.typography.labelMedium)
-                    units.take(4).forEach { unit ->
-                        FilterChip(
-                            selected = selectedUnit == unit,
-                            onClick = { selectedUnit = unit },
-                            label = { Text(unit) },
-                            modifier = Modifier.width(72.dp)
-                        )
-                    }
-                }
-            }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (uiState.allItems.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    Icons.Filled.ShoppingCart,
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Tu lista está vacía",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "Añade tu primer producto para empezar",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                uiState.pendingItemsByStore.forEach { (store, items) ->
-                    item(key = "pending-$store") {
-                        StoreSectionCard(
-                            store = store,
-                            items = items,
-                            onToggle = { itemId -> viewModel.onToggleItem(itemId, true) },
-                            onDelete = { viewModel.onDeleteItem(it) }
-                        )
-                    }
-                }
-
-                if (uiState.completedItems.isNotEmpty()) {
-                    item(key = "completed-section") {
-                        CompletedSectionCard(
-                            completedItemsByStore = uiState.completedItemsByStore,
-                            showCompletedSection = uiState.showCompletedSection,
-                            onToggleSection = { viewModel.onToggleCompletedSection() },
-                            onToggle = { itemId -> viewModel.onToggleItem(itemId, false) },
-                            onDelete = { viewModel.onDeleteItem(it) }
-                        )
-                    }
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    if (uiState.pendingItems.isNotEmpty() || uiState.completedItems.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { viewModel.onCheckAll() },
-                                modifier = Modifier.weight(1f),
-                                enabled = uiState.pendingItems.isNotEmpty()
-                            ) {
-                                Icon(Icons.Outlined.DoneAll, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Marcar todo")
-                            }
-                            OutlinedButton(
-                                onClick = { viewModel.onDeleteChecked() },
-                                modifier = Modifier.weight(1f),
-                                enabled = uiState.completedItems.isNotEmpty(),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Limpiar")
-                            }
+                    if (uiState.filteredCompletedItems.isNotEmpty()) {
+                        item(key = "completed-section") {
+                            CompletedSectionCard(
+                                completedItemsByStore = uiState.completedItemsByStore,
+                                showCompletedSection = uiState.showCompletedSection,
+                                onToggleSection = { viewModel.onToggleCompletedSection() },
+                                onToggle = { itemId -> viewModel.onToggleItem(itemId, false) },
+                                onDelete = { itemId -> viewModel.onDeleteItem(itemId) }
+                            )
                         }
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
+
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (uiState.filteredPendingItems.isNotEmpty() || uiState.filteredCompletedItems.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { viewModel.onCheckAll() },
+                                    modifier = Modifier.weight(1f),
+                                    enabled = uiState.filteredPendingItems.isNotEmpty()
+                                ) {
+                                    Icon(Icons.Outlined.DoneAll, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Marcar todo")
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.onDeleteChecked() },
+                                    modifier = Modifier.weight(1f),
+                                    enabled = uiState.filteredCompletedItems.isNotEmpty(),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Limpiar")
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
                 }
             }
         }
@@ -482,9 +421,9 @@ fun ShoppingItemRow(
                 text = item.name,
                 style = MaterialTheme.typography.bodyLarge,
                 textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
-                color = if (item.isChecked) 
-                    MaterialTheme.colorScheme.onSurfaceVariant 
-                else 
+                color = if (item.isChecked)
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                else
                     MaterialTheme.colorScheme.onSurface
             )
             if (item.quantity > 1 || item.unit != "unidad") {
@@ -516,9 +455,9 @@ fun ShoppingItemCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (isCompleted) 
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) 
-            else 
+            containerColor = if (isCompleted)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            else
                 MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(if (isCompleted) 0.dp else 1.dp)
@@ -539,9 +478,9 @@ fun ShoppingItemCard(
                     text = item.name,
                     style = MaterialTheme.typography.bodyLarge,
                     textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
-                    color = if (item.isChecked) 
-                        MaterialTheme.colorScheme.onSurfaceVariant 
-                    else 
+                    color = if (item.isChecked)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
                         MaterialTheme.colorScheme.onSurface
                 )
                 if (item.quantity > 1 || item.unit != "unidad") {

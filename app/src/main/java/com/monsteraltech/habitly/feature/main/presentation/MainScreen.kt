@@ -20,6 +20,7 @@ import com.monsteraltech.habitly.feature.dashboard.presentation.DashboardScreen
 import com.monsteraltech.habitly.feature.household.presentation.HouseholdScreen
 import com.monsteraltech.habitly.feature.routines.presentation.RoutinesScreen
 import com.monsteraltech.habitly.feature.shopping.presentation.ShoppingScreen
+import com.monsteraltech.habitly.feature.shopping.presentation.add.AddProductScreen
 import com.monsteraltech.habitly.feature.shopping.presentation.history.HistoryScreen
 import com.monsteraltech.habitly.feature.aiassistant.presentation.AiAssistantScreen
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,6 +35,7 @@ sealed class BottomNavRoute(val route: String, val icon: androidx.compose.ui.gra
 
 object HiddenRoutes {
     const val ShoppingHistory = "shopping_history"
+    const val ShoppingAddProduct = "shopping_add_product"
 }
 
 @Composable
@@ -102,7 +104,8 @@ fun MainScreen(
             }
             composable(BottomNavRoute.Shopping.route) {
                 ShoppingScreen(
-                    onNavigateToHistory = { navController.navigate(HiddenRoutes.ShoppingHistory) }
+                    onNavigateToHistory = { navController.navigate(HiddenRoutes.ShoppingHistory) },
+                    onNavigateToAddProduct = { navController.navigate(HiddenRoutes.ShoppingAddProduct) }
                 )
             }
             composable(BottomNavRoute.AiAssistant.route) {
@@ -116,6 +119,11 @@ fun MainScreen(
             }
             composable(HiddenRoutes.ShoppingHistory) {
                 HistoryScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(HiddenRoutes.ShoppingAddProduct) {
+                AddProductScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

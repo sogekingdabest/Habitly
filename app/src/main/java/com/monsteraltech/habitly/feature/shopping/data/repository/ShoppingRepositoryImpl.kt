@@ -45,7 +45,7 @@ class ShoppingRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun addShoppingItem(householdId: String, name: String, store: String, authorId: String, quantity: Int, unit: String): Result<Unit> {
+    override suspend fun addShoppingItem(householdId: String, name: String, store: String, authorId: String, quantity: Int, unit: String, category: String, notes: String): Result<Unit> {
         return try {
             val item = ShoppingItem(
                 id = UUID.randomUUID().toString(),
@@ -55,7 +55,9 @@ class ShoppingRepositoryImpl @Inject constructor(
                 authorId = authorId,
                 createdAt = System.currentTimeMillis(),
                 quantity = quantity,
-                unit = unit
+                unit = unit,
+                category = category,
+                notes = notes
             )
             firestore.collection("households")
                 .document(householdId)

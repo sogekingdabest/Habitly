@@ -36,11 +36,17 @@ data class ShoppingUiState(
     val completedItems: List<ShoppingItem>
         get() = allItems.filter { it.isChecked }
     
+    val filteredPendingItems: List<ShoppingItem>
+        get() = if (selectedStore == "Cualquiera") pendingItems else pendingItems.filter { it.store == selectedStore }
+    
+    val filteredCompletedItems: List<ShoppingItem>
+        get() = if (selectedStore == "Cualquiera") completedItems else completedItems.filter { it.store == selectedStore }
+    
     val pendingItemsByStore: Map<String, List<ShoppingItem>>
-        get() = pendingItems.groupBy { it.store }.toSortedMap()
+        get() = filteredPendingItems.groupBy { it.store }.toSortedMap()
     
     val completedItemsByStore: Map<String, List<ShoppingItem>>
-        get() = completedItems.groupBy { it.store }.toSortedMap()
+        get() = filteredCompletedItems.groupBy { it.store }.toSortedMap()
     
     val totalItems: Int
         get() = allItems.size
@@ -145,10 +151,10 @@ class ShoppingViewModel @Inject constructor(
         }
     }
 
-    fun onAddItem(name: String, quantity: Int = 1, unit: String = "unidad") {
+    fun onAddItem(name: String, quantity: Int = 1, unit: String = "unidad", category: String = "", notes: String = "") {
         val householdId = currentHouseholdId ?: return
         viewModelScope.launch {
-            addShoppingItemUseCase(householdId, name, _uiState.value.selectedStore, currentUserId, quantity, unit)
+            addShoppingItemUseCase(householdId, name, _uiState.value.selectedStore, currentUserId, quantity, unit, category, notes)
         }
     }
 
@@ -186,7 +192,7 @@ class ShoppingViewModel @Inject constructor(
 
     fun onCheckAll() {
         val householdId = currentHouseholdId ?: return
-        val pendingIds = _uiState.value.pendingItems.map { it.id }
+        val pendingIds = _uiState.value.filteredPendingItems.map { it.id }
         if (pendingIds.isEmpty()) return
         
         viewModelScope.launch {

@@ -14,7 +14,7 @@ interface ShoppingRepository {
     /**
      * Añade un nuevo ítem a la lista de la compra.
      */
-    suspend fun addShoppingItem(householdId: String, name: String, store: String, authorId: String, quantity: Int = 1, unit: String = "unidad"): Result<Unit>
+    suspend fun addShoppingItem(householdId: String, name: String, store: String, authorId: String, quantity: Int = 1, unit: String = "unidad", category: String = "", notes: String = ""): Result<Unit>
 
     /**
      * Observa en tiempo real los supermercados personalizados de una casa.

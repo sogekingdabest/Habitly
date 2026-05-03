@@ -12,5 +12,7 @@ data class ShoppingItem(
     var authorId: String = "",
     var createdAt: Long = System.currentTimeMillis(),
     var quantity: Int = 1,
-    var unit: String = "unidad"
+    var unit: String = "unidad",
+    var category: String = "",
+    var notes: String = ""
 )
