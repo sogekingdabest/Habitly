@@ -1,4 +1,44 @@
 <resources>
     <string name="app_name">Habitly</string>
     <string name="default_web_client_id">819000066438-ntt3qii5r1g5o4m3b3hlr3m0jgkkeks5.apps.googleusercontent.com</string>
+
+    <!-- Routines -->
+    <string name="routines_tab_personal">Mis Rutinas</string>
+    <string name="routines_tab_household">De la Casa</string>
+    <string name="routines_add_routine">Añadir rutina</string>
+    <string name="routines_new_routine_title">Nueva Rutina</string>
+    <string name="routines_field_title">Título</string>
+    <string name="routines_field_description">Descripción (opcional)</string>
+    <string name="routines_type_label">Tipo de rutina:</string>
+    <string name="routines_type_personal">Personal</string>
+    <string name="routines_type_household">De la Casa</string>
+    <string name="routines_create">Crear</string>
+    <string name="routines_cancel">Cancelar</string>
+    <string name="routines_empty_message">No tienes rutinas de este tipo</string>
+    <string name="routines_completed_by">Completado por %s</string>
+    <string name="routines_completed_by_unknown">un miembro</string>
+    <string name="routines_delete_routine">Eliminar rutina</string>
+    <string name="routines_edit_routine">Editar rutina</string>
+    <string name="routines_edit_routine_title">Editar Rutina</string>
+    <string name="routines_save">Guardar</string>
+    <string name="routines_error_empty_title">El título no puede estar vacío</string>
+    <string name="routines_frequency_label">Frecuencia:</string>
+    <string name="routines_frequency_daily">Diaria</string>
+    <string name="routines_frequency_weekly">Semanal</string>
+    <string name="routines_frequency_custom">Personalizada</string>
+    <string name="routines_select_days_label">Selecciona los días:</string>
+    <string name="routines_day_mon">L</string>
+    <string name="routines_day_tue">M</string>
+    <string name="routines_day_wed">X</string>
+    <string name="routines_day_thu">J</string>
+    <string name="routines_day_fri">V</string>
+    <string name="routines_day_sat">S</string>
+    <string name="routines_day_sun">D</string>
+    <string name="routines_reminder_label">Recordatorio:</string>
+    <string name="routines_reminder_none">Sin recordatorio</string>
+    <string name="routines_reminder_set">Recordatorio a las %s</string>
+    <string name="routines_notification_title">Recordatorio de Rutina</string>
+    <string name="routines_notification_text">Es hora de: %s</string>
+    <string name="routines_notification_channel_name">Recordatorios de Rutinas</string>
+    <string name="routines_notification_channel_desc">Notificaciones para recordar rutinas pendientes</string>
 </resources>

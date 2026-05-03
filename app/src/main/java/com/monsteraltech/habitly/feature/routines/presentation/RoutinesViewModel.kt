@@ -7,11 +7,16 @@ import com.monsteraltech.habitly.feature.household.domain.usecase.GetMemberProfi
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveHouseholdUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.usecase.AddRoutineUseCase
+import com.monsteraltech.habitly.feature.routines.domain.usecase.CancelReminderUseCase
 import com.monsteraltech.habitly.feature.routines.domain.usecase.DeleteRoutineUseCase
 import com.monsteraltech.habitly.feature.routines.domain.usecase.ObserveRoutinesUseCase
+import com.monsteraltech.habitly.feature.routines.domain.usecase.ReorderRoutineUseCase
+import com.monsteraltech.habitly.feature.routines.domain.usecase.ScheduleReminderUseCase
 import com.monsteraltech.habitly.feature.routines.domain.usecase.ToggleRoutineUseCase
+import com.monsteraltech.habitly.feature.routines.domain.usecase.UpdateRoutineUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +44,10 @@ class RoutinesViewModel @Inject constructor(
     private val addRoutineUseCase: AddRoutineUseCase,
     private val toggleRoutineUseCase: ToggleRoutineUseCase,
     private val deleteRoutineUseCase: DeleteRoutineUseCase,
+    private val updateRoutineUseCase: UpdateRoutineUseCase,
+    private val reorderRoutineUseCase: ReorderRoutineUseCase,
+    private val scheduleReminderUseCase: ScheduleReminderUseCase,
+    private val cancelReminderUseCase: CancelReminderUseCase,
     private val observeUserProfileUseCase: ObserveUserProfileUseCase,
     private val observeHouseholdUseCase: ObserveHouseholdUseCase,
     private val getMemberProfilesUseCase: GetMemberProfilesUseCase,
@@ -96,12 +105,12 @@ class RoutinesViewModel @Inject constructor(
         }
     }
 
-    fun onAddRoutine(title: String, description: String, type: RoutineType) {
+    fun onAddRoutine(title: String, description: String, type: RoutineType, frequency: RoutineFrequency, scheduledDays: List<Int>, reminderTime: Int?) {
         val state = _uiState.value
         if (state.currentUserId.isBlank() || state.currentHouseholdId.isBlank()) return
         
         viewModelScope.launch {
-            addRoutineUseCase(state.currentUserId, state.currentHouseholdId, title, description, type)
+            addRoutineUseCase(state.currentUserId, state.currentHouseholdId, title, description, type, frequency, scheduledDays, reminderTime)
         }
     }
 
@@ -124,15 +133,52 @@ class RoutinesViewModel @Inject constructor(
             deleteRoutineUseCase(state.currentUserId, state.currentHouseholdId, routine)
         }
     }
+
+    fun onEditRoutine(routine: Routine, title: String, description: String, frequency: RoutineFrequency, scheduledDays: List<Int>, reminderTime: Int?) {
+        val state = _uiState.value
+        if (state.currentUserId.isBlank() || state.currentHouseholdId.isBlank()) return
+        
+        viewModelScope.launch {
+            updateRoutineUseCase(state.currentUserId, state.currentHouseholdId, routine, title, description, frequency, scheduledDays, reminderTime)
+        }
+    }
+
+    fun onToggleReminder(routine: Routine) {
+        viewModelScope.launch {
+            if (routine.reminderTime != null) {
+                scheduleReminderUseCase(routine)
+            } else {
+                cancelReminderUseCase(routine.id)
+            }
+        }
+    }
+
+    fun onReorderRoutine(type: RoutineType, orderedIds: List<String>) {
+        val state = _uiState.value
+        if (state.currentUserId.isBlank() || state.currentHouseholdId.isBlank()) return
+        
+        viewModelScope.launch {
+            reorderRoutineUseCase(state.currentUserId, state.currentHouseholdId, type, orderedIds)
+        }
+    }
     
     companion object {
         fun isRoutineCompletedToday(routine: Routine): Boolean {
             val lastCompleted = routine.lastCompletedAt ?: return false
             val today = Calendar.getInstance()
             val completedDay = Calendar.getInstance().apply { timeInMillis = lastCompleted }
-            
-            return today.get(Calendar.YEAR) == completedDay.get(Calendar.YEAR) &&
-                   today.get(Calendar.DAY_OF_YEAR) == completedDay.get(Calendar.DAY_OF_YEAR)
+
+            val isSameDay = today.get(Calendar.YEAR) == completedDay.get(Calendar.YEAR) &&
+                    today.get(Calendar.DAY_OF_YEAR) == completedDay.get(Calendar.DAY_OF_YEAR)
+
+            if (isSameDay) return true
+
+            if (routine.frequency == RoutineFrequency.DAILY) return false
+
+            val todayDayOfWeek = today.get(Calendar.DAY_OF_WEEK)
+            if (!routine.isScheduledForDayOfWeek(todayDayOfWeek)) return false
+
+            return false
         }
     }
 }

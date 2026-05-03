@@ -103,4 +103,8 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.okhttp)
     implementation(libs.compose.markdown)
+
+    // WorkManager
+    implementation(libs.work.runtime.ktx)
+    testImplementation(libs.work.testing)
 }
