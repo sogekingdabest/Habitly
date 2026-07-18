@@ -4,6 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Eco
@@ -15,6 +17,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -61,7 +65,7 @@ fun LoginScreen(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Eco,
-                    contentDescription = "Habitly Logo",
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier
                         .padding(16.dp)
@@ -72,13 +76,13 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Bienvenido de nuevo",
+                text = stringResource(R.string.login_welcome_back),
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(
-                text = "Inicia sesión para continuar con Habitly",
+                text = stringResource(R.string.login_subtitle),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 32.dp)
@@ -87,7 +91,11 @@ fun LoginScreen(
             OutlinedTextField(
                 value = state.email,
                 onValueChange = { viewModel.onEvent(LoginEvent.EmailChanged(it)) },
-                label = { Text("Email") },
+                label = { Text(stringResource(R.string.common_email)) },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
@@ -98,8 +106,15 @@ fun LoginScreen(
             OutlinedTextField(
                 value = state.password,
                 onValueChange = { viewModel.onEvent(LoginEvent.PasswordChanged(it)) },
-                label = { Text("Contraseña") },
+                label = { Text(stringResource(R.string.common_password)) },
                 visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { if (!state.isLoading) viewModel.onEvent(LoginEvent.LoginClicked) }
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
@@ -112,7 +127,7 @@ fun LoginScreen(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onNavigateToForgotPassword) {
-                    Text("¿Olvidaste tu contraseña?", color = MaterialTheme.colorScheme.secondary)
+                    Text(stringResource(R.string.login_forgot_password), color = MaterialTheme.colorScheme.secondary)
                 }
             }
 
@@ -144,7 +159,7 @@ fun LoginScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Iniciar Sesión", fontSize = MaterialTheme.typography.titleMedium.fontSize)
+                    Text(stringResource(R.string.login_sign_in), fontSize = MaterialTheme.typography.titleMedium.fontSize)
                 }
             }
 
@@ -156,7 +171,7 @@ fun LoginScreen(
             ) {
                 HorizontalDivider(modifier = Modifier.weight(1f))
                 Text(
-                    text = " o ",
+                    text = " ${stringResource(R.string.common_or)} ",
                     modifier = Modifier.padding(horizontal = 8.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -177,11 +192,11 @@ fun LoginScreen(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_google),
-                    contentDescription = "Google Logo",
+                    contentDescription = null,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                Text("Continuar con Google", color = MaterialTheme.colorScheme.onSurface)
+                Text(stringResource(R.string.login_continue_google), color = MaterialTheme.colorScheme.onSurface)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -190,9 +205,9 @@ fun LoginScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                Text("¿No tienes cuenta?")
+                Text(stringResource(R.string.login_no_account))
                 TextButton(onClick = onNavigateToRegister) {
-                    Text("Regístrate", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.login_register_link), fontWeight = FontWeight.Bold)
                 }
             }
         }

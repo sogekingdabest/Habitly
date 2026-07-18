@@ -5,11 +5,13 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.monsteraltech.habitly.feature.login.domain.model.AuthToken
 import com.monsteraltech.habitly.feature.login.domain.model.LoginCredentials
+import com.monsteraltech.habitly.feature.login.domain.model.ReauthenticationRequiredException
 import com.monsteraltech.habitly.feature.login.domain.repository.AuthRepository
 import com.monsteraltech.habitly.feature.register.domain.model.AuthUser
 import com.monsteraltech.habitly.feature.register.domain.model.RegisterCredentials
@@ -174,6 +176,23 @@ class AuthRepositoryImpl @Inject constructor(
         dataStore.edit { preferences ->
             preferences.remove(ACCESS_TOKEN_KEY)
             preferences.remove(REFRESH_TOKEN_KEY)
+        }
+    }
+
+    override suspend fun deleteAccount(): Result<Unit> {
+        return try {
+            val user = firebaseAuth.currentUser
+                ?: return Result.failure(Exception("No hay usuario activo"))
+            user.delete().await()
+            dataStore.edit { preferences ->
+                preferences.remove(ACCESS_TOKEN_KEY)
+                preferences.remove(REFRESH_TOKEN_KEY)
+            }
+            Result.success(Unit)
+        } catch (e: FirebaseAuthRecentLoginRequiredException) {
+            Result.failure(ReauthenticationRequiredException())
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

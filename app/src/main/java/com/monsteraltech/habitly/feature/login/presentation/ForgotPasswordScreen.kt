@@ -3,6 +3,7 @@ package com.monsteraltech.habitly.feature.login.presentation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.LockReset
@@ -10,9 +11,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.monsteraltech.habitly.R
 
 @Composable
 fun ForgotPasswordScreen(
@@ -42,7 +47,7 @@ fun ForgotPasswordScreen(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.LockReset,
-                    contentDescription = "Recuperar Contraseña",
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier
                         .padding(16.dp)
@@ -53,14 +58,14 @@ fun ForgotPasswordScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                "Recuperar Contraseña",
+                stringResource(R.string.forgot_title),
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
             Text(
-                "Ingresa el correo electrónico asociado a tu cuenta y te enviaremos un enlace para restablecer tu contraseña.",
+                stringResource(R.string.forgot_subtitle),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -70,7 +75,11 @@ fun ForgotPasswordScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
+                label = { Text(stringResource(R.string.common_email)) },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Done
+                ),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp)
@@ -89,7 +98,7 @@ fun ForgotPasswordScreen(
                     .height(54.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Enviar enlace", fontSize = MaterialTheme.typography.titleMedium.fontSize)
+                Text(stringResource(R.string.forgot_send_link), fontSize = MaterialTheme.typography.titleMedium.fontSize)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -98,7 +107,7 @@ fun ForgotPasswordScreen(
                 onClick = onNavigateBack,
                 modifier = Modifier.height(50.dp)
             ) {
-                Text("Volver al inicio de sesión", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.forgot_back_to_login), fontWeight = FontWeight.Bold)
             }
         }
     }

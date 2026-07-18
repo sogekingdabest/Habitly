@@ -20,4 +20,7 @@ interface AuthRepository {
     fun getCurrentUser(): AuthUser?
     suspend fun reloadCurrentUser(): Result<AuthUser>
     suspend fun signOut()
+
+    // — Borrado de cuenta —
+    suspend fun deleteAccount(): Result<Unit>
 }

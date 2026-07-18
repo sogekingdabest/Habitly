@@ -10,7 +10,9 @@ class FakeHouseholdRepository : HouseholdRepository {
 
     var stubProfile: UserProfile? = null
 
-    override suspend fun initializeUserAndHousehold(userId: String, displayName: String): Result<Unit> = Result.success(Unit)
+    override suspend fun ensureUserProfile(userId: String, displayName: String): Result<Unit> = Result.success(Unit)
+
+    override suspend fun createHousehold(userId: String, displayName: String, householdName: String): Result<Unit> = Result.success(Unit)
 
     override fun observeUserProfile(userId: String): Flow<UserProfile?> = flowOf(stubProfile)
 
@@ -23,6 +25,16 @@ class FakeHouseholdRepository : HouseholdRepository {
     override suspend fun updateNickname(userId: String, newNickname: String): Result<Unit> = Result.success(Unit)
 
     override suspend fun getMemberProfiles(memberIds: List<String>): Result<List<UserProfile>> = Result.success(emptyList())
+
+    override suspend fun leaveHousehold(userId: String, householdId: String): Result<Unit> = Result.success(Unit)
+
+    override suspend fun removeMember(householdId: String, memberId: String): Result<Unit> = Result.success(Unit)
+
+    override suspend fun regenerateInviteCode(householdId: String): Result<Unit> = Result.success(Unit)
+
+    override suspend fun clearActiveHousehold(userId: String): Result<Unit> = Result.success(Unit)
+
+    override suspend fun deleteUserData(userId: String): Result<Unit> = Result.success(Unit)
 
     fun reset() {
         stubProfile = null

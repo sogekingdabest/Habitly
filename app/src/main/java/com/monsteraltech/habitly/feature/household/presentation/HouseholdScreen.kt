@@ -8,10 +8,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonRemove
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.ui.res.stringResource
+import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.household.domain.model.UserProfile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,13 +46,18 @@ fun HouseholdScreen(
     var editNameInput by remember { mutableStateOf("") }
     var showEditNicknameDialog by remember { mutableStateOf(false) }
     var editNicknameInput by remember { mutableStateOf("") }
-    
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showLeaveDialog by remember { mutableStateOf(false) }
+    var showRegenerateDialog by remember { mutableStateOf(false) }
+    var memberToRemove by remember { mutableStateOf<UserProfile?>(null) }
+
     val snackbarHostState = remember { SnackbarHostState() }
-    
+    val joinSuccessMsg = stringResource(R.string.household_join_success)
+
     LaunchedEffect(uiState.joinSuccess) {
         if (uiState.joinSuccess) {
             inviteCodeInput = ""
-            snackbarHostState.showSnackbar("¡Te has unido a la casa con éxito!")
+            snackbarHostState.showSnackbar(joinSuccessMsg)
             viewModel.resetJoinState()
         }
     }
@@ -54,6 +66,20 @@ fun HouseholdScreen(
         uiState.joinError?.let { error ->
             snackbarHostState.showSnackbar(error)
             viewModel.resetJoinState()
+        }
+    }
+
+    LaunchedEffect(uiState.deleteAccountError) {
+        uiState.deleteAccountError?.let { error ->
+            snackbarHostState.showSnackbar(error)
+            viewModel.onDeleteAccountErrorShown()
+        }
+    }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(error)
+            viewModel.onErrorShown()
         }
     }
 
@@ -75,12 +101,12 @@ fun HouseholdScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Mi Casa",
+                    text = stringResource(R.string.household_title),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
                 IconButton(onClick = { viewModel.onSignOut(onSignOut) }) {
-                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Cerrar sesión")
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = stringResource(R.string.household_sign_out))
                 }
             }
 
@@ -125,7 +151,7 @@ fun HouseholdScreen(
                         
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = nickname.ifBlank { "Sin nickname" },
+                                text = nickname.ifBlank { stringResource(R.string.household_no_nickname) },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -134,12 +160,12 @@ fun HouseholdScreen(
                                 editNicknameInput = nickname
                                 showEditNicknameDialog = true
                             }) {
-                                Icon(Icons.Filled.Edit, contentDescription = "Editar nickname", modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.household_edit_nickname), modifier = Modifier.size(18.dp))
                             }
                         }
-                        
+
                         Text(
-                            text = "Tu nombre visible para los demás",
+                            text = stringResource(R.string.household_nickname_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
                         )
@@ -171,11 +197,11 @@ fun HouseholdScreen(
                                 editNameInput = uiState.household!!.name
                                 showEditNameDialog = true
                             }) {
-                                Icon(Icons.Filled.Edit, contentDescription = "Editar nombre", modifier = Modifier.size(20.dp))
+                                Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.household_edit_name), modifier = Modifier.size(20.dp))
                             }
                         }
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Tu código de invitación:", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.household_invite_code_title), style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         Surface(
@@ -197,17 +223,23 @@ fun HouseholdScreen(
                                     letterSpacing = 4.sp
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
-                                Icon(Icons.Filled.ContentCopy, contentDescription = "Copiar")
+                                Icon(Icons.Filled.ContentCopy, contentDescription = stringResource(R.string.household_copy))
                             }
+                        }
+
+                        TextButton(onClick = { showRegenerateDialog = true }) {
+                            Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(stringResource(R.string.household_regenerate_code))
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 // === SECCIÓN: Miembros ===
                 Text(
-                    text = "Miembros (${uiState.memberProfiles.size})",
+                    text = stringResource(R.string.household_members, uiState.memberProfiles.size),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.fillMaxWidth()
@@ -250,10 +282,20 @@ fun HouseholdScreen(
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = if (isYou) "$memberName (tú)" else memberName,
+                                text = if (isYou) stringResource(R.string.household_you, memberName) else memberName,
                                 style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (isYou) FontWeight.Bold else FontWeight.Normal
+                                fontWeight = if (isYou) FontWeight.Bold else FontWeight.Normal,
+                                modifier = Modifier.weight(1f)
                             )
+                            if (!isYou) {
+                                IconButton(onClick = { memberToRemove = member }) {
+                                    Icon(
+                                        Icons.Filled.PersonRemove,
+                                        contentDescription = stringResource(R.string.household_remove_member),
+                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -262,13 +304,13 @@ fun HouseholdScreen(
                 
                 // === SECCIÓN: Unirse a otra casa ===
                 Text(
-                    text = "¿Tienes un código de invitación?",
+                    text = stringResource(R.string.household_join_question),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Únete a la casa de otra persona. ¡Cuidado! Si te unes a otra casa, dejarás de ver la actual.",
+                    text = stringResource(R.string.household_join_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -278,7 +320,7 @@ fun HouseholdScreen(
                 OutlinedTextField(
                     value = inviteCodeInput,
                     onValueChange = { inviteCodeInput = it.uppercase() },
-                    label = { Text("Código de 6 letras") },
+                    label = { Text(stringResource(R.string.household_invite_code_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -297,23 +339,172 @@ fun HouseholdScreen(
                     } else {
                         Icon(Icons.Filled.GroupAdd, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Unirse a la Casa")
+                        Text(stringResource(R.string.household_join_button))
                     }
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                OutlinedButton(
+                    onClick = { showLeaveDialog = true },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.household_leave))
+                }
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // === SECCIÓN: Zona de peligro ===
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.household_danger_zone),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.household_delete_account_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { showDeleteAccountDialog = true },
+                    enabled = !uiState.isDeletingAccount,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    if (uiState.isDeletingAccount) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.error)
+                    } else {
+                        Icon(Icons.Filled.DeleteForever, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.household_delete_account))
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+
+    // Dialog de confirmación de salir de la casa
+    if (showLeaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showLeaveDialog = false },
+            icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null) },
+            title = { Text(stringResource(R.string.household_leave_confirm_title)) },
+            text = { Text(stringResource(R.string.household_leave_confirm_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLeaveDialog = false
+                    viewModel.onLeaveHousehold()
+                }) {
+                    Text(stringResource(R.string.household_leave))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    // Dialog de confirmación de regenerar código
+    if (showRegenerateDialog) {
+        AlertDialog(
+            onDismissRequest = { showRegenerateDialog = false },
+            icon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
+            title = { Text(stringResource(R.string.household_regenerate_confirm_title)) },
+            text = { Text(stringResource(R.string.household_regenerate_confirm_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRegenerateDialog = false
+                    viewModel.onRegenerateInviteCode()
+                }) {
+                    Text(stringResource(R.string.household_regenerate_code))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRegenerateDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    // Dialog de confirmación de expulsar miembro
+    memberToRemove?.let { member ->
+        val name = member.nickname.ifBlank { member.displayName }
+        AlertDialog(
+            onDismissRequest = { memberToRemove = null },
+            icon = { Icon(Icons.Filled.PersonRemove, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(R.string.household_remove_confirm_title)) },
+            text = { Text(stringResource(R.string.household_remove_confirm_message, name)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.onRemoveMember(member.id)
+                        memberToRemove = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.household_remove_member))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { memberToRemove = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    // Dialog de confirmación de borrado de cuenta
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountDialog = false },
+            icon = { Icon(Icons.Filled.DeleteForever, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(R.string.household_delete_confirm_title)) },
+            text = {
+                Text(stringResource(R.string.household_delete_confirm_message))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteAccountDialog = false
+                        viewModel.onDeleteAccount(onSignOut)
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.household_delete_confirm_button))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAccountDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
     
     // Dialog para editar nombre de la casa
     if (showEditNameDialog) {
         AlertDialog(
             onDismissRequest = { showEditNameDialog = false },
-            title = { Text("Cambiar nombre de la casa") },
+            title = { Text(stringResource(R.string.household_change_name_title)) },
             text = {
                 OutlinedTextField(
                     value = editNameInput,
                     onValueChange = { editNameInput = it },
-                    label = { Text("Nuevo nombre") },
+                    label = { Text(stringResource(R.string.household_new_name)) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -326,12 +517,12 @@ fun HouseholdScreen(
                     },
                     enabled = editNameInput.isNotBlank()
                 ) {
-                    Text("Guardar")
+                    Text(stringResource(R.string.household_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditNameDialog = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -341,12 +532,12 @@ fun HouseholdScreen(
     if (showEditNicknameDialog) {
         AlertDialog(
             onDismissRequest = { showEditNicknameDialog = false },
-            title = { Text("Cambiar tu nickname") },
+            title = { Text(stringResource(R.string.household_change_nickname_title)) },
             text = {
                 OutlinedTextField(
                     value = editNicknameInput,
                     onValueChange = { editNicknameInput = it },
-                    label = { Text("Tu nombre corto") },
+                    label = { Text(stringResource(R.string.household_short_name)) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -359,12 +550,12 @@ fun HouseholdScreen(
                     },
                     enabled = editNicknameInput.isNotBlank()
                 ) {
-                    Text("Guardar")
+                    Text(stringResource(R.string.household_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditNicknameDialog = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )

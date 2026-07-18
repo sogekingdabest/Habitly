@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -21,6 +22,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -138,7 +141,7 @@ fun RegisterScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.PersonAddAlt1,
-                        contentDescription = "Empezar en Habitly",
+                        contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier
                             .padding(16.dp)
@@ -149,7 +152,7 @@ fun RegisterScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Crear Cuenta",
+                    text = stringResource(R.string.register_title),
                     style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 32.dp)
@@ -158,7 +161,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = state.displayName,
                     onValueChange = { viewModel.onIntent(RegisterIntent.DisplayNameChanged(it)) },
-                    label = { Text("Nombre") },
+                    label = { Text(stringResource(R.string.register_name)) },
                     isError = state.displayNameError != null,
                     supportingText = {
                         if (state.displayNameError != null) {
@@ -178,7 +181,11 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = state.email,
                     onValueChange = { viewModel.onIntent(RegisterIntent.EmailChanged(it)) },
-                    label = { Text("Email") },
+                    label = { Text(stringResource(R.string.common_email)) },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Next
+                    ),
                     isError = state.emailError != null,
                     supportingText = {
                         if (state.emailError != null) {
@@ -198,7 +205,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = state.password,
                     onValueChange = { viewModel.onIntent(RegisterIntent.PasswordChanged(it)) },
-                    label = { Text("Contraseña") },
+                    label = { Text(stringResource(R.string.common_password)) },
                     isError = state.passwordError != null,
                     supportingText = {
                         if (state.passwordError != null) {
@@ -212,7 +219,12 @@ fun RegisterScreen(
                     trailingIcon = {
                         val image = if (state.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                         IconButton(onClick = { viewModel.onIntent(RegisterIntent.TogglePasswordVisibility) }) {
-                            Icon(imageVector = image, contentDescription = "Ver contraseña")
+                            Icon(
+                                imageVector = image,
+                                contentDescription = stringResource(
+                                    if (state.isPasswordVisible) R.string.register_hide_password else R.string.register_show_password
+                                )
+                            )
                         }
                     },
                     modifier = Modifier.fillMaxWidth().testTag("register_password_field"),
@@ -225,7 +237,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = state.confirmPassword,
                     onValueChange = { viewModel.onIntent(RegisterIntent.ConfirmPasswordChanged(it)) },
-                    label = { Text("Confirmar contraseña") },
+                    label = { Text(stringResource(R.string.register_confirm_password)) },
                     isError = state.confirmPasswordError != null,
                     supportingText = {
                         if (state.confirmPasswordError != null) {
@@ -239,7 +251,12 @@ fun RegisterScreen(
                     trailingIcon = {
                         val image = if (state.isConfirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                         IconButton(onClick = { viewModel.onIntent(RegisterIntent.ToggleConfirmPasswordVisibility) }) {
-                            Icon(imageVector = image, contentDescription = "Ver contraseña")
+                            Icon(
+                                imageVector = image,
+                                contentDescription = stringResource(
+                                    if (state.isConfirmPasswordVisible) R.string.register_hide_password else R.string.register_show_password
+                                )
+                            )
                         }
                     },
                     modifier = Modifier.fillMaxWidth().testTag("register_confirm_password_field"),
@@ -279,7 +296,7 @@ fun RegisterScreen(
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
-                        Text("Unirse a Habitly", fontSize = MaterialTheme.typography.titleMedium.fontSize)
+                        Text(stringResource(R.string.register_submit), fontSize = MaterialTheme.typography.titleMedium.fontSize)
                     }
                 }
 
@@ -291,7 +308,7 @@ fun RegisterScreen(
                 ) {
                     HorizontalDivider(modifier = Modifier.weight(1f))
                     Text(
-                        text = " o ",
+                        text = " ${stringResource(R.string.common_or)} ",
                         modifier = Modifier.padding(horizontal = 8.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -317,11 +334,11 @@ fun RegisterScreen(
                     } else {
                         Image(
                             painter = painterResource(id = R.drawable.ic_google),
-                            contentDescription = "Google Logo",
+                            contentDescription = null,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Registrarse con Google", color = MaterialTheme.colorScheme.onSurface)
+                        Text(stringResource(R.string.register_with_google), color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
 
@@ -331,12 +348,12 @@ fun RegisterScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Text("¿Ya tienes cuenta?")
+                    Text(stringResource(R.string.register_have_account))
                     TextButton(
                         onClick = { viewModel.onIntent(RegisterIntent.NavigateToLoginClicked) },
                         modifier = Modifier.testTag("register_navigate_to_login_link")
                     ) {
-                        Text("Inicia sesión", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.register_login_link), fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -344,20 +361,21 @@ fun RegisterScreen(
     }
 }
 
+@Composable
 private fun getErrorMessage(error: RegisterError): String {
     return when (error) {
-        is RegisterError.DisplayNameBlank -> "El nombre no puede estar vacío"
-        is RegisterError.DisplayNameTooShort -> "El nombre debe tener al menos 2 caracteres"
-        is RegisterError.EmailBlank -> "El email no puede estar vacío"
-        is RegisterError.EmailInvalidFormat -> "Formato de email inválido"
-        is RegisterError.PasswordTooShort -> "La contraseña debe tener al menos 8 caracteres"
-        is RegisterError.PasswordNoUppercase -> "Incluye al menos una letra mayúscula"
-        is RegisterError.PasswordNoDigit -> "Incluye al menos un número"
-        is RegisterError.PasswordsDoNotMatch -> "Las contraseñas no coinciden"
-        is RegisterError.EmailAlreadyInUse -> "Este email ya está registrado"
-        is RegisterError.NetworkError -> "Error de red. Revisa tu conexión"
-        is RegisterError.GoogleSignInCancelled -> "Inicio de sesión con Google cancelado"
-        is RegisterError.GoogleSignInFailed -> "Fallo al iniciar sesión con Google"
-        else -> "Ocurrió un error inesperado"
+        is RegisterError.DisplayNameBlank -> stringResource(R.string.register_error_name_blank)
+        is RegisterError.DisplayNameTooShort -> stringResource(R.string.register_error_name_short)
+        is RegisterError.EmailBlank -> stringResource(R.string.register_error_email_blank)
+        is RegisterError.EmailInvalidFormat -> stringResource(R.string.register_error_email_invalid)
+        is RegisterError.PasswordTooShort -> stringResource(R.string.register_error_password_short)
+        is RegisterError.PasswordNoUppercase -> stringResource(R.string.register_error_password_uppercase)
+        is RegisterError.PasswordNoDigit -> stringResource(R.string.register_error_password_digit)
+        is RegisterError.PasswordsDoNotMatch -> stringResource(R.string.register_error_passwords_mismatch)
+        is RegisterError.EmailAlreadyInUse -> stringResource(R.string.register_error_email_in_use)
+        is RegisterError.NetworkError -> stringResource(R.string.register_error_network)
+        is RegisterError.GoogleSignInCancelled -> stringResource(R.string.register_error_google_cancelled)
+        is RegisterError.GoogleSignInFailed -> stringResource(R.string.register_error_google_failed)
+        else -> stringResource(R.string.register_error_unknown)
     }
 }

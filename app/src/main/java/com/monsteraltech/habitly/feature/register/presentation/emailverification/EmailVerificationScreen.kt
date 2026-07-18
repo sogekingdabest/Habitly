@@ -11,9 +11,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.monsteraltech.habitly.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -75,7 +77,7 @@ fun EmailVerificationScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.MarkEmailRead,
-                        contentDescription = "Email Enviado",
+                        contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier
                             .padding(16.dp)
@@ -86,14 +88,14 @@ fun EmailVerificationScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "Verifica tu Email",
+                    text = stringResource(R.string.emailverif_title),
                     style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
                 Text(
-                    text = "Hemos enviado un correo a:",
+                    text = stringResource(R.string.emailverif_sent_to),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
@@ -109,7 +111,7 @@ fun EmailVerificationScreen(
                 )
 
                 Text(
-                    text = "Haz clic en el enlace del correo para activar tu cuenta. Estamos esperando tu confirmación...",
+                    text = stringResource(R.string.emailverif_instructions),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -118,7 +120,7 @@ fun EmailVerificationScreen(
 
                 if (state.error != null) {
                     Text(
-                        text = "Ocurrió un error: ${state.error}",
+                        text = stringResource(R.string.emailverif_error, state.error ?: ""),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
@@ -131,8 +133,8 @@ fun EmailVerificationScreen(
                         strokeWidth = 3.dp
                     )
                     Text(
-                        text = "Esperando...", 
-                        style = MaterialTheme.typography.bodySmall, 
+                        text = stringResource(R.string.emailverif_waiting),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp)
                     )
@@ -159,7 +161,7 @@ fun EmailVerificationScreen(
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
-                        Text("Ya verifiqué mi email", fontSize = MaterialTheme.typography.titleMedium.fontSize)
+                        Text(stringResource(R.string.emailverif_check), fontSize = MaterialTheme.typography.titleMedium.fontSize)
                     }
                 }
 
@@ -181,11 +183,11 @@ fun EmailVerificationScreen(
                         )
                     } else if (state.resendCooldownSeconds > 0) {
                         Text(
-                            text = "Reenviar en ${state.resendCooldownSeconds}s",
+                            text = stringResource(R.string.emailverif_resend_cooldown, state.resendCooldownSeconds),
                             modifier = Modifier.testTag("email_verification_resend_cooldown")
                         )
                     } else {
-                        Text("Reenviar email")
+                        Text(stringResource(R.string.emailverif_resend))
                     }
                 }
 
@@ -195,7 +197,7 @@ fun EmailVerificationScreen(
                     onClick = { viewModel.onIntent(EmailVerificationIntent.CancelClicked) },
                     modifier = Modifier.testTag("email_verification_cancel_button")
                 ) {
-                    Text("Cancelar y volver", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.emailverif_cancel), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 }
             }
         }

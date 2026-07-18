@@ -24,6 +24,11 @@ class FakeAuthRepository : AuthRepository {
         stubCurrentUser = null
     }
 
+    override suspend fun deleteAccount(): Result<Unit> {
+        stubCurrentUser = null
+        return Result.success(Unit)
+    }
+
     fun reset() {
         stubCurrentUser = null
     }

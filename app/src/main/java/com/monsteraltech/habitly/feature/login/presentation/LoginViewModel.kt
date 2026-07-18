@@ -1,7 +1,6 @@
 package com.monsteraltech.habitly.feature.login.presentation
 
 import android.app.Activity
-import android.content.Context
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -16,7 +15,6 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.login.domain.usecase.LoginWithEmailUseCase
 import com.monsteraltech.habitly.feature.login.domain.usecase.LoginWithGoogleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.security.MessageDigest
 import java.util.UUID
 import javax.inject.Inject
@@ -29,8 +27,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginWithEmailUseCase: LoginWithEmailUseCase,
-    private val loginWithGoogleUseCase: LoginWithGoogleUseCase,
-    @ApplicationContext private val context: Context
+    private val loginWithGoogleUseCase: LoginWithGoogleUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -80,8 +77,8 @@ class LoginViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val credentialManager = CredentialManager.create(context)
-                val webClientId = context.getString(R.string.default_web_client_id)
+                val credentialManager = CredentialManager.create(activity)
+                val webClientId = activity.getString(R.string.default_web_client_id)
                 
                 val rawNonce = UUID.randomUUID().toString()
                 val bytes = rawNonce.toByteArray()

@@ -85,6 +85,15 @@ class FakeAuthRepository : AuthRepository {
         stubCurrentUser = null
     }
 
+    override suspend fun deleteAccount(): Result<Unit> {
+        return if (willFail) {
+            Result.failure(Exception(errorMessage))
+        } else {
+            stubCurrentUser = null
+            Result.success(Unit)
+        }
+    }
+
     fun reset() {
         willFail = false
         errorMessage = "Error de red simulado"
