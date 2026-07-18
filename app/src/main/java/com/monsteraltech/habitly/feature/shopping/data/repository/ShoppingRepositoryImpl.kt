@@ -71,6 +71,29 @@ class ShoppingRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun addShoppingItems(householdId: String, items: List<ShoppingItem>): Result<Unit> {
+        return try {
+            if (items.isEmpty()) return Result.success(Unit)
+
+            val collection = firestore.collection("households")
+                .document(householdId)
+                .collection("shopping_items")
+
+            val batch = firestore.batch()
+            val now = System.currentTimeMillis()
+            items.forEachIndexed { index, raw ->
+                val id = UUID.randomUUID().toString()
+                // Preservamos el orden de inserción sumando el índice a createdAt.
+                val item = raw.copy(id = id, isChecked = false, createdAt = now + index)
+                batch.set(collection.document(id), item)
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun toggleShoppingItem(householdId: String, itemId: String, isChecked: Boolean): Result<Unit> {
         return try {
             firestore.collection("households")

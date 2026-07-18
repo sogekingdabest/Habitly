@@ -15,10 +15,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.monsteraltech.habitly.R
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -33,10 +36,10 @@ fun HistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Historial de Compras", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.history_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -62,13 +65,13 @@ fun HistoryScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Aún no hay compras archivadas",
+                        text = stringResource(R.string.history_empty_title),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Archiva tu lista de la compra para verla aquí",
+                        text = stringResource(R.string.history_empty_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -102,7 +105,7 @@ fun HistoryCard(
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     
-    val formatter = remember { SimpleDateFormat("EEEE, d 'de' MMMM 'de' yyyy - HH:mm", Locale.forLanguageTag("es-ES")) }
+    val formatter = remember { SimpleDateFormat("EEEE, d MMMM yyyy - HH:mm", Locale.getDefault()) }
     val dateString = formatter.format(Date(history.createdAt))
     
     val grouped = history.items.groupBy { it.store }.toSortedMap()
@@ -155,7 +158,7 @@ fun HistoryCard(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "${history.items.size} productos",
+                                text = pluralStringResource(R.plurals.shopping_products_count, history.items.size, history.items.size),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -169,7 +172,7 @@ fun HistoryCard(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "$storeCount tienda${if (storeCount != 1) "s" else ""}",
+                                text = pluralStringResource(R.plurals.shopping_stores_count, storeCount, storeCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -178,7 +181,7 @@ fun HistoryCard(
                 }
                 Icon(
                     imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (isExpanded) "Colapsar" else "Expandir"
+                    contentDescription = if (isExpanded) stringResource(R.string.history_collapse) else stringResource(R.string.history_expand)
                 )
             }
 
@@ -195,7 +198,7 @@ fun HistoryCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        "Lista restaurada correctamente",
+                        stringResource(R.string.history_restored),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -274,7 +277,7 @@ fun HistoryCard(
                     ) {
                         Icon(Icons.Filled.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Restaurar esta lista")
+                        Text(stringResource(R.string.history_restore))
                     }
                 }
             }

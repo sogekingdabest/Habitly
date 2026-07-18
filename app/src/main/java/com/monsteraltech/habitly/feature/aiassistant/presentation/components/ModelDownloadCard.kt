@@ -14,10 +14,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
+import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiModelConfig
 import java.util.Locale
 
@@ -47,13 +49,13 @@ fun ModelDownloadCard(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Asistente IA Local",
+                text = stringResource(R.string.ai_local_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = "Descarga el modelo de IA para ejecutarlo localmente en tu dispositivo. Todo se procesa en tu telefono, sin enviar datos a servidores.",
+                text = stringResource(R.string.ai_local_desc),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -66,7 +68,7 @@ fun ModelDownloadCard(
                 ) {
                     CircularProgressIndicator(progress = { progress })
                     Text(
-                        text = "Descargando... ${(progress * 100).toInt()}%",
+                        text = stringResource(R.string.ai_downloading_progress, (progress * 100).toInt()),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
@@ -77,7 +79,7 @@ fun ModelDownloadCard(
                 }
             } else {
                 Button(onClick = onDownload) {
-                    Text("Descargar Modelo ($sizeText)")
+                    Text(stringResource(R.string.ai_download_model, sizeText))
                 }
             }
         }

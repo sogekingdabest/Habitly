@@ -15,7 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.monsteraltech.habitly.R
 
 data class QuickPrompt(
     val label: String,
@@ -55,7 +57,7 @@ fun PromptInput(
             value = input,
             onValueChange = onInputChange,
             modifier = Modifier.weight(1f),
-            label = { Text("Escribe tu mensaje...") },
+            label = { Text(stringResource(R.string.ai_input_hint)) },
             singleLine = false,
             maxLines = 4
         )
@@ -63,7 +65,7 @@ fun PromptInput(
             onClick = onSend,
             modifier = Modifier.padding(start = 8.dp)
         ) {
-            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Enviar")
+            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.ai_send))
         }
     }
 }

@@ -12,7 +12,13 @@ class FakeShoppingRepository : ShoppingRepository {
 
     override fun observeShoppingList(householdId: String): Flow<List<ShoppingItem>> = flowOf(stubItems)
 
-    override suspend fun addShoppingItem(householdId: String, name: String, store: String, authorId: String): Result<Unit> = Result.success(Unit)
+    override suspend fun addShoppingItem(householdId: String, name: String, store: String, authorId: String, quantity: Int, unit: String, category: String, notes: String): Result<Unit> = Result.success(Unit)
+
+    var addedItems: List<ShoppingItem> = emptyList()
+    override suspend fun addShoppingItems(householdId: String, items: List<ShoppingItem>): Result<Unit> {
+        addedItems = addedItems + items
+        return Result.success(Unit)
+    }
 
     override fun observeCustomStores(householdId: String): Flow<List<String>> = flowOf(emptyList())
 
@@ -25,6 +31,14 @@ class FakeShoppingRepository : ShoppingRepository {
     override suspend fun archiveShoppingList(householdId: String): Result<Unit> = Result.success(Unit)
 
     override fun observeShoppingHistory(householdId: String): Flow<List<ShoppingHistory>> = flowOf(emptyList())
+
+    override suspend fun bulkToggleItems(householdId: String, itemIds: List<String>, isChecked: Boolean): Result<Unit> = Result.success(Unit)
+
+    override suspend fun deleteCheckedItems(householdId: String): Result<Unit> = Result.success(Unit)
+
+    override suspend fun restoreHistory(householdId: String, historyId: String): Result<Unit> = Result.success(Unit)
+
+    override suspend fun getFrequentItems(householdId: String, limit: Int): Result<List<String>> = Result.success(emptyList())
 
     fun reset() {
         stubItems = emptyList()

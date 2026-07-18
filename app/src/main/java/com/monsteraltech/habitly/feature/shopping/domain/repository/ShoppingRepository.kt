@@ -17,6 +17,12 @@ interface ShoppingRepository {
     suspend fun addShoppingItem(householdId: String, name: String, store: String, authorId: String, quantity: Int = 1, unit: String = "unidad", category: String = "", notes: String = ""): Result<Unit>
 
     /**
+     * Añade varios ítems en una sola operación atómica (batch).
+     * El repositorio asigna id y createdAt y fuerza isChecked = false.
+     */
+    suspend fun addShoppingItems(householdId: String, items: List<ShoppingItem>): Result<Unit>
+
+    /**
      * Observa en tiempo real los supermercados personalizados de una casa.
      */
     fun observeCustomStores(householdId: String): Flow<List<String>>

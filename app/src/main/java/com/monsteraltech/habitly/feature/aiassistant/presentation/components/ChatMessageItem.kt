@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiMessage
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
+import com.monsteraltech.habitly.feature.aiassistant.domain.util.AiShoppingListFormat
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import java.time.Instant
 import java.time.ZoneId
@@ -64,8 +65,11 @@ fun ChatMessageItem(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
+                    val displayContent = remember(message.content) {
+                        AiShoppingListFormat.stripFromDisplay(message.content)
+                    }
                     MarkdownText(
-                        markdown = message.content,
+                        markdown = displayContent,
                         style = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         ),

@@ -5,9 +5,12 @@ import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeHouseho
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeRoutinesRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeShoppingRepository
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.AddAiItemsToShoppingListUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateRecipeSuggestionsUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateShoppingListUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateWeeklyMenuUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetAiContextUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ParseAiShoppingListUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -40,11 +43,20 @@ class AiAssistantViewModelTest {
             FakeShoppingRepository()
         )
 
+        val addItemsUseCase = AddAiItemsToShoppingListUseCase(
+            FakeAuthRepository(),
+            FakeHouseholdRepository(),
+            FakeShoppingRepository()
+        )
+
         viewModel = AiAssistantViewModel(
             repository = fakeRepository,
             getAiContextUseCase = getContextUseCase,
             generateRecipeSuggestionsUseCase = GenerateRecipeSuggestionsUseCase(),
-            generateShoppingListUseCase = GenerateShoppingListUseCase()
+            generateShoppingListUseCase = GenerateShoppingListUseCase(),
+            generateWeeklyMenuUseCase = GenerateWeeklyMenuUseCase(),
+            parseAiShoppingListUseCase = ParseAiShoppingListUseCase(),
+            addAiItemsToShoppingListUseCase = addItemsUseCase
         )
 
         testDispatcher.scheduler.advanceUntilIdle()

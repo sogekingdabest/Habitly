@@ -11,11 +11,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.monsteraltech.habitly.R
 
 val CATEGORIES = listOf(
     "Frutas y Verduras",
@@ -51,12 +53,12 @@ fun AddProductScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Añadir Producto") },
+                title = { Text(stringResource(R.string.addproduct_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
+                            contentDescription = stringResource(R.string.cd_back)
                         )
                     }
                 }
@@ -71,7 +73,7 @@ fun AddProductScreen(
                 .verticalScroll(scrollState)
         ) {
             Text(
-                "Información del producto",
+                stringResource(R.string.addproduct_info),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(vertical = 16.dp)
@@ -80,7 +82,7 @@ fun AddProductScreen(
             OutlinedTextField(
                 value = uiState.name,
                 onValueChange = { viewModel.onNameChange(it) },
-                label = { Text("Nombre del artículo") },
+                label = { Text(stringResource(R.string.addproduct_name)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = MaterialTheme.shapes.medium
@@ -99,7 +101,7 @@ fun AddProductScreen(
                         val quantity = value.toIntOrNull() ?: 0
                         viewModel.onQuantityChange(quantity)
                     },
-                    label = { Text("Cantidad") },
+                    label = { Text(stringResource(R.string.addproduct_quantity)) },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
@@ -121,7 +123,7 @@ fun AddProductScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                "Supermercado y categoría",
+                stringResource(R.string.addproduct_store_category),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -143,7 +145,7 @@ fun AddProductScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                "Notas adicionales",
+                stringResource(R.string.addproduct_notes_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -152,7 +154,7 @@ fun AddProductScreen(
             OutlinedTextField(
                 value = uiState.notes,
                 onValueChange = { viewModel.onNotesChange(it) },
-                label = { Text("Notas (opcional)") },
+                label = { Text(stringResource(R.string.addproduct_notes)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
@@ -187,7 +189,7 @@ fun AddProductScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Guardar producto", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.addproduct_save), style = MaterialTheme.typography.titleMedium)
                 }
             }
 
@@ -212,7 +214,7 @@ private fun UnitDropdown(
             value = selectedUnit,
             onValueChange = { },
             readOnly = true,
-            label = { Text("Unidad") },
+            label = { Text(stringResource(R.string.addproduct_unit)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor()
@@ -254,7 +256,7 @@ private fun StoreDropdown(
             value = selectedStore,
             onValueChange = { },
             readOnly = true,
-            label = { Text("Supermercado") },
+            label = { Text(stringResource(R.string.addproduct_store)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor()
@@ -295,7 +297,7 @@ private fun CategoryDropdown(
             value = selectedCategory,
             onValueChange = { },
             readOnly = true,
-            label = { Text("Categoría (opcional)") },
+            label = { Text(stringResource(R.string.addproduct_category)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor()
@@ -308,7 +310,7 @@ private fun CategoryDropdown(
             onDismissRequest = { expanded = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Sin categoría") },
+                text = { Text(stringResource(R.string.addproduct_no_category)) },
                 onClick = {
                     onCategorySelected("")
                     expanded = false

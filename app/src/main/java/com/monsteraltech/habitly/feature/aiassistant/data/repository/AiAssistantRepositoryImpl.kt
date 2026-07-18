@@ -12,22 +12,33 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.Content
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.monsteraltech.habitly.feature.aiassistant.data.source.LocalModelManager
 import com.monsteraltech.habitly.feature.aiassistant.data.source.local.AiChatDao
 import com.monsteraltech.habitly.feature.aiassistant.data.source.local.AiChatSessionEntity
+import com.monsteraltech.habitly.feature.aiassistant.data.worker.ModelDownloadWorker
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiModelConfig
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AvailableAiModels
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiAssistantRepository
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStatus
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -50,10 +61,18 @@ class AiAssistantRepositoryImpl @Inject constructor(
     private var conversation: Conversation? = null
     private var conversationHistoryKey: String? = null
 
+    // Scope de aplicación (vive mientras exista el singleton), independiente del
+    // ciclo de vida de los ViewModels.
+    private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val workManager = WorkManager.getInstance(context)
+
     init {
-        // Clean up old MediaPipe .task files from previous installation
-        localModelManager.cleanupLegacyModels()
         checkModelStatus(_selectedModel.value)
+        // Limpieza de modelos legacy y observación de descargas fuera del hilo principal.
+        repoScope.launch {
+            localModelManager.cleanupLegacyModels()
+        }
+        observeDownloadWork()
     }
 
     private fun getSavedModel(): AiModelConfig {
@@ -91,14 +110,59 @@ class AiAssistantRepositoryImpl @Inject constructor(
     override suspend fun downloadModel() {
         val config = _selectedModel.value
         _modelStatus.value = ModelStatus.Downloading(0f)
-        try {
-            localModelManager.downloadModel(config) { progress ->
-                _modelStatus.value = ModelStatus.Downloading(progress)
-            }
-            _modelStatus.value = ModelStatus.Ready
-        } catch (e: Exception) {
-            Log.e(tag, "Error downloading model", e)
-            _modelStatus.value = ModelStatus.Error(e.message ?: "Error de descarga")
+
+        val request = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
+            .setInputData(workDataOf(ModelDownloadWorker.KEY_MODEL_ID to config.id))
+            // Cualquier red conectada. Cambiar a NetworkType.UNMETERED para
+            // restringir a Wi-Fi si se quiere evitar consumo de datos móviles.
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+
+        // KEEP: si ya hay una descarga en curso no la reiniciamos.
+        workManager.enqueueUniqueWork(
+            ModelDownloadWorker.WORK_NAME,
+            ExistingWorkPolicy.KEEP,
+            request
+        )
+    }
+
+    /**
+     * Refleja el estado del worker de descarga en [_modelStatus]. Vive en el scope
+     * de aplicación, así que sigue actualizando aunque el usuario cambie de pantalla.
+     */
+    private fun observeDownloadWork() {
+        repoScope.launch {
+            workManager.getWorkInfosForUniqueWorkFlow(ModelDownloadWorker.WORK_NAME)
+                .collect { infos ->
+                    val info = infos.lastOrNull() ?: return@collect
+                    // Ignoramos progreso de un modelo distinto al seleccionado.
+                    val workModelId = info.progress.getString(ModelDownloadWorker.KEY_MODEL_ID)
+                    val isForSelected = workModelId == null || workModelId == _selectedModel.value.id
+
+                    when (info.state) {
+                        WorkInfo.State.ENQUEUED,
+                        WorkInfo.State.BLOCKED -> {
+                            if (isForSelected) _modelStatus.value = ModelStatus.Downloading(0f)
+                        }
+                        WorkInfo.State.RUNNING -> {
+                            if (isForSelected) {
+                                val progress = info.progress.getFloat(ModelDownloadWorker.KEY_PROGRESS, 0f)
+                                _modelStatus.value = ModelStatus.Downloading(progress)
+                            }
+                        }
+                        WorkInfo.State.SUCCEEDED -> checkModelStatus(_selectedModel.value)
+                        WorkInfo.State.CANCELLED -> checkModelStatus(_selectedModel.value)
+                        WorkInfo.State.FAILED -> {
+                            val message = info.outputData.getString(ModelDownloadWorker.KEY_ERROR)
+                                ?: "Error de descarga"
+                            _modelStatus.value = ModelStatus.Error(message)
+                        }
+                    }
+                }
         }
     }
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -17,11 +18,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.monsteraltech.habitly.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,19 +37,84 @@ fun ShoppingScreen(
     viewModel: ShoppingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var showAddStoreDialog by remember { mutableStateOf(false) }
     var newStoreName by remember { mutableStateOf("") }
+    var showArchiveDialog by remember { mutableStateOf(false) }
+    var showClearDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.errorRes) {
+        uiState.errorRes?.let { res ->
+            snackbarHostState.showSnackbar(context.getString(res))
+            viewModel.onErrorShown()
+        }
+    }
+
+    LaunchedEffect(uiState.recentlyDeletedName) {
+        uiState.recentlyDeletedName?.let { name ->
+            val result = snackbarHostState.showSnackbar(
+                message = context.getString(R.string.shopping_item_deleted, name),
+                actionLabel = context.getString(R.string.common_undo),
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.onUndoDelete()
+            } else {
+                viewModel.onUndoSnackbarShown()
+            }
+        }
+    }
+
+    if (showArchiveDialog) {
+        AlertDialog(
+            onDismissRequest = { showArchiveDialog = false },
+            icon = { Icon(Icons.Filled.Archive, contentDescription = null) },
+            title = { Text(stringResource(R.string.shopping_archive_confirm_title)) },
+            text = { Text(stringResource(R.string.shopping_archive_confirm_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showArchiveDialog = false
+                    viewModel.onArchiveList()
+                }) { Text(stringResource(R.string.shopping_archive)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showArchiveDialog = false }) { Text(stringResource(R.string.common_cancel)) }
+            }
+        )
+    }
+
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            icon = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(R.string.shopping_clear_confirm_title)) },
+            text = { Text(stringResource(R.string.shopping_clear_confirm_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearDialog = false
+                        viewModel.onDeleteChecked()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.shopping_clear)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) { Text(stringResource(R.string.common_cancel)) }
+            }
+        )
+    }
 
     if (showAddStoreDialog) {
         AlertDialog(
             onDismissRequest = { showAddStoreDialog = false },
-            title = { Text("Añadir Supermercado") },
+            title = { Text(stringResource(R.string.shopping_add_store_title)) },
             text = {
                 OutlinedTextField(
                     value = newStoreName,
                     onValueChange = { newStoreName = it },
-                    label = { Text("Nombre del supermercado") },
+                    label = { Text(stringResource(R.string.shopping_store_name)) },
                     singleLine = true
                 )
             },
@@ -54,22 +125,23 @@ fun ShoppingScreen(
                         newStoreName = ""
                         showAddStoreDialog = false
                     }
-                }) { Text("Añadir") }
+                }) { Text(stringResource(R.string.shopping_add)) }
             },
             dismissButton = {
-                TextButton(onClick = { showAddStoreDialog = false }) { Text("Cancelar") }
+                TextButton(onClick = { showAddStoreDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNavigateToAddProduct,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(Icons.Filled.Add, contentDescription = "Añadir producto")
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.shopping_add_product))
             }
         }
     ) { paddingValues ->
@@ -87,13 +159,13 @@ fun ShoppingScreen(
             ) {
                 Column {
                     Text(
-                        "Lista de la Compra",
+                        stringResource(R.string.shopping_title),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
                     if (uiState.totalItems > 0) {
                         Text(
-                            "${uiState.checkedCount}/${uiState.totalItems} productos",
+                            stringResource(R.string.shopping_progress, uiState.checkedCount, uiState.totalItems),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -101,10 +173,10 @@ fun ShoppingScreen(
                 }
                 Row {
                     IconButton(onClick = onNavigateToHistory) {
-                        Icon(Icons.Filled.History, contentDescription = "Ver historial")
+                        Icon(Icons.Filled.History, contentDescription = stringResource(R.string.shopping_view_history))
                     }
-                    IconButton(onClick = { viewModel.onArchiveList() }) {
-                        Icon(Icons.Filled.Archive, contentDescription = "Guardar en historial")
+                    IconButton(onClick = { showArchiveDialog = true }, enabled = uiState.allItems.isNotEmpty()) {
+                        Icon(Icons.Filled.Archive, contentDescription = stringResource(R.string.shopping_archive))
                     }
                 }
             }
@@ -136,7 +208,7 @@ fun ShoppingScreen(
                 item {
                     AssistChip(
                         onClick = { showAddStoreDialog = true },
-                        label = { Text("Nuevo") },
+                        label = { Text(stringResource(R.string.shopping_new_store)) },
                         leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp)) }
                     )
                 }
@@ -146,7 +218,7 @@ fun ShoppingScreen(
 
             if (uiState.frequentItems.isNotEmpty()) {
                 Text(
-                    "Añade rápido:",
+                    stringResource(R.string.shopping_quick_add),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -191,13 +263,13 @@ fun ShoppingScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        "Tu lista está vacía",
+                        stringResource(R.string.shopping_empty_title),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "Añade tu primer producto para empezar",
+                        stringResource(R.string.shopping_empty_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -244,10 +316,10 @@ fun ShoppingScreen(
                                 ) {
                                     Icon(Icons.Outlined.DoneAll, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Marcar todo")
+                                    Text(stringResource(R.string.shopping_check_all))
                                 }
                                 OutlinedButton(
-                                    onClick = { viewModel.onDeleteChecked() },
+                                    onClick = { showClearDialog = true },
                                     modifier = Modifier.weight(1f),
                                     enabled = uiState.filteredCompletedItems.isNotEmpty(),
                                     colors = ButtonDefaults.outlinedButtonColors(
@@ -256,7 +328,7 @@ fun ShoppingScreen(
                                 ) {
                                     Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Limpiar")
+                                    Text(stringResource(R.string.shopping_clear))
                                 }
                             }
                         }
@@ -296,7 +368,7 @@ fun StoreSectionCard(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    "${items.size} producto${if (items.size != 1) "s" else ""}",
+                    pluralStringResource(R.plurals.shopping_products_count, items.size, items.size),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -344,7 +416,7 @@ fun CompletedSectionCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Completados",
+                        stringResource(R.string.shopping_completed),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -407,39 +479,51 @@ fun ShoppingItemRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Checkbox(
-            checked = item.isChecked,
-            onCheckedChange = { onToggle() },
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.bodyLarge,
-                textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
-                color = if (item.isChecked)
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                else
-                    MaterialTheme.colorScheme.onSurface
-            )
-            if (item.quantity > 1 || item.unit != "unidad") {
-                Text(
-                    text = "${item.quantity} ${item.unit}${if (item.quantity > 1 && item.unit != "unidad") "s" else ""}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(8.dp))
+                .toggleable(
+                    value = item.isChecked,
+                    onValueChange = { onToggle() },
+                    role = Role.Checkbox
                 )
+                .padding(vertical = 6.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = item.isChecked,
+                onCheckedChange = null
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
+                    color = if (item.isChecked)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        MaterialTheme.colorScheme.onSurface
+                )
+                if (item.quantity > 1 || item.unit != "unidad") {
+                    Text(
+                        text = "${item.quantity} ${item.unit}${if (item.quantity > 1 && item.unit != "unidad") "s" else ""}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
             }
         }
-        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+        IconButton(onClick = onDelete, modifier = Modifier.size(48.dp)) {
             Icon(
                 Icons.Filled.Delete,
-                contentDescription = "Eliminar",
+                contentDescription = stringResource(R.string.cd_delete),
                 tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
     }
@@ -492,7 +576,7 @@ fun ShoppingItemCard(
                 }
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.cd_delete), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
             }
         }
     }

@@ -21,7 +21,9 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
@@ -38,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
@@ -49,14 +52,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStatus
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ChatMessageItem
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ModelDownloadCard
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.PromptInput
+import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ShoppingSuggestionCard
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -73,6 +81,7 @@ fun AiAssistantScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var expandedModelMenu by remember { mutableStateOf(false) }
+    var chatToDelete by remember { mutableStateOf<AiChatSession?>(null) }
 
     LaunchedEffect(uiState.chatSession.messages.count { it.role == com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole.User }) {
         val userMessageCount = uiState.chatSession.messages.count { it.role == com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole.User }
@@ -88,6 +97,15 @@ fun AiAssistantScreen(
         }
     }
 
+    val addedCount = uiState.addedToListCount
+    if (addedCount != null) {
+        val addedMessage = pluralStringResource(R.plurals.ai_added_to_list, addedCount, addedCount)
+        LaunchedEffect(addedCount) {
+            snackbarHostState.showSnackbar(addedMessage)
+            viewModel.onAddedToListShown()
+        }
+    }
+
     val dateFormatter = remember { SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()) }
 
     ModalNavigationDrawer(
@@ -95,7 +113,7 @@ fun AiAssistantScreen(
         drawerContent = {
             ModalDrawerSheet {
                 Text(
-                    "Historial de Chats",
+                    stringResource(R.string.ai_chat_history),
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.titleLarge
                 )
@@ -112,7 +130,7 @@ fun AiAssistantScreen(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Nueva Conversación")
+                    Text(stringResource(R.string.ai_new_conversation))
                 }
 
                 LazyColumn {
@@ -140,8 +158,8 @@ fun AiAssistantScreen(
                             },
                             icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null) },
                             badge = {
-                                IconButton(onClick = { viewModel.onDeleteChat(session.id) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", modifier = Modifier.size(20.dp))
+                                IconButton(onClick = { chatToDelete = session }) {
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete), modifier = Modifier.size(20.dp))
                                 }
                             },
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
@@ -159,19 +177,17 @@ fun AiAssistantScreen(
                             modifier = Modifier.clickable { expandedModelMenu = true }
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Asistente IA")
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = "Cambiar modelo")
+                                Text(stringResource(R.string.ai_title))
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.ai_change_model))
                             }
+                            val statusText = when (uiState.modelStatus) {
+                                is ModelStatus.Ready -> stringResource(R.string.ai_status_ready)
+                                is ModelStatus.Downloading -> stringResource(R.string.ai_status_downloading)
+                                else -> stringResource(R.string.ai_status_not_downloaded)
+                            }
+                            val modelName = uiState.selectedModel?.name ?: stringResource(R.string.ai_selecting)
                             Text(
-                                text = buildString {
-                                    append(uiState.selectedModel?.name ?: "Seleccionando...")
-                                    append(" • ")
-                                    append(when (uiState.modelStatus) {
-                                        is ModelStatus.Ready -> "Listo"
-                                        is ModelStatus.Downloading -> "Descargando..."
-                                        else -> "No descargado"
-                                    })
-                                },
+                                text = "$modelName • $statusText",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -199,13 +215,13 @@ fun AiAssistantScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.ai_menu))
                         }
                     },
                     actions = {
                         if (uiState.chatSession.messages.isNotEmpty()) {
                             IconButton(onClick = { viewModel.onNewChat() }) {
-                                Icon(Icons.Default.Add, contentDescription = "Nuevo chat")
+                                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.ai_new_chat))
                             }
                         }
                     }
@@ -249,7 +265,7 @@ fun AiAssistantScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "Error al cargar el modelo",
+                                    text = stringResource(R.string.ai_error_loading),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.error
                                 )
@@ -263,7 +279,7 @@ fun AiAssistantScreen(
                                     onClick = { viewModel.onRetryDownload() },
                                     modifier = Modifier.padding(top = 16.dp)
                                 ) {
-                                    Text("Reintentar")
+                                    Text(stringResource(R.string.ai_retry))
                                 }
                             }
                         }
@@ -292,12 +308,12 @@ fun AiAssistantScreen(
                                                 tint = MaterialTheme.colorScheme.primary
                                             )
                                             Text(
-                                                text = "¿Qué puedo cocinar hoy?",
+                                                text = stringResource(R.string.ai_empty_title),
                                                 style = MaterialTheme.typography.headlineSmall,
                                                 fontWeight = FontWeight.Bold
                                             )
                                             Text(
-                                                text = "Pregúntame sobre recetas o genera listas de compra",
+                                                text = stringResource(R.string.ai_empty_subtitle),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -307,7 +323,18 @@ fun AiAssistantScreen(
                             }
 
                             items(uiState.chatSession.messages) { message ->
-                                ChatMessageItem(message = message)
+                                Column {
+                                    ChatMessageItem(message = message)
+                                    val suggestions = uiState.shoppingSuggestions[message.id]
+                                    if (!suggestions.isNullOrEmpty()) {
+                                        ShoppingSuggestionCard(
+                                            count = suggestions.size,
+                                            isAdded = message.id in uiState.addedSuggestionMessageIds,
+                                            isLoading = uiState.addingSuggestionMessageId == message.id,
+                                            onAdd = { viewModel.onAddSuggestionsToList(message.id) }
+                                        )
+                                    }
+                                }
                             }
 
                             if (uiState.isGenerating) {
@@ -335,5 +362,37 @@ fun AiAssistantScreen(
                 }
             }
         }
+    }
+
+    chatToDelete?.let { session ->
+        AlertDialog(
+            onDismissRequest = { chatToDelete = null },
+            icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(R.string.ai_delete_chat_confirm_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.ai_delete_chat_confirm_message,
+                        session.title.ifBlank { stringResource(R.string.ai_new_conversation) }
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.onDeleteChat(session.id)
+                        chatToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.cd_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { chatToDelete = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
 }

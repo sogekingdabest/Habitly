@@ -1,9 +1,11 @@
 package com.monsteraltech.habitly.feature.shopping.presentation
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem
 import com.monsteraltech.habitly.feature.shopping.domain.usecase.*
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
@@ -26,6 +28,8 @@ data class ShoppingUiState(
     val selectedStore: String = "Cualquiera",
     val isLoading: Boolean = true,
     val error: String? = null,
+    @StringRes val errorRes: Int? = null,
+    val recentlyDeletedName: String? = null,
     val showCompletedSection: Boolean = false,
     val frequentItems: List<String> = emptyList(),
     val isLoadingFrequent: Boolean = false
@@ -83,6 +87,9 @@ class ShoppingViewModel @Inject constructor(
         
     private var observeListJob: Job? = null
     private var observeStoresJob: Job? = null
+
+    // Último producto borrado, guardado en memoria para poder deshacer (re-añadir).
+    private var lastDeletedItem: ShoppingItem? = null
 
     init {
         viewModelScope.launch {
@@ -147,6 +154,7 @@ class ShoppingViewModel @Inject constructor(
                 onSelectStore(storeName)
             } else {
                 Log.e("ShoppingViewModel", "Error adding custom store", result.exceptionOrNull())
+                _uiState.update { it.copy(errorRes = R.string.shopping_error_store) }
             }
         }
     }
@@ -155,24 +163,52 @@ class ShoppingViewModel @Inject constructor(
         val householdId = currentHouseholdId ?: return
         viewModelScope.launch {
             addShoppingItemUseCase(householdId, name, _uiState.value.selectedStore, currentUserId, quantity, unit, category, notes)
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.shopping_error_add) } }
         }
     }
 
     fun onToggleItem(itemId: String, isChecked: Boolean) {
         val householdId = currentHouseholdId ?: return
         viewModelScope.launch {
-            val result = toggleShoppingItemUseCase(householdId, itemId, isChecked)
-            if (result.isFailure) {
-                Log.e("ShoppingViewModel", "Error toggling item: ${result.exceptionOrNull()}")
-            }
+            toggleShoppingItemUseCase(householdId, itemId, isChecked)
+                .onFailure {
+                    Log.e("ShoppingViewModel", "Error toggling item", it)
+                    _uiState.update { it.copy(errorRes = R.string.shopping_error_update) }
+                }
         }
     }
 
     fun onDeleteItem(itemId: String) {
         val householdId = currentHouseholdId ?: return
+        val item = _uiState.value.allItems.find { it.id == itemId }
         viewModelScope.launch {
             deleteShoppingItemUseCase(householdId, itemId)
+                .onSuccess {
+                    if (item != null) {
+                        lastDeletedItem = item
+                        _uiState.update { it.copy(recentlyDeletedName = item.name) }
+                    }
+                }
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.shopping_error_delete) } }
         }
+    }
+
+    fun onUndoDelete() {
+        val householdId = currentHouseholdId ?: return
+        val item = lastDeletedItem ?: return
+        lastDeletedItem = null
+        _uiState.update { it.copy(recentlyDeletedName = null) }
+        viewModelScope.launch {
+            addShoppingItemUseCase(
+                householdId, item.name, item.store, item.authorId,
+                item.quantity, item.unit, item.category, item.notes
+            ).onFailure { _uiState.update { it.copy(errorRes = R.string.shopping_error_add) } }
+        }
+    }
+
+    fun onUndoSnackbarShown() {
+        lastDeletedItem = null
+        _uiState.update { it.copy(recentlyDeletedName = null) }
     }
 
     fun onArchiveList() {
@@ -180,11 +216,11 @@ class ShoppingViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val result = archiveShoppingListUseCase(householdId)
-            
+
             _uiState.update { it.copy(isLoading = false) }
-            
+
             if (result.isFailure) {
-                _uiState.update { it.copy(error = result.exceptionOrNull()?.message) }
+                _uiState.update { it.copy(errorRes = R.string.shopping_error_archive) }
                 Log.e("ShoppingViewModel", "Archive failed", result.exceptionOrNull())
             }
         }
@@ -194,9 +230,10 @@ class ShoppingViewModel @Inject constructor(
         val householdId = currentHouseholdId ?: return
         val pendingIds = _uiState.value.filteredPendingItems.map { it.id }
         if (pendingIds.isEmpty()) return
-        
+
         viewModelScope.launch {
             checkAllItemsUseCase(householdId, pendingIds, true)
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.shopping_error_update) } }
         }
     }
 
@@ -204,7 +241,12 @@ class ShoppingViewModel @Inject constructor(
         val householdId = currentHouseholdId ?: return
         viewModelScope.launch {
             deleteCheckedItemsUseCase(householdId)
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.shopping_error_delete) } }
         }
+    }
+
+    fun onErrorShown() {
+        _uiState.update { it.copy(errorRes = null, error = null) }
     }
 
     fun onToggleCompletedSection() {

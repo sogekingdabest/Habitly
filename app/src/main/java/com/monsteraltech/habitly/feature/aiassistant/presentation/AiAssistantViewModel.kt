@@ -4,10 +4,15 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiShoppingSuggestion
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiAssistantRepository
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.AddAiItemsToShoppingListUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateRecipeSuggestionsUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateShoppingListUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateWeeklyMenuUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetAiContextUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ParseAiShoppingListUseCase
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.QuickPrompt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -24,7 +29,10 @@ class AiAssistantViewModel @Inject constructor(
     private val repository: AiAssistantRepository,
     private val getAiContextUseCase: GetAiContextUseCase,
     private val generateRecipeSuggestionsUseCase: GenerateRecipeSuggestionsUseCase,
-    private val generateShoppingListUseCase: GenerateShoppingListUseCase
+    private val generateShoppingListUseCase: GenerateShoppingListUseCase,
+    private val generateWeeklyMenuUseCase: GenerateWeeklyMenuUseCase,
+    private val parseAiShoppingListUseCase: ParseAiShoppingListUseCase,
+    private val addAiItemsToShoppingListUseCase: AddAiItemsToShoppingListUseCase
 ) : ViewModel() {
 
     private val tag = "AiAssistantViewModel"
@@ -39,6 +47,7 @@ class AiAssistantViewModel @Inject constructor(
             it.copy(
                 availableModels = repository.getAvailableModels(),
                 quickPrompts = listOf(
+                    QuickPrompt("Menú semanal", generateWeeklyMenuUseCase()),
                     QuickPrompt("Recetas con pollo", generateRecipeSuggestionsUseCase()),
                     QuickPrompt("Lista semanal", generateShoppingListUseCase()),
                     QuickPrompt("Recetas vegetarianas", "Que puedo cocinar con huevos y patatas?"),
@@ -114,6 +123,7 @@ class AiAssistantViewModel @Inject constructor(
                     repository.setActiveSession(session)
                 }
                 repository.saveSession(session)
+                parseAndStoreSuggestions(session)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(error = e.message ?: "Error al generar respuesta")
@@ -122,6 +132,53 @@ class AiAssistantViewModel @Inject constructor(
                 _uiState.update { it.copy(isGenerating = false) }
             }
         }
+    }
+
+    /**
+     * Analiza los mensajes del asistente en busca del bloque estructurado de la lista
+     * y guarda las sugerencias por id de mensaje para pintar el botón "Añadir a la lista".
+     */
+    private fun parseAndStoreSuggestions(session: AiChatSession) {
+        val suggestions: Map<String, List<AiShoppingSuggestion>> = session.messages
+            .asSequence()
+            .filter { it.role is MessageRole.Assistant }
+            .map { it.id to parseAiShoppingListUseCase(it.content) }
+            .filter { it.second.isNotEmpty() }
+            .toMap()
+        _uiState.update { it.copy(shoppingSuggestions = suggestions) }
+    }
+
+    fun onAddSuggestionsToList(messageId: String) {
+        val state = _uiState.value
+        val items = state.shoppingSuggestions[messageId] ?: return
+        if (messageId in state.addedSuggestionMessageIds || state.addingSuggestionMessageId != null) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(addingSuggestionMessageId = messageId) }
+            addAiItemsToShoppingListUseCase(items).fold(
+                onSuccess = { count ->
+                    _uiState.update {
+                        it.copy(
+                            addingSuggestionMessageId = null,
+                            addedSuggestionMessageIds = it.addedSuggestionMessageIds + messageId,
+                            addedToListCount = count
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            addingSuggestionMessageId = null,
+                            error = e.message ?: "No se pudo añadir a la lista"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun onAddedToListShown() {
+        _uiState.update { it.copy(addedToListCount = null) }
     }
 
     fun onQuickPrompt(prompt: String) {
@@ -155,7 +212,13 @@ class AiAssistantViewModel @Inject constructor(
             repository.resetSession()
             repository.saveSession(newSession)
             _uiState.update {
-                it.copy(chatSession = newSession, error = null)
+                it.copy(
+                    chatSession = newSession,
+                    error = null,
+                    shoppingSuggestions = emptyMap(),
+                    addedSuggestionMessageIds = emptySet(),
+                    addingSuggestionMessageId = null
+                )
             }
         }
     }
@@ -171,7 +234,15 @@ class AiAssistantViewModel @Inject constructor(
                 if (session.modelId != _uiState.value.selectedModel?.id) {
                     repository.selectModel(session.modelId)
                 }
-                _uiState.update { it.copy(chatSession = session, error = null) }
+                _uiState.update {
+                    it.copy(
+                        chatSession = session,
+                        error = null,
+                        addedSuggestionMessageIds = emptySet(),
+                        addingSuggestionMessageId = null
+                    )
+                }
+                parseAndStoreSuggestions(session)
             }
         }
     }
