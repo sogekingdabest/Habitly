@@ -15,7 +15,9 @@ sealed class RootRoute(val route: String) {
 @Composable
 fun RootNavGraph(
     navController: NavHostController = rememberNavController(),
-    startDestination: String = RootRoute.Auth.route
+    startDestination: String = RootRoute.Auth.route,
+    navigateToRoutines: Boolean = false,
+    onRoutinesDeepLinkConsumed: () -> Unit = {}
 ) {
     NavHost(
         navController = navController,
@@ -37,7 +39,9 @@ fun RootNavGraph(
                     navController.navigate(RootRoute.Auth.route) {
                         popUpTo(RootRoute.Main.route) { inclusive = true }
                     }
-                }
+                },
+                navigateToRoutines = navigateToRoutines,
+                onRoutinesDeepLinkConsumed = onRoutinesDeepLinkConsumed
             )
         }
     }

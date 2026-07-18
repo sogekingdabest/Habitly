@@ -14,8 +14,10 @@ import com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem
 import com.monsteraltech.habitly.feature.shopping.domain.usecase.ObserveShoppingListUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -46,6 +48,10 @@ class DashboardViewModel @Inject constructor(
 
     private val currentUserId: String
         get() = firebaseAuth.currentUser?.uid ?: ""
+
+    // Última rutina completada desde el dashboard, para ofrecer "Deshacer" en un snackbar.
+    private val _recentlyCompleted = MutableStateFlow<Routine?>(null)
+    val recentlyCompleted: StateFlow<Routine?> = _recentlyCompleted.asStateFlow()
 
     val uiState: StateFlow<DashboardUiState> = observeUserProfileUseCase(currentUserId)
         .mapNotNull { it?.activeHouseholdId }
@@ -80,10 +86,26 @@ class DashboardViewModel @Inject constructor(
         val state = uiState.value
         val householdId = state.household?.id ?: return
         if (currentUserId.isBlank()) return
-        
+
         viewModelScope.launch {
             // Desde el dashboard solo mostramos pendientes, así que siempre estamos completando
             toggleRoutineUseCase(currentUserId, householdId, routine, true)
+                .onSuccess { _recentlyCompleted.value = routine }
         }
+    }
+
+    fun onUndoComplete() {
+        val routine = _recentlyCompleted.value ?: return
+        val householdId = uiState.value.household?.id ?: return
+        _recentlyCompleted.value = null
+        if (currentUserId.isBlank()) return
+
+        viewModelScope.launch {
+            toggleRoutineUseCase(currentUserId, householdId, routine, false)
+        }
+    }
+
+    fun onUndoShown() {
+        _recentlyCompleted.value = null
     }
 }
