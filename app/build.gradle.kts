@@ -107,4 +107,8 @@ dependencies {
     // WorkManager
     implementation(libs.work.runtime.ktx)
     testImplementation(libs.work.testing)
+
+    // Glance (home screen widget)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
 }

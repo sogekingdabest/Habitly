@@ -132,3 +132,6 @@ coverage/
 .project
 .classpath
 .settings/
+
+# Graphify
+graphify-out/
