@@ -1,21 +1,23 @@
 package com.monsteraltech.habitly.feature.routines.data.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
-import com.monsteraltech.habitly.feature.routines.data.cache.RoutinesCacheManager
+import com.google.firebase.firestore.Query
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepository
+import com.monsteraltech.habitly.feature.routines.domain.util.StreakCalculator
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.tasks.await
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 class RoutinesRepositoryImpl @Inject constructor(
-    private val firestore: FirebaseFirestore,
-    private val cacheManager: RoutinesCacheManager
+    private val firestore: FirebaseFirestore
 ) : RoutinesRepository {
 
     override fun observePersonalRoutines(userId: String): Flow<List<Routine>> = callbackFlow {
@@ -62,29 +64,11 @@ class RoutinesRepositoryImpl @Inject constructor(
 
     override suspend fun addRoutine(userId: String, householdId: String, routine: Routine): Result<Unit> {
         return try {
-            val collection = if (routine.type == RoutineType.PERSONAL) {
-                firestore.collection("users").document(userId).collection("routines")
-            } else {
-                firestore.collection("households").document(householdId).collection("routines")
-            }
+            val collection = collectionFor(routine.type, userId, householdId)
             collection.document(routine.id).set(routine).await()
-            if (routine.type == RoutineType.PERSONAL) {
-                val current = cacheManager.observePersonalRoutines(userId).first()
-                cacheManager.cachePersonalRoutines(userId, current + routine)
-            } else {
-                val current = cacheManager.observeHouseholdRoutines(householdId).first()
-                cacheManager.cacheHouseholdRoutines(householdId, current + routine)
-            }
             Result.success(Unit)
         } catch (e: Exception) {
-            if (routine.type == RoutineType.PERSONAL) {
-                val current = cacheManager.observePersonalRoutines(userId).first()
-                cacheManager.cachePersonalRoutines(userId, current + routine)
-            } else {
-                val current = cacheManager.observeHouseholdRoutines(householdId).first()
-                cacheManager.cacheHouseholdRoutines(householdId, current + routine)
-            }
-            Result.success(Unit)
+            Result.failure(e)
         }
     }
 
@@ -97,21 +81,51 @@ class RoutinesRepositoryImpl @Inject constructor(
         completedBy: String?
     ): Result<Unit> {
         return try {
-            val document = if (type == RoutineType.PERSONAL) {
-                firestore.collection("users").document(userId).collection("routines").document(routineId)
+            val routineRef = documentFor(type, userId, householdId, routineId)
+            val completionsRef = routineRef.collection("completions")
+            val zone = ZoneId.systemDefault()
+
+            // 1. Registramos/eliminamos el completado del día en la subcolección de historial.
+            //    Doc id = fecha ISO (yyyy-MM-dd) => idempotente, un completado por día.
+            if (completedAt != null) {
+                val dateId = Instant.ofEpochMilli(completedAt).atZone(zone).toLocalDate().toString()
+                completionsRef.document(dateId).set(
+                    mapOf(
+                        "date" to dateId,
+                        "userId" to (completedBy ?: userId),
+                        "completedAt" to completedAt
+                    )
+                ).await()
             } else {
-                firestore.collection("households").document(householdId).collection("routines").document(routineId)
+                val today = LocalDate.now(zone).toString()
+                completionsRef.document(today).delete().await()
             }
-            
-            document.update(
+
+            // 2. Recalculamos la racha desde el historial (acotado al último año).
+            val snapshot = completionsRef
+                .orderBy("date", Query.Direction.DESCENDING)
+                .limit(MAX_COMPLETIONS_SCANNED)
+                .get()
+                .await()
+            val dates = snapshot.documents.mapNotNull { doc ->
+                val value = doc.getString("date") ?: doc.id
+                runCatching { LocalDate.parse(value) }.getOrNull()
+            }
+            val streak = StreakCalculator.calculate(dates)
+
+            // 3. Denormalizamos en el documento de la rutina (para pintarla sin listeners extra).
+            routineRef.update(
                 mapOf(
                     "lastCompletedAt" to completedAt,
-                    "lastCompletedBy" to completedBy
+                    "lastCompletedBy" to completedBy,
+                    "currentStreak" to streak.current,
+                    "bestStreak" to streak.best
                 )
             ).await()
+
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.success(Unit)
+            Result.failure(e)
         }
     }
 
@@ -122,17 +136,10 @@ class RoutinesRepositoryImpl @Inject constructor(
         type: RoutineType
     ): Result<Unit> {
         return try {
-            val document = if (type == RoutineType.PERSONAL) {
-                firestore.collection("users").document(userId).collection("routines").document(routineId)
-            } else {
-                firestore.collection("households").document(householdId).collection("routines").document(routineId)
-            }
-            document.delete().await()
-            cacheManager.removeRoutine(userId, householdId, routineId, type)
+            documentFor(type, userId, householdId, routineId).delete().await()
             Result.success(Unit)
         } catch (e: Exception) {
-            cacheManager.removeRoutine(userId, householdId, routineId, type)
-            Result.success(Unit)
+            Result.failure(e)
         }
     }
 
@@ -148,23 +155,19 @@ class RoutinesRepositoryImpl @Inject constructor(
         reminderTime: Int?
     ): Result<Unit> {
         return try {
-            val document = if (type == RoutineType.PERSONAL) {
-                firestore.collection("users").document(userId).collection("routines").document(routineId)
-            } else {
-                firestore.collection("households").document(householdId).collection("routines").document(routineId)
-            }
-            document.update(
-                mapOf(
-                    "title" to title.trim(),
-                    "description" to description.trim(),
-                    "frequency" to frequency.name,
-                    "scheduledDays" to scheduledDays,
-                    "reminderTime" to reminderTime
-                )
-            ).await()
+            documentFor(type, userId, householdId, routineId)
+                .update(
+                    mapOf(
+                        "title" to title.trim(),
+                        "description" to description.trim(),
+                        "frequency" to frequency.name,
+                        "scheduledDays" to scheduledDays,
+                        "reminderTime" to reminderTime
+                    )
+                ).await()
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.success(Unit)
+            Result.failure(e)
         }
     }
 
@@ -175,20 +178,30 @@ class RoutinesRepositoryImpl @Inject constructor(
         orderedIds: List<String>
     ): Result<Unit> {
         return try {
-            val collection = if (type == RoutineType.PERSONAL) {
-                firestore.collection("users").document(userId).collection("routines")
-            } else {
-                firestore.collection("households").document(householdId).collection("routines")
-            }
+            val collection = collectionFor(type, userId, householdId)
             val batch = firestore.batch()
             orderedIds.forEachIndexed { index, routineId ->
-                val document = collection.document(routineId)
-                batch.update(document, "order", index)
+                batch.update(collection.document(routineId), "order", index)
             }
             batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.success(Unit)
+            Result.failure(e)
         }
+    }
+
+    private fun collectionFor(type: RoutineType, userId: String, householdId: String) =
+        if (type == RoutineType.PERSONAL) {
+            firestore.collection("users").document(userId).collection("routines")
+        } else {
+            firestore.collection("households").document(householdId).collection("routines")
+        }
+
+    private fun documentFor(type: RoutineType, userId: String, householdId: String, routineId: String) =
+        collectionFor(type, userId, householdId).document(routineId)
+
+    private companion object {
+        // Acota las lecturas del historial: ~1 año es más que suficiente para la racha.
+        const val MAX_COMPLETIONS_SCANNED = 370L
     }
 }

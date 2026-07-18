@@ -2,6 +2,9 @@ package com.monsteraltech.habitly.feature.routines.presentation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -23,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -35,7 +41,7 @@ import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import java.util.Calendar
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun RoutinesScreen(
     viewModel: RoutinesViewModel = hiltViewModel()
@@ -44,13 +50,22 @@ fun RoutinesScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTabIndex by remember { mutableStateOf(0) }
     var showAddDialog by remember { mutableStateOf(false) }
-    
+    val snackbarHostState = remember { SnackbarHostState() }
+
     val tabs = listOf(
         stringResource(R.string.routines_tab_personal),
         stringResource(R.string.routines_tab_household)
     )
 
+    LaunchedEffect(uiState.errorRes) {
+        uiState.errorRes?.let { res ->
+            snackbarHostState.showSnackbar(context.getString(res))
+            viewModel.onErrorShown()
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddDialog = true },
@@ -212,9 +227,9 @@ fun RoutinesScreen(
                             Calendar.SATURDAY to R.string.routines_day_sat,
                             Calendar.SUNDAY to R.string.routines_day_sun
                         )
-                        Row(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             dayLabels.forEach { (day, res) ->
                                 val isSelected = selectedDays.contains(day)
@@ -234,28 +249,36 @@ fun RoutinesScreen(
                     }
 
                     Text(stringResource(R.string.routines_reminder_label), style = MaterialTheme.typography.labelLarge)
-                    OutlinedButton(
-                        onClick = { showTimePicker = true },
-                        modifier = Modifier.fillMaxWidth()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = reminderTime?.let { minutes ->
-                                val hours = minutes / 60
-                                val mins = minutes % 60
-                                stringResource(R.string.routines_reminder_set, "${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}")
-                            } ?: stringResource(R.string.routines_reminder_none)
-                        )
+                        OutlinedButton(
+                            onClick = { showTimePicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = reminderTime?.let { minutes ->
+                                    val hours = minutes / 60
+                                    val mins = minutes % 60
+                                    stringResource(R.string.routines_reminder_set, "${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}")
+                                } ?: stringResource(R.string.routines_reminder_none)
+                            )
+                        }
+                        if (reminderTime != null) {
+                            IconButton(onClick = { reminderTime = null }) {
+                                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.routines_reminder_clear))
+                            }
+                        }
                     }
 
                     if (showTimePicker) {
                         TimePickerDialog(
+                            initialMinutes = reminderTime,
                             onDismiss = { showTimePicker = false },
                             onConfirm = { hour, minute ->
                                 reminderTime = hour * 60 + minute
-                                showTimePicker = false
-                            },
-                            onCancel = {
-                                reminderTime = null
                                 showTimePicker = false
                             }
                         )
@@ -282,6 +305,7 @@ fun RoutinesScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RoutineCard(
     routine: Routine,
@@ -294,12 +318,17 @@ fun RoutineCard(
     onMoveDown: () -> Unit = {}
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onToggle),
+            .toggleable(
+                value = isCompleted,
+                onValueChange = { onToggle() },
+                role = Role.Checkbox
+            ),
         colors = CardDefaults.cardColors(
             containerColor = if (isCompleted) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             else MaterialTheme.colorScheme.surfaceVariant
@@ -312,41 +341,38 @@ fun RoutineCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
-                modifier = Modifier
-                    .padding(end = 4.dp)
-                    .clickable(onClick = onMoveUp)
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(end = 4.dp)
             ) {
-                Icon(
-                    Icons.Default.KeyboardArrowUp,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Column(
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .clickable(onClick = onMoveDown)
-            ) {
-                Icon(
-                    Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                    modifier = Modifier.size(16.dp)
-                )
+                IconButton(onClick = onMoveUp, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Default.KeyboardArrowUp,
+                        contentDescription = stringResource(R.string.routines_move_up),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                IconButton(onClick = onMoveDown, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Default.KeyboardArrowDown,
+                        contentDescription = stringResource(R.string.routines_move_down),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(4.dp))
 
+            // Indicador visual de completado; el toggle accesible es la Card (Role.Checkbox).
             Box(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
                     .background(
-                        if (isCompleted) MaterialTheme.colorScheme.primary 
+                        if (isCompleted) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.surface
-                    )
-                    .clickable(onClick = onToggle),
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (isCompleted) {
@@ -384,6 +410,20 @@ fun RoutineCard(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
+
+                if (routine.currentStreak >= 2) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.routines_streak,
+                            routine.currentStreak,
+                            routine.currentStreak
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
             IconButton(onClick = { showEditDialog = true }) {
@@ -394,14 +434,39 @@ fun RoutineCard(
                 )
             }
 
-            IconButton(onClick = onDelete) {
+            IconButton(onClick = { showDeleteDialog = true }) {
                 Icon(
-                    Icons.Filled.Delete, 
+                    Icons.Filled.Delete,
                     contentDescription = stringResource(R.string.routines_delete_routine),
                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                 )
             }
         }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            icon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(R.string.routines_delete_confirm_title)) },
+            text = { Text(stringResource(R.string.routines_delete_confirm_message, routine.title)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDelete()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.routines_delete_routine))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.routines_cancel))
+                }
+            }
+        )
     }
 
     if (showEditDialog) {
@@ -464,9 +529,9 @@ fun RoutineCard(
                             Calendar.SATURDAY to R.string.routines_day_sat,
                             Calendar.SUNDAY to R.string.routines_day_sun
                         )
-                        Row(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             dayLabels.forEach { (day, res) ->
                                 val isSelected = editSelectedDays.contains(day)
@@ -486,28 +551,36 @@ fun RoutineCard(
                     }
 
                     Text(stringResource(R.string.routines_reminder_label), style = MaterialTheme.typography.labelLarge)
-                    OutlinedButton(
-                        onClick = { showTimePicker = true },
-                        modifier = Modifier.fillMaxWidth()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = editReminderTime?.let { minutes ->
-                                val hours = minutes / 60
-                                val mins = minutes % 60
-                                stringResource(R.string.routines_reminder_set, "${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}")
-                            } ?: stringResource(R.string.routines_reminder_none)
-                        )
+                        OutlinedButton(
+                            onClick = { showTimePicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = editReminderTime?.let { minutes ->
+                                    val hours = minutes / 60
+                                    val mins = minutes % 60
+                                    stringResource(R.string.routines_reminder_set, "${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}")
+                                } ?: stringResource(R.string.routines_reminder_none)
+                            )
+                        }
+                        if (editReminderTime != null) {
+                            IconButton(onClick = { editReminderTime = null }) {
+                                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.routines_reminder_clear))
+                            }
+                        }
                     }
 
                     if (showTimePicker) {
                         TimePickerDialog(
+                            initialMinutes = editReminderTime,
                             onDismiss = { showTimePicker = false },
                             onConfirm = { hour, minute ->
                                 editReminderTime = hour * 60 + minute
-                                showTimePicker = false
-                            },
-                            onCancel = {
-                                editReminderTime = null
                                 showTimePicker = false
                             }
                         )
@@ -543,12 +616,12 @@ private val RoutineFrequency.stringRes: Int
 
 @Composable
 fun TimePickerDialog(
+    initialMinutes: Int?,
     onDismiss: () -> Unit,
-    onConfirm: (hour: Int, minute: Int) -> Unit,
-    onCancel: () -> Unit
+    onConfirm: (hour: Int, minute: Int) -> Unit
 ) {
-    var hour by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
-    var minute by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.MINUTE)) }
+    var hour by remember { mutableIntStateOf(initialMinutes?.let { it / 60 } ?: Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    var minute by remember { mutableIntStateOf(initialMinutes?.let { it % 60 } ?: Calendar.getInstance().get(Calendar.MINUTE)) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -589,7 +662,7 @@ fun TimePickerDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onCancel) {
+            TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.routines_cancel))
             }
         }

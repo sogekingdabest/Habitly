@@ -23,7 +23,11 @@ data class Routine(
     val authorId: String = "",
     val lastCompletedAt: Long? = null,
     val lastCompletedBy: String? = null,
-    val reminderTime: Int? = null
+    val reminderTime: Int? = null,
+    /** Racha actual de días consecutivos completados (denormalizado desde la subcolección completions). */
+    val currentStreak: Int = 0,
+    /** Mejor racha histórica de días consecutivos. */
+    val bestStreak: Int = 0
 ) {
     fun isScheduledForDayOfWeek(dayOfWeek: Int): Boolean {
         return when (frequency) {

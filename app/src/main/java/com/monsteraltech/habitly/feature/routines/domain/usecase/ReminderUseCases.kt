@@ -46,7 +46,9 @@ class ScheduleReminderUseCase @Inject constructor(
             .setInputData(
                 workDataOf(
                     RoutineReminderWorker.KEY_ROUTINE_TITLE to routine.title,
-                    RoutineReminderWorker.KEY_ROUTINE_ID to routine.id
+                    RoutineReminderWorker.KEY_ROUTINE_ID to routine.id,
+                    RoutineReminderWorker.KEY_FREQUENCY to routine.frequency.name,
+                    RoutineReminderWorker.KEY_SCHEDULED_DAYS to routine.scheduledDays.toIntArray()
                 )
             )
             .build()

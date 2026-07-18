@@ -1,8 +1,10 @@
 package com.monsteraltech.habitly.feature.routines.presentation
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.household.domain.usecase.GetMemberProfilesUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveHouseholdUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
@@ -33,6 +35,7 @@ data class RoutinesUiState(
     val routines: List<Routine> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
+    @StringRes val errorRes: Int? = null,
     val currentUserId: String = "",
     val currentHouseholdId: String = "",
     val memberNicknames: Map<String, String> = emptyMap()
@@ -108,58 +111,72 @@ class RoutinesViewModel @Inject constructor(
     fun onAddRoutine(title: String, description: String, type: RoutineType, frequency: RoutineFrequency, scheduledDays: List<Int>, reminderTime: Int?) {
         val state = _uiState.value
         if (state.currentUserId.isBlank() || state.currentHouseholdId.isBlank()) return
-        
+
         viewModelScope.launch {
             addRoutineUseCase(state.currentUserId, state.currentHouseholdId, title, description, type, frequency, scheduledDays, reminderTime)
+                .onSuccess { routine -> scheduleReminderUseCase(routine) }
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.routines_error_save) } }
         }
     }
 
     fun onToggleRoutine(routine: Routine) {
         val state = _uiState.value
         if (state.currentUserId.isBlank() || state.currentHouseholdId.isBlank()) return
-        
+
         val isCompletedNow = isRoutineCompletedToday(routine)
-        
+
         viewModelScope.launch {
             toggleRoutineUseCase(state.currentUserId, state.currentHouseholdId, routine, !isCompletedNow)
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.routines_error_update) } }
         }
     }
 
     fun onDeleteRoutine(routine: Routine) {
         val state = _uiState.value
         if (state.currentUserId.isBlank() || state.currentHouseholdId.isBlank()) return
-        
+
         viewModelScope.launch {
             deleteRoutineUseCase(state.currentUserId, state.currentHouseholdId, routine)
+                .onSuccess { cancelReminderUseCase(routine.id) }
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.routines_error_delete) } }
         }
     }
 
     fun onEditRoutine(routine: Routine, title: String, description: String, frequency: RoutineFrequency, scheduledDays: List<Int>, reminderTime: Int?) {
         val state = _uiState.value
         if (state.currentUserId.isBlank() || state.currentHouseholdId.isBlank()) return
-        
+
         viewModelScope.launch {
             updateRoutineUseCase(state.currentUserId, state.currentHouseholdId, routine, title, description, frequency, scheduledDays, reminderTime)
-        }
-    }
-
-    fun onToggleReminder(routine: Routine) {
-        viewModelScope.launch {
-            if (routine.reminderTime != null) {
-                scheduleReminderUseCase(routine)
-            } else {
-                cancelReminderUseCase(routine.id)
-            }
+                .onSuccess {
+                    // Reprograma con los datos nuevos; si reminderTime es null, el
+                    // use case cancela el work existente.
+                    scheduleReminderUseCase(
+                        routine.copy(
+                            title = title.trim(),
+                            description = description.trim(),
+                            frequency = frequency,
+                            scheduledDays = scheduledDays,
+                            reminderTime = reminderTime
+                        )
+                    )
+                }
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.routines_error_save) } }
         }
     }
 
     fun onReorderRoutine(type: RoutineType, orderedIds: List<String>) {
         val state = _uiState.value
         if (state.currentUserId.isBlank() || state.currentHouseholdId.isBlank()) return
-        
+
         viewModelScope.launch {
             reorderRoutineUseCase(state.currentUserId, state.currentHouseholdId, type, orderedIds)
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.routines_error_update) } }
         }
+    }
+
+    fun onErrorShown() {
+        _uiState.update { it.copy(errorRes = null, error = null) }
     }
     
     companion object {

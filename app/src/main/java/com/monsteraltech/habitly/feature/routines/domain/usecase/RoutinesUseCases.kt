@@ -26,17 +26,17 @@ class AddRoutineUseCase @Inject constructor(
     private val repository: RoutinesRepository
 ) {
     suspend operator fun invoke(
-        userId: String, 
-        householdId: String, 
-        title: String, 
-        description: String, 
+        userId: String,
+        householdId: String,
+        title: String,
+        description: String,
         type: RoutineType,
         frequency: RoutineFrequency = RoutineFrequency.DAILY,
         scheduledDays: List<Int> = emptyList(),
         reminderTime: Int? = null
-    ): Result<Unit> {
+    ): Result<Routine> {
         if (title.isBlank()) return Result.failure(Exception("El título no puede estar vacío"))
-        
+
         val routine = Routine(
             id = UUID.randomUUID().toString(),
             title = title.trim(),
@@ -47,7 +47,7 @@ class AddRoutineUseCase @Inject constructor(
             reminderTime = reminderTime,
             authorId = userId
         )
-        return repository.addRoutine(userId, householdId, routine)
+        return repository.addRoutine(userId, householdId, routine).map { routine }
     }
 }
 

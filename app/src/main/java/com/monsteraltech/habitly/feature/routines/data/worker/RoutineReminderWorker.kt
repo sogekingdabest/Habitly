@@ -10,6 +10,8 @@ import androidx.core.app.NotificationCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
+import java.util.Calendar
 
 class RoutineReminderWorker(
     context: Context,
@@ -19,9 +21,26 @@ class RoutineReminderWorker(
     override fun doWork(): Result {
         val routineTitle = inputData.getString(KEY_ROUTINE_TITLE) ?: return Result.failure()
         val routineId = inputData.getString(KEY_ROUTINE_ID) ?: return Result.failure()
+        val frequency = inputData.getString(KEY_FREQUENCY) ?: RoutineFrequency.DAILY.name
+        val scheduledDays = inputData.getIntArray(KEY_SCHEDULED_DAYS) ?: IntArray(0)
+
+        // El trabajo periódico se dispara cada día; solo notificamos si HOY toca
+        // según la frecuencia y los días programados de la rutina.
+        if (!isScheduledToday(frequency, scheduledDays)) {
+            return Result.success()
+        }
 
         showNotification(routineTitle, routineId)
         return Result.success()
+    }
+
+    private fun isScheduledToday(frequency: String, scheduledDays: IntArray): Boolean {
+        val today = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
+        return when (frequency) {
+            RoutineFrequency.WEEKLY.name -> scheduledDays.contains(today)
+            RoutineFrequency.CUSTOM.name -> scheduledDays.isEmpty() || scheduledDays.contains(today)
+            else -> true // DAILY o desconocido: notificar siempre
+        }
     }
 
     private fun showNotification(title: String, routineId: String) {
@@ -69,6 +88,8 @@ class RoutineReminderWorker(
     companion object {
         const val KEY_ROUTINE_TITLE = "routine_title"
         const val KEY_ROUTINE_ID = "routine_id"
+        const val KEY_FREQUENCY = "routine_frequency"
+        const val KEY_SCHEDULED_DAYS = "routine_scheduled_days"
 
         fun getUniqueWorkId(routineId: String): String = "routine_reminder_$routineId"
     }
