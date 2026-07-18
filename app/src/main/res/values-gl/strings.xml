@@ -1,0 +1,290 @@
+<resources>
+    <!-- Routines -->
+    <string name="routines_tab_personal">As Miñas Rutinas</string>
+    <string name="routines_tab_household">Da Casa</string>
+    <string name="routines_add_routine">Engadir rutina</string>
+    <string name="routines_new_routine_title">Nova Rutina</string>
+    <string name="routines_field_title">Título</string>
+    <string name="routines_field_description">Descrición (opcional)</string>
+    <string name="routines_type_label">Tipo de rutina:</string>
+    <string name="routines_type_personal">Persoal</string>
+    <string name="routines_type_household">Da Casa</string>
+    <string name="routines_create">Crear</string>
+    <string name="routines_cancel">Cancelar</string>
+    <string name="routines_empty_message">Non tes rutinas deste tipo</string>
+    <string name="routines_completed_by">Completado por %s</string>
+    <string name="routines_completed_by_unknown">un membro</string>
+    <string name="routines_delete_routine">Eliminar rutina</string>
+    <string name="routines_edit_routine">Editar rutina</string>
+    <string name="routines_move_up">Subir</string>
+    <string name="routines_move_down">Baixar</string>
+    <string name="routines_edit_routine_title">Editar Rutina</string>
+    <string name="routines_save">Gardar</string>
+    <string name="routines_error_empty_title">O título non pode estar baleiro</string>
+    <string name="routines_error_save">Non se puido gardar a rutina. Téntao de novo</string>
+    <string name="routines_error_update">Non se puido actualizar a rutina. Téntao de novo</string>
+    <string name="routines_error_delete">Non se puido eliminar a rutina. Téntao de novo</string>
+    <string name="routines_delete_confirm_title">Eliminar rutina?</string>
+    <string name="routines_delete_confirm_message">Eliminarase «%s» e a súa racha actual. Esta acción non se pode desfacer.</string>
+    <string name="routines_frequency_label">Frecuencia:</string>
+    <string name="routines_frequency_daily">Diaria</string>
+    <string name="routines_frequency_weekly">Semanal</string>
+    <string name="routines_frequency_custom">Personalizada</string>
+    <string name="routines_select_days_label">Selecciona os días:</string>
+    <string name="routines_day_mon">L</string>
+    <string name="routines_day_tue">M</string>
+    <string name="routines_day_wed">Mé</string>
+    <string name="routines_day_thu">X</string>
+    <string name="routines_day_fri">V</string>
+    <string name="routines_day_sat">S</string>
+    <string name="routines_day_sun">D</string>
+    <string name="routines_reminder_label">Recordatorio:</string>
+    <string name="routines_reminder_none">Sen recordatorio</string>
+    <string name="routines_reminder_clear">Quitar recordatorio</string>
+    <string name="routines_reminder_set">Recordatorio ás %s</string>
+    <string name="routines_notification_title">Recordatorio de Rutina</string>
+    <string name="routines_notification_text">É hora de: %s</string>
+    <string name="routines_notification_channel_name">Recordatorios de Rutinas</string>
+    <string name="routines_notification_channel_desc">Notificacións para lembrar rutinas pendentes</string>
+
+    <plurals name="routines_streak">
+        <item quantity="one">🔥 %d día seguido</item>
+        <item quantity="other">🔥 %d días seguidos</item>
+    </plurals>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">Benvido a Habitly!</string>
+    <string name="onboarding_subtitle">Para comezar, crea a túa casa ou únete a unha existente.</string>
+    <string name="onboarding_create_title">Crear unha casa</string>
+    <string name="onboarding_create_desc">Comeza de cero e convida despois á túa familia ou compañeiros.</string>
+    <string name="onboarding_household_name_label">Nome da casa</string>
+    <string name="onboarding_create_button">Crear casa</string>
+    <string name="onboarding_or">— ou —</string>
+    <string name="onboarding_join_title">Unirse cun código</string>
+    <string name="onboarding_join_desc">Xa tes un código de invitación? Únete a esa casa.</string>
+    <string name="onboarding_join_button">Unirse á casa</string>
+
+    <!-- Household management -->
+    <string name="household_invite_code_label">Código de 6 caracteres</string>
+    <string name="household_regenerate_code">Rexenerar código</string>
+    <string name="household_regenerate_confirm_title">Rexenerar o código?</string>
+    <string name="household_regenerate_confirm_message">O código actual deixará de funcionar e xerarase un novo. Terás que compartir o novo con quen queiras convidar.</string>
+    <string name="household_remove_member">Expulsar</string>
+    <string name="household_remove_confirm_title">Expulsar membro?</string>
+    <string name="household_remove_confirm_message">%s deixará de ter acceso a esta casa. Seguro que queres continuar?</string>
+    <string name="household_leave">Saír da casa</string>
+    <string name="household_leave_confirm_title">Saír da casa?</string>
+    <string name="household_leave_confirm_message">Deixarás de ver a lista da compra e as rutinas desta casa. Poderás crear ou unirte a outra despois.</string>
+
+    <!-- Common -->
+    <string name="common_email">Email</string>
+    <string name="common_password">Contrasinal</string>
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_undo">Desfacer</string>
+    <string name="common_or">ou</string>
+    <string name="cd_back">Volver</string>
+    <string name="cd_delete">Eliminar</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_shopping">Compra</string>
+    <string name="nav_assistant">Asistente</string>
+    <string name="nav_routines">Rutinas</string>
+    <string name="nav_household">Casa</string>
+
+    <!-- Login -->
+    <string name="login_welcome_back">Benvido de novo</string>
+    <string name="login_subtitle">Inicia sesión para continuar con Habitly</string>
+    <string name="login_forgot_password">Esqueciches o contrasinal?</string>
+    <string name="login_sign_in">Iniciar Sesión</string>
+    <string name="login_continue_google">Continuar con Google</string>
+    <string name="login_no_account">Non tes conta?</string>
+    <string name="login_register_link">Rexístrate</string>
+
+    <!-- Forgot password -->
+    <string name="forgot_title">Recuperar Contrasinal</string>
+    <string name="forgot_subtitle">Introduce o correo electrónico asociado á túa conta e enviarémosche unha ligazón para restablecer o teu contrasinal.</string>
+    <string name="forgot_send_link">Enviar ligazón</string>
+    <string name="forgot_back_to_login">Volver ao inicio de sesión</string>
+
+    <!-- Register -->
+    <string name="register_title">Crear Conta</string>
+    <string name="register_name">Nome</string>
+    <string name="register_confirm_password">Confirmar contrasinal</string>
+    <string name="register_show_password">Ver contrasinal</string>
+    <string name="register_hide_password">Ocultar contrasinal</string>
+    <string name="register_submit">Unirse a Habitly</string>
+    <string name="register_with_google">Rexistrarse con Google</string>
+    <string name="register_have_account">Xa tes conta?</string>
+    <string name="register_login_link">Inicia sesión</string>
+    <string name="register_error_name_blank">O nome non pode estar baleiro</string>
+    <string name="register_error_name_short">O nome debe ter polo menos 2 caracteres</string>
+    <string name="register_error_email_blank">O email non pode estar baleiro</string>
+    <string name="register_error_email_invalid">Formato de email non válido</string>
+    <string name="register_error_password_short">O contrasinal debe ter polo menos 8 caracteres</string>
+    <string name="register_error_password_uppercase">Inclúe polo menos unha letra maiúscula</string>
+    <string name="register_error_password_digit">Inclúe polo menos un número</string>
+    <string name="register_error_passwords_mismatch">Os contrasinais non coinciden</string>
+    <string name="register_error_email_in_use">Este email xa está rexistrado</string>
+    <string name="register_error_network">Erro de rede. Revisa a túa conexión</string>
+    <string name="register_error_google_cancelled">Inicio de sesión con Google cancelado</string>
+    <string name="register_error_google_failed">Fallo ao iniciar sesión con Google</string>
+    <string name="register_error_unknown">Ocorreu un erro inesperado</string>
+
+    <!-- Email verification -->
+    <string name="emailverif_title">Verifica o teu Email</string>
+    <string name="emailverif_sent_to">Enviamos un correo a:</string>
+    <string name="emailverif_instructions">Fai clic na ligazón do correo para activar a túa conta. Estamos agardando a túa confirmación…</string>
+    <string name="emailverif_error">Ocorreu un erro: %s</string>
+    <string name="emailverif_waiting">Agardando…</string>
+    <string name="emailverif_check">Xa verifiquei o meu email</string>
+    <string name="emailverif_resend_cooldown">Reenviar en %ds</string>
+    <string name="emailverif_resend">Reenviar email</string>
+    <string name="emailverif_cancel">Cancelar e volver</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_greeting">Ola! Benvido a %s</string>
+    <string name="dashboard_your_home">a túa casa</string>
+    <string name="dashboard_shopping_title">Lista da Compra</string>
+    <string name="dashboard_shopping_empty">Todo comprado! Non hai tarefas pendentes.</string>
+    <string name="dashboard_habits_today">Os teus hábitos para hoxe</string>
+    <string name="dashboard_routines_done">Xenial! Completaches todas as túas rutinas.</string>
+    <string name="dashboard_routine_completed">«%s» completada</string>
+    <string name="dashboard_see_more">Ver máis</string>
+    <plurals name="dashboard_pending_products">
+        <item quantity="one">Tes %d produto pendente</item>
+        <item quantity="other">Tes %d produtos pendentes</item>
+    </plurals>
+    <string name="dashboard_and_more">…e %d máis</string>
+
+    <!-- Shopping -->
+    <string name="shopping_title">Lista da Compra</string>
+    <string name="shopping_add_store_title">Engadir Supermercado</string>
+    <string name="shopping_store_name">Nome do supermercado</string>
+    <string name="shopping_add">Engadir</string>
+    <string name="shopping_add_product">Engadir produto</string>
+    <string name="shopping_view_history">Ver historial</string>
+    <string name="shopping_archive">Gardar no historial</string>
+    <string name="shopping_new_store">Novo</string>
+    <string name="shopping_quick_add">Engade rápido:</string>
+    <string name="shopping_empty_title">A túa lista está baleira</string>
+    <string name="shopping_empty_subtitle">Engade o teu primeiro produto para comezar</string>
+    <string name="shopping_check_all">Marcar todo</string>
+    <string name="shopping_clear">Limpar</string>
+    <string name="shopping_error_add">Non se puido engadir o produto. Téntao de novo</string>
+    <string name="shopping_error_update">Non se puido actualizar a lista. Téntao de novo</string>
+    <string name="shopping_error_delete">Non se puido eliminar. Téntao de novo</string>
+    <string name="shopping_error_archive">Non se puido gardar no historial. Téntao de novo</string>
+    <string name="shopping_error_store">Non se puido engadir o supermercado. Téntao de novo</string>
+    <string name="shopping_item_deleted">«%s» eliminado</string>
+    <string name="shopping_archive_confirm_title">Gardar no historial?</string>
+    <string name="shopping_archive_confirm_message">A lista actual arquivarase no historial e baleirarase para empezar de novo. Poderás restaurala desde o historial.</string>
+    <string name="shopping_clear_confirm_title">Limpar produtos marcados?</string>
+    <string name="shopping_clear_confirm_message">Eliminaranse da lista todos os produtos marcados. Esta acción non se pode desfacer.</string>
+    <string name="shopping_completed">Completados</string>
+    <string name="shopping_progress">%1$d/%2$d produtos</string>
+    <plurals name="shopping_products_count">
+        <item quantity="one">%d produto</item>
+        <item quantity="other">%d produtos</item>
+    </plurals>
+    <plurals name="shopping_stores_count">
+        <item quantity="one">%d tenda</item>
+        <item quantity="other">%d tendas</item>
+    </plurals>
+
+    <!-- Add product -->
+    <string name="addproduct_title">Engadir Produto</string>
+    <string name="addproduct_info">Información do produto</string>
+    <string name="addproduct_name">Nome do artigo</string>
+    <string name="addproduct_quantity">Cantidade</string>
+    <string name="addproduct_unit">Unidade</string>
+    <string name="addproduct_store_category">Supermercado e categoría</string>
+    <string name="addproduct_store">Supermercado</string>
+    <string name="addproduct_category">Categoría (opcional)</string>
+    <string name="addproduct_no_category">Sen categoría</string>
+    <string name="addproduct_notes_title">Notas adicionais</string>
+    <string name="addproduct_notes">Notas (opcional)</string>
+    <string name="addproduct_save">Gardar produto</string>
+
+    <!-- History -->
+    <string name="history_title">Historial de Compras</string>
+    <string name="history_empty_title">Aínda non hai compras arquivadas</string>
+    <string name="history_empty_subtitle">Arquiva a túa lista da compra para vela aquí</string>
+    <string name="history_restored">Lista restaurada correctamente</string>
+    <string name="history_restore">Restaurar esta lista</string>
+    <string name="history_expand">Expandir</string>
+    <string name="history_collapse">Contraer</string>
+
+    <!-- Household screen -->
+    <string name="household_title">A Miña Casa</string>
+    <string name="household_sign_out">Pechar sesión</string>
+    <string name="household_no_nickname">Sen alcume</string>
+    <string name="household_nickname_subtitle">O teu nome visible para os demais</string>
+    <string name="household_edit_nickname">Editar alcume</string>
+    <string name="household_edit_name">Editar nome</string>
+    <string name="household_invite_code_title">O teu código de invitación:</string>
+    <string name="household_copy">Copiar</string>
+    <string name="household_members">Membros (%d)</string>
+    <string name="household_you">%s (ti)</string>
+    <string name="household_join_question">Tes un código de invitación?</string>
+    <string name="household_join_desc">Únete á casa doutra persoa. Coidado! Se te unes a outra casa, deixarás de ver a actual.</string>
+    <string name="household_join_button">Unirse á Casa</string>
+    <string name="household_join_success">Unícheste á casa con éxito!</string>
+    <string name="household_change_name_title">Cambiar nome da casa</string>
+    <string name="household_new_name">Novo nome</string>
+    <string name="household_save">Gardar</string>
+    <string name="household_change_nickname_title">Cambiar o teu alcume</string>
+    <string name="household_short_name">O teu nome curto</string>
+    <string name="household_danger_zone">Zona de perigo</string>
+    <string name="household_delete_account_desc">Ao borrar a túa conta eliminaranse o teu perfil e as túas rutinas persoais, e sairás da túa casa. Esta acción non se pode desfacer.</string>
+    <string name="household_delete_account">Borrar a miña conta</string>
+    <string name="household_delete_confirm_title">Borrar a túa conta?</string>
+    <string name="household_delete_confirm_message">Eliminaranse de forma permanente o teu perfil, as túas rutinas persoais e a túa pertenza á casa. Esta acción non se pode desfacer.</string>
+    <string name="household_delete_confirm_button">Borrar conta</string>
+
+    <!-- AI assistant -->
+    <string name="ai_chat_history">Historial de Chats</string>
+    <string name="ai_new_conversation">Nova Conversa</string>
+    <string name="ai_title">Asistente IA</string>
+    <string name="ai_change_model">Cambiar modelo</string>
+    <string name="ai_selecting">Seleccionando…</string>
+    <string name="ai_status_ready">Listo</string>
+    <string name="ai_status_downloading">Descargando…</string>
+    <string name="ai_status_not_downloaded">Non descargado</string>
+    <string name="ai_menu">Menú</string>
+    <string name="ai_new_chat">Novo chat</string>
+    <string name="ai_delete_chat_confirm_title">Eliminar conversa?</string>
+    <string name="ai_delete_chat_confirm_message">Eliminarase «%s» de forma permanente. Esta acción non se pode desfacer.</string>
+    <string name="ai_empty_title">Que podo cociñar hoxe?</string>
+    <string name="ai_empty_subtitle">Pregúntame sobre receitas ou xera listas de compra</string>
+    <string name="ai_error_loading">Erro ao cargar o modelo</string>
+    <string name="ai_retry">Reintentar</string>
+    <string name="ai_local_title">Asistente IA Local</string>
+    <string name="ai_local_desc">Descarga o modelo de IA para executalo localmente no teu dispositivo. Todo se procesa no teu teléfono, sen enviar datos a servidores.</string>
+    <string name="ai_downloading_progress">Descargando… %d%%</string>
+    <string name="ai_download_model">Descargar Modelo (%s)</string>
+    <string name="ai_input_hint">Escribe a túa mensaxe…</string>
+    <string name="ai_send">Enviar</string>
+
+    <!-- AI shopping suggestions -->
+    <string name="ai_suggestion_add">Engadir á lista</string>
+    <string name="ai_suggestion_added">Engadido</string>
+    <plurals name="ai_suggestion_count">
+        <item quantity="one">%d produto para a túa lista</item>
+        <item quantity="other">%d produtos para a túa lista</item>
+    </plurals>
+    <plurals name="ai_added_to_list">
+        <item quantity="one">%d produto engadido á lista</item>
+        <item quantity="other">%d produtos engadidos á lista</item>
+    </plurals>
+
+    <!-- Widget -->
+    <string name="widget_description">Lista da compra e rutinas de hoxe</string>
+    <string name="widget_title">Habitly</string>
+    <string name="widget_shopping">Compra</string>
+    <string name="widget_routines">Hoxe</string>
+    <string name="widget_shopping_empty">Lista baleira</string>
+    <string name="widget_routines_empty">Todo feito!</string>
+    <string name="widget_open_hint">Abre Habitly para comezar</string>
+    <string name="widget_more">+%d</string>
+</resources>

@@ -1,0 +1,290 @@
+<resources>
+    <!-- Routines -->
+    <string name="routines_tab_personal">My Routines</string>
+    <string name="routines_tab_household">Household</string>
+    <string name="routines_add_routine">Add routine</string>
+    <string name="routines_new_routine_title">New Routine</string>
+    <string name="routines_field_title">Title</string>
+    <string name="routines_field_description">Description (optional)</string>
+    <string name="routines_type_label">Routine type:</string>
+    <string name="routines_type_personal">Personal</string>
+    <string name="routines_type_household">Household</string>
+    <string name="routines_create">Create</string>
+    <string name="routines_cancel">Cancel</string>
+    <string name="routines_empty_message">You have no routines of this type</string>
+    <string name="routines_completed_by">Completed by %s</string>
+    <string name="routines_completed_by_unknown">a member</string>
+    <string name="routines_delete_routine">Delete routine</string>
+    <string name="routines_edit_routine">Edit routine</string>
+    <string name="routines_move_up">Move up</string>
+    <string name="routines_move_down">Move down</string>
+    <string name="routines_edit_routine_title">Edit Routine</string>
+    <string name="routines_save">Save</string>
+    <string name="routines_error_empty_title">The title cannot be empty</string>
+    <string name="routines_error_save">Couldn\'t save the routine. Please try again</string>
+    <string name="routines_error_update">Couldn\'t update the routine. Please try again</string>
+    <string name="routines_error_delete">Couldn\'t delete the routine. Please try again</string>
+    <string name="routines_delete_confirm_title">Delete routine?</string>
+    <string name="routines_delete_confirm_message">«%s» and its current streak will be deleted. This can\'t be undone.</string>
+    <string name="routines_frequency_label">Frequency:</string>
+    <string name="routines_frequency_daily">Daily</string>
+    <string name="routines_frequency_weekly">Weekly</string>
+    <string name="routines_frequency_custom">Custom</string>
+    <string name="routines_select_days_label">Select the days:</string>
+    <string name="routines_day_mon">M</string>
+    <string name="routines_day_tue">T</string>
+    <string name="routines_day_wed">W</string>
+    <string name="routines_day_thu">T</string>
+    <string name="routines_day_fri">F</string>
+    <string name="routines_day_sat">S</string>
+    <string name="routines_day_sun">S</string>
+    <string name="routines_reminder_label">Reminder:</string>
+    <string name="routines_reminder_none">No reminder</string>
+    <string name="routines_reminder_clear">Remove reminder</string>
+    <string name="routines_reminder_set">Reminder at %s</string>
+    <string name="routines_notification_title">Routine Reminder</string>
+    <string name="routines_notification_text">Time for: %s</string>
+    <string name="routines_notification_channel_name">Routine Reminders</string>
+    <string name="routines_notification_channel_desc">Notifications to remind you of pending routines</string>
+
+    <plurals name="routines_streak">
+        <item quantity="one">🔥 %d-day streak</item>
+        <item quantity="other">🔥 %d-day streak</item>
+    </plurals>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">Welcome to Habitly!</string>
+    <string name="onboarding_subtitle">To get started, create your household or join an existing one.</string>
+    <string name="onboarding_create_title">Create a household</string>
+    <string name="onboarding_create_desc">Start fresh and invite your family or flatmates later.</string>
+    <string name="onboarding_household_name_label">Household name</string>
+    <string name="onboarding_create_button">Create household</string>
+    <string name="onboarding_or">— or —</string>
+    <string name="onboarding_join_title">Join with a code</string>
+    <string name="onboarding_join_desc">Already have an invite code? Join that household.</string>
+    <string name="onboarding_join_button">Join household</string>
+
+    <!-- Household management -->
+    <string name="household_invite_code_label">6-character code</string>
+    <string name="household_regenerate_code">Regenerate code</string>
+    <string name="household_regenerate_confirm_title">Regenerate the code?</string>
+    <string name="household_regenerate_confirm_message">The current code will stop working and a new one will be generated. You\'ll need to share the new one with anyone you want to invite.</string>
+    <string name="household_remove_member">Remove</string>
+    <string name="household_remove_confirm_title">Remove member?</string>
+    <string name="household_remove_confirm_message">%s will lose access to this household. Are you sure you want to continue?</string>
+    <string name="household_leave">Leave household</string>
+    <string name="household_leave_confirm_title">Leave the household?</string>
+    <string name="household_leave_confirm_message">You\'ll stop seeing this household\'s shopping list and routines. You can create or join another one afterwards.</string>
+
+    <!-- Common -->
+    <string name="common_email">Email</string>
+    <string name="common_password">Password</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_undo">Undo</string>
+    <string name="common_or">or</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_delete">Delete</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_shopping">Shopping</string>
+    <string name="nav_assistant">Assistant</string>
+    <string name="nav_routines">Routines</string>
+    <string name="nav_household">Household</string>
+
+    <!-- Login -->
+    <string name="login_welcome_back">Welcome back</string>
+    <string name="login_subtitle">Sign in to continue with Habitly</string>
+    <string name="login_forgot_password">Forgot your password?</string>
+    <string name="login_sign_in">Sign In</string>
+    <string name="login_continue_google">Continue with Google</string>
+    <string name="login_no_account">Don\'t have an account?</string>
+    <string name="login_register_link">Sign up</string>
+
+    <!-- Forgot password -->
+    <string name="forgot_title">Reset Password</string>
+    <string name="forgot_subtitle">Enter the email associated with your account and we\'ll send you a link to reset your password.</string>
+    <string name="forgot_send_link">Send link</string>
+    <string name="forgot_back_to_login">Back to sign in</string>
+
+    <!-- Register -->
+    <string name="register_title">Create Account</string>
+    <string name="register_name">Name</string>
+    <string name="register_confirm_password">Confirm password</string>
+    <string name="register_show_password">Show password</string>
+    <string name="register_hide_password">Hide password</string>
+    <string name="register_submit">Join Habitly</string>
+    <string name="register_with_google">Sign up with Google</string>
+    <string name="register_have_account">Already have an account?</string>
+    <string name="register_login_link">Sign in</string>
+    <string name="register_error_name_blank">Name cannot be empty</string>
+    <string name="register_error_name_short">Name must be at least 2 characters</string>
+    <string name="register_error_email_blank">Email cannot be empty</string>
+    <string name="register_error_email_invalid">Invalid email format</string>
+    <string name="register_error_password_short">Password must be at least 8 characters</string>
+    <string name="register_error_password_uppercase">Include at least one uppercase letter</string>
+    <string name="register_error_password_digit">Include at least one number</string>
+    <string name="register_error_passwords_mismatch">Passwords do not match</string>
+    <string name="register_error_email_in_use">This email is already registered</string>
+    <string name="register_error_network">Network error. Check your connection</string>
+    <string name="register_error_google_cancelled">Google sign-in cancelled</string>
+    <string name="register_error_google_failed">Google sign-in failed</string>
+    <string name="register_error_unknown">An unexpected error occurred</string>
+
+    <!-- Email verification -->
+    <string name="emailverif_title">Verify your Email</string>
+    <string name="emailverif_sent_to">We sent an email to:</string>
+    <string name="emailverif_instructions">Click the link in the email to activate your account. We\'re waiting for your confirmation…</string>
+    <string name="emailverif_error">An error occurred: %s</string>
+    <string name="emailverif_waiting">Waiting…</string>
+    <string name="emailverif_check">I already verified my email</string>
+    <string name="emailverif_resend_cooldown">Resend in %ds</string>
+    <string name="emailverif_resend">Resend email</string>
+    <string name="emailverif_cancel">Cancel and go back</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_greeting">Hi! Welcome to %s</string>
+    <string name="dashboard_your_home">your home</string>
+    <string name="dashboard_shopping_title">Shopping List</string>
+    <string name="dashboard_shopping_empty">All bought! No pending tasks.</string>
+    <string name="dashboard_habits_today">Your habits for today</string>
+    <string name="dashboard_routines_done">Great! You\'ve completed all your routines.</string>
+    <string name="dashboard_routine_completed">«%s» completed</string>
+    <string name="dashboard_see_more">See more</string>
+    <plurals name="dashboard_pending_products">
+        <item quantity="one">You have %d pending product</item>
+        <item quantity="other">You have %d pending products</item>
+    </plurals>
+    <string name="dashboard_and_more">…and %d more</string>
+
+    <!-- Shopping -->
+    <string name="shopping_title">Shopping List</string>
+    <string name="shopping_add_store_title">Add Store</string>
+    <string name="shopping_store_name">Store name</string>
+    <string name="shopping_add">Add</string>
+    <string name="shopping_add_product">Add product</string>
+    <string name="shopping_view_history">View history</string>
+    <string name="shopping_archive">Save to history</string>
+    <string name="shopping_new_store">New</string>
+    <string name="shopping_quick_add">Quick add:</string>
+    <string name="shopping_empty_title">Your list is empty</string>
+    <string name="shopping_empty_subtitle">Add your first product to get started</string>
+    <string name="shopping_check_all">Check all</string>
+    <string name="shopping_clear">Clear</string>
+    <string name="shopping_error_add">Couldn\'t add the product. Please try again</string>
+    <string name="shopping_error_update">Couldn\'t update the list. Please try again</string>
+    <string name="shopping_error_delete">Couldn\'t delete. Please try again</string>
+    <string name="shopping_error_archive">Couldn\'t save to history. Please try again</string>
+    <string name="shopping_error_store">Couldn\'t add the store. Please try again</string>
+    <string name="shopping_item_deleted">«%s» deleted</string>
+    <string name="shopping_archive_confirm_title">Save to history?</string>
+    <string name="shopping_archive_confirm_message">The current list will be archived to history and cleared so you can start over. You can restore it from history.</string>
+    <string name="shopping_clear_confirm_title">Clear checked products?</string>
+    <string name="shopping_clear_confirm_message">All checked products will be removed from the list. This can\'t be undone.</string>
+    <string name="shopping_completed">Completed</string>
+    <string name="shopping_progress">%1$d/%2$d products</string>
+    <plurals name="shopping_products_count">
+        <item quantity="one">%d product</item>
+        <item quantity="other">%d products</item>
+    </plurals>
+    <plurals name="shopping_stores_count">
+        <item quantity="one">%d store</item>
+        <item quantity="other">%d stores</item>
+    </plurals>
+
+    <!-- Add product -->
+    <string name="addproduct_title">Add Product</string>
+    <string name="addproduct_info">Product information</string>
+    <string name="addproduct_name">Item name</string>
+    <string name="addproduct_quantity">Quantity</string>
+    <string name="addproduct_unit">Unit</string>
+    <string name="addproduct_store_category">Store and category</string>
+    <string name="addproduct_store">Store</string>
+    <string name="addproduct_category">Category (optional)</string>
+    <string name="addproduct_no_category">No category</string>
+    <string name="addproduct_notes_title">Additional notes</string>
+    <string name="addproduct_notes">Notes (optional)</string>
+    <string name="addproduct_save">Save product</string>
+
+    <!-- History -->
+    <string name="history_title">Shopping History</string>
+    <string name="history_empty_title">No archived shopping yet</string>
+    <string name="history_empty_subtitle">Archive your shopping list to see it here</string>
+    <string name="history_restored">List restored successfully</string>
+    <string name="history_restore">Restore this list</string>
+    <string name="history_expand">Expand</string>
+    <string name="history_collapse">Collapse</string>
+
+    <!-- Household screen -->
+    <string name="household_title">My Household</string>
+    <string name="household_sign_out">Sign out</string>
+    <string name="household_no_nickname">No nickname</string>
+    <string name="household_nickname_subtitle">Your name visible to others</string>
+    <string name="household_edit_nickname">Edit nickname</string>
+    <string name="household_edit_name">Edit name</string>
+    <string name="household_invite_code_title">Your invite code:</string>
+    <string name="household_copy">Copy</string>
+    <string name="household_members">Members (%d)</string>
+    <string name="household_you">%s (you)</string>
+    <string name="household_join_question">Have an invite code?</string>
+    <string name="household_join_desc">Join someone else\'s household. Careful! If you join another household, you\'ll stop seeing the current one.</string>
+    <string name="household_join_button">Join Household</string>
+    <string name="household_join_success">You\'ve joined the household successfully!</string>
+    <string name="household_change_name_title">Change household name</string>
+    <string name="household_new_name">New name</string>
+    <string name="household_save">Save</string>
+    <string name="household_change_nickname_title">Change your nickname</string>
+    <string name="household_short_name">Your short name</string>
+    <string name="household_danger_zone">Danger zone</string>
+    <string name="household_delete_account_desc">Deleting your account will remove your profile and personal routines, and you\'ll leave your household. This action cannot be undone.</string>
+    <string name="household_delete_account">Delete my account</string>
+    <string name="household_delete_confirm_title">Delete your account?</string>
+    <string name="household_delete_confirm_message">Your profile, personal routines and household membership will be permanently deleted. This action cannot be undone.</string>
+    <string name="household_delete_confirm_button">Delete account</string>
+
+    <!-- AI assistant -->
+    <string name="ai_chat_history">Chat History</string>
+    <string name="ai_new_conversation">New Conversation</string>
+    <string name="ai_title">AI Assistant</string>
+    <string name="ai_change_model">Change model</string>
+    <string name="ai_selecting">Selecting…</string>
+    <string name="ai_status_ready">Ready</string>
+    <string name="ai_status_downloading">Downloading…</string>
+    <string name="ai_status_not_downloaded">Not downloaded</string>
+    <string name="ai_menu">Menu</string>
+    <string name="ai_new_chat">New chat</string>
+    <string name="ai_delete_chat_confirm_title">Delete conversation?</string>
+    <string name="ai_delete_chat_confirm_message">«%s» will be permanently deleted. This can\'t be undone.</string>
+    <string name="ai_empty_title">What can I cook today?</string>
+    <string name="ai_empty_subtitle">Ask me about recipes or generate shopping lists</string>
+    <string name="ai_error_loading">Error loading the model</string>
+    <string name="ai_retry">Retry</string>
+    <string name="ai_local_title">Local AI Assistant</string>
+    <string name="ai_local_desc">Download the AI model to run it locally on your device. Everything is processed on your phone, without sending data to servers.</string>
+    <string name="ai_downloading_progress">Downloading… %d%%</string>
+    <string name="ai_download_model">Download Model (%s)</string>
+    <string name="ai_input_hint">Type your message…</string>
+    <string name="ai_send">Send</string>
+
+    <!-- AI shopping suggestions -->
+    <string name="ai_suggestion_add">Add to list</string>
+    <string name="ai_suggestion_added">Added</string>
+    <plurals name="ai_suggestion_count">
+        <item quantity="one">%d product for your list</item>
+        <item quantity="other">%d products for your list</item>
+    </plurals>
+    <plurals name="ai_added_to_list">
+        <item quantity="one">%d product added to the list</item>
+        <item quantity="other">%d products added to the list</item>
+    </plurals>
+
+    <!-- Widget -->
+    <string name="widget_description">Shopping list and today\'s routines</string>
+    <string name="widget_title">Habitly</string>
+    <string name="widget_shopping">Shopping</string>
+    <string name="widget_routines">Today</string>
+    <string name="widget_shopping_empty">Empty list</string>
+    <string name="widget_routines_empty">All done!</string>
+    <string name="widget_open_hint">Open Habitly to get started</string>
+    <string name="widget_more">+%d</string>
+</resources>
