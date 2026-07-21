@@ -1,23 +1,25 @@
 package com.monsteraltech.habitly.feature.aiassistant.presentation
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.SmartToy
@@ -52,19 +54,29 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStatus
+import com.monsteraltech.habitly.feature.aiassistant.domain.util.AiStructuredBlocks
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ChatMessageItem
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ModelDownloadCard
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.PromptInput
+import com.monsteraltech.habitly.feature.aiassistant.presentation.components.RoutineSuggestionCard
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ShoppingSuggestionCard
+import com.monsteraltech.habitly.feature.aiassistant.presentation.components.SuggestionPreparingCard
+import com.monsteraltech.habitly.ui.components.HabitlyBackground
+import com.monsteraltech.habitly.ui.components.MeshArrangement
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -103,6 +115,15 @@ fun AiAssistantScreen(
         LaunchedEffect(addedCount) {
             snackbarHostState.showSnackbar(addedMessage)
             viewModel.onAddedToListShown()
+        }
+    }
+
+    val addedRoutines = uiState.addedRoutinesCount
+    if (addedRoutines != null) {
+        val addedRoutinesMessage = pluralStringResource(R.plurals.ai_routines_created, addedRoutines, addedRoutines)
+        LaunchedEffect(addedRoutines) {
+            snackbarHostState.showSnackbar(addedRoutinesMessage)
+            viewModel.onAddedRoutinesShown()
         }
     }
 
@@ -156,7 +177,8 @@ fun AiAssistantScreen(
                                 viewModel.onLoadChat(session.id)
                                 scope.launch { drawerState.close() }
                             },
-                            icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null) },
+                            // Sin icono por fila: no distingue nada entre chats y solo mete
+                            // ruido; la papelera al final ya marca la zona de acción.
                             badge = {
                                 IconButton(onClick = { chatToDelete = session }) {
                                     Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete), modifier = Modifier.size(20.dp))
@@ -169,47 +191,52 @@ fun AiAssistantScreen(
             }
         }
     ) {
+        HabitlyBackground(arrangement = MeshArrangement.Chat) {
         Scaffold(
+            containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     title = {
-                        Column(
-                            modifier = Modifier.clickable { expandedModelMenu = true }
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        // El modelo y su estado se quedan en el desplegable: con el modelo
+                        // listo el subtítulo no aportaba nada, y cuando no lo está ya manda la
+                        // tarjeta de descarga. Aquí solo restaba altura a la conversación.
+                        Box {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable(
+                                        onClickLabel = stringResource(R.string.ai_change_model)
+                                    ) { expandedModelMenu = true }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text(stringResource(R.string.ai_title))
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.ai_change_model))
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                             }
-                            val statusText = when (uiState.modelStatus) {
-                                is ModelStatus.Ready -> stringResource(R.string.ai_status_ready)
-                                is ModelStatus.Downloading -> stringResource(R.string.ai_status_downloading)
-                                else -> stringResource(R.string.ai_status_not_downloaded)
-                            }
-                            val modelName = uiState.selectedModel?.name ?: stringResource(R.string.ai_selecting)
-                            Text(
-                                text = "$modelName • $statusText",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
 
-                        DropdownMenu(
-                            expanded = expandedModelMenu,
-                            onDismissRequest = { expandedModelMenu = false }
-                        ) {
-                            uiState.availableModels.forEach { model ->
-                                DropdownMenuItem(
-                                    text = { Text(model.name) },
-                                    onClick = {
-                                        viewModel.onSelectModel(model.id)
-                                        expandedModelMenu = false
-                                    },
-                                    trailingIcon = {
-                                        if (model.id == uiState.selectedModel?.id) {
-                                            Icon(Icons.Default.SmartToy, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            DropdownMenu(
+                                expanded = expandedModelMenu,
+                                onDismissRequest = { expandedModelMenu = false }
+                            ) {
+                                uiState.availableModels.forEach { model ->
+                                    DropdownMenuItem(
+                                        text = { Text(model.name) },
+                                        onClick = {
+                                            viewModel.onSelectModel(model.id)
+                                            expandedModelMenu = false
+                                        },
+                                        trailingIcon = {
+                                            if (model.id == uiState.selectedModel?.id) {
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                         }
-                                    }
-                                )
+                                    )
+                                }
                             }
                         }
                     },
@@ -229,11 +256,15 @@ fun AiAssistantScreen(
             },
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { innerPadding ->
+            // Sin padding horizontal aquí: lo pone cada bloque por su cuenta, para que la fila
+            // de chips pueda ocupar el ancho completo y deslizarse hasta el borde.
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(horizontal = 16.dp)
+                    // Sube el campo de texto con el teclado; el resto de la app lo hace
+                    // igual (login/registro) y aquí faltaba.
+                    .imePadding()
             ) {
                 when (uiState.modelStatus) {
                     is ModelStatus.NotDownloaded -> {
@@ -242,7 +273,7 @@ fun AiAssistantScreen(
                             progress = 0f,
                             isDownloading = false,
                             onDownload = { viewModel.onDownloadModel() },
-                            modifier = Modifier.padding(top = 16.dp)
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
                         )
                     }
                     is ModelStatus.Downloading -> {
@@ -252,7 +283,7 @@ fun AiAssistantScreen(
                             progress = progress,
                             isDownloading = true,
                             onDownload = {},
-                            modifier = Modifier.padding(top = 16.dp)
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
                         )
                     }
                     is ModelStatus.Error -> {
@@ -290,14 +321,17 @@ fun AiAssistantScreen(
                                 .weight(1f)
                                 .fillMaxWidth(),
                             state = listState,
-                            reverseLayout = false
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
                         ) {
                             if (uiState.chatSession.messages.isEmpty()) {
                                 item {
+                                    // fillParentMaxHeight y no weight: dentro de un item de
+                                    // LazyColumn el weight se resolvía contra el Column de
+                                    // fuera, la lista lo ignoraba y esto nunca llegó a centrarse.
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .weight(1f),
+                                            .fillParentMaxHeight()
+                                            .fillMaxWidth(),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -310,12 +344,14 @@ fun AiAssistantScreen(
                                             Text(
                                                 text = stringResource(R.string.ai_empty_title),
                                                 style = MaterialTheme.typography.headlineSmall,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.Bold,
+                                                textAlign = TextAlign.Center
                                             )
                                             Text(
                                                 text = stringResource(R.string.ai_empty_subtitle),
                                                 style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                textAlign = TextAlign.Center
                                             )
                                         }
                                     }
@@ -334,18 +370,37 @@ fun AiAssistantScreen(
                                             onAdd = { viewModel.onAddSuggestionsToList(message.id) }
                                         )
                                     }
+                                    val routineSuggestions = uiState.routineSuggestions[message.id]
+                                    if (!routineSuggestions.isNullOrEmpty()) {
+                                        RoutineSuggestionCard(
+                                            routines = routineSuggestions,
+                                            isAdded = message.id in uiState.addedRoutineMessageIds,
+                                            isLoading = uiState.addingRoutineMessageId == message.id,
+                                            onAdd = { type -> viewModel.onAddRoutineSuggestions(message.id, type) }
+                                        )
+                                    }
                                 }
                             }
 
                             if (uiState.isGenerating) {
                                 item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator()
+                                    // Si el stream ya va por el bloque @@…@@ oculto, el texto
+                                    // visible deja de crecer un buen rato: se avisa de que
+                                    // vienen sugerencias en vez de dejar un spinner mudo.
+                                    val streamingTail = uiState.chatSession.messages.lastOrNull()
+                                        ?.takeIf { it.role is MessageRole.Assistant }
+                                        ?.content.orEmpty()
+                                    if (AiStructuredBlocks.hasPendingStructuredBlock(streamingTail)) {
+                                        SuggestionPreparingCard()
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
                                     }
                                 }
                             }
@@ -361,6 +416,7 @@ fun AiAssistantScreen(
                     }
                 }
             }
+        }
         }
     }
 

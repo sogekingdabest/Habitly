@@ -7,13 +7,14 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiShoppingSuggestion
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiAssistantRepository
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiRoutineSuggestion
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.AddAiItemsToShoppingListUseCase
-import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateRecipeSuggestionsUseCase
-import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateShoppingListUseCase
-import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateWeeklyMenuUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.AddAiRoutinesUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetAiContextUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetContextualQuickPromptsUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ParseAiRoutinesUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ParseAiShoppingListUseCase
-import com.monsteraltech.habitly.feature.aiassistant.presentation.components.QuickPrompt
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,11 +29,11 @@ import javax.inject.Inject
 class AiAssistantViewModel @Inject constructor(
     private val repository: AiAssistantRepository,
     private val getAiContextUseCase: GetAiContextUseCase,
-    private val generateRecipeSuggestionsUseCase: GenerateRecipeSuggestionsUseCase,
-    private val generateShoppingListUseCase: GenerateShoppingListUseCase,
-    private val generateWeeklyMenuUseCase: GenerateWeeklyMenuUseCase,
+    private val getContextualQuickPromptsUseCase: GetContextualQuickPromptsUseCase,
     private val parseAiShoppingListUseCase: ParseAiShoppingListUseCase,
-    private val addAiItemsToShoppingListUseCase: AddAiItemsToShoppingListUseCase
+    private val addAiItemsToShoppingListUseCase: AddAiItemsToShoppingListUseCase,
+    private val parseAiRoutinesUseCase: ParseAiRoutinesUseCase,
+    private val addAiRoutinesUseCase: AddAiRoutinesUseCase
 ) : ViewModel() {
 
     private val tag = "AiAssistantViewModel"
@@ -43,18 +44,9 @@ class AiAssistantViewModel @Inject constructor(
     private var chatOperationJob: Job? = null
 
     init {
-        _uiState.update {
-            it.copy(
-                availableModels = repository.getAvailableModels(),
-                quickPrompts = listOf(
-                    QuickPrompt("Menú semanal", generateWeeklyMenuUseCase()),
-                    QuickPrompt("Recetas con pollo", generateRecipeSuggestionsUseCase()),
-                    QuickPrompt("Lista semanal", generateShoppingListUseCase()),
-                    QuickPrompt("Recetas vegetarianas", "Que puedo cocinar con huevos y patatas?"),
-                    QuickPrompt("Cena rapida", "Dame ideas de cenas rapidas y faciles")
-                )
-            )
-        }
+        _uiState.update { it.copy(availableModels = repository.getAvailableModels()) }
+
+        refreshQuickPrompts()
 
         viewModelScope.launch {
             repository.observeSelectedModel().collectLatest { model ->
@@ -78,6 +70,17 @@ class AiAssistantViewModel @Inject constructor(
             repository.observeChatHistory().collectLatest { history ->
                 _uiState.update { it.copy(chatHistory = history) }
             }
+        }
+    }
+
+    /**
+     * Recalcula los chips de sugerencia con el estado actual de la casa. Se hace en su
+     * propio job porque lee lista y rutinas: no debe retrasar la carga del chat.
+     */
+    private fun refreshQuickPrompts() {
+        viewModelScope.launch {
+            val prompts = getContextualQuickPromptsUseCase()
+            _uiState.update { it.copy(quickPrompts = prompts) }
         }
     }
 
@@ -135,17 +138,24 @@ class AiAssistantViewModel @Inject constructor(
     }
 
     /**
-     * Analiza los mensajes del asistente en busca del bloque estructurado de la lista
-     * y guarda las sugerencias por id de mensaje para pintar el botón "Añadir a la lista".
+     * Analiza los mensajes del asistente en busca de los bloques estructurados (lista de la
+     * compra y rutinas) y guarda las sugerencias por id de mensaje para pintar sus tarjetas.
      */
     private fun parseAndStoreSuggestions(session: AiChatSession) {
-        val suggestions: Map<String, List<AiShoppingSuggestion>> = session.messages
-            .asSequence()
+        val assistantMessages = session.messages
             .filter { it.role is MessageRole.Assistant }
-            .map { it.id to parseAiShoppingListUseCase(it.content) }
-            .filter { it.second.isNotEmpty() }
-            .toMap()
-        _uiState.update { it.copy(shoppingSuggestions = suggestions) }
+
+        val shopping: Map<String, List<AiShoppingSuggestion>> = assistantMessages
+            .associate { it.id to parseAiShoppingListUseCase(it.content) }
+            .filterValues { it.isNotEmpty() }
+
+        val routines: Map<String, List<AiRoutineSuggestion>> = assistantMessages
+            .associate { it.id to parseAiRoutinesUseCase(it.content) }
+            .filterValues { it.isNotEmpty() }
+
+        _uiState.update {
+            it.copy(shoppingSuggestions = shopping, routineSuggestions = routines)
+        }
     }
 
     fun onAddSuggestionsToList(messageId: String) {
@@ -181,6 +191,40 @@ class AiAssistantViewModel @Inject constructor(
         _uiState.update { it.copy(addedToListCount = null) }
     }
 
+    /** Crea las rutinas que propuso el asistente en el mensaje indicado. */
+    fun onAddRoutineSuggestions(messageId: String, type: RoutineType) {
+        val state = _uiState.value
+        val routines = state.routineSuggestions[messageId] ?: return
+        if (messageId in state.addedRoutineMessageIds || state.addingRoutineMessageId != null) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(addingRoutineMessageId = messageId) }
+            addAiRoutinesUseCase(routines, type).fold(
+                onSuccess = { count ->
+                    _uiState.update {
+                        it.copy(
+                            addingRoutineMessageId = null,
+                            addedRoutineMessageIds = it.addedRoutineMessageIds + messageId,
+                            addedRoutinesCount = count
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            addingRoutineMessageId = null,
+                            error = e.message ?: "No se pudieron crear las rutinas"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun onAddedRoutinesShown() {
+        _uiState.update { it.copy(addedRoutinesCount = null) }
+    }
+
     fun onQuickPrompt(prompt: String) {
         _uiState.update { it.copy(currentInput = prompt) }
         onSendMessage()
@@ -205,6 +249,8 @@ class AiAssistantViewModel @Inject constructor(
     }
 
     fun onNewChat() {
+        // La casa puede haber cambiado desde que se abrió la pantalla (lista, rutinas…).
+        refreshQuickPrompts()
         chatOperationJob?.cancel()
         chatOperationJob = viewModelScope.launch {
             val newSession = AiChatSession(modelId = _uiState.value.selectedModel?.id ?: "")
@@ -217,7 +263,10 @@ class AiAssistantViewModel @Inject constructor(
                     error = null,
                     shoppingSuggestions = emptyMap(),
                     addedSuggestionMessageIds = emptySet(),
-                    addingSuggestionMessageId = null
+                    addingSuggestionMessageId = null,
+                    routineSuggestions = emptyMap(),
+                    addedRoutineMessageIds = emptySet(),
+                    addingRoutineMessageId = null
                 )
             }
         }
@@ -239,7 +288,9 @@ class AiAssistantViewModel @Inject constructor(
                         chatSession = session,
                         error = null,
                         addedSuggestionMessageIds = emptySet(),
-                        addingSuggestionMessageId = null
+                        addingSuggestionMessageId = null,
+                        addedRoutineMessageIds = emptySet(),
+                        addingRoutineMessageId = null
                     )
                 }
                 parseAndStoreSuggestions(session)

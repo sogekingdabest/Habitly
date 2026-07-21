@@ -28,7 +28,11 @@ class FakeShoppingRepository : ShoppingRepository {
 
     override suspend fun deleteShoppingItem(householdId: String, itemId: String): Result<Unit> = Result.success(Unit)
 
-    override suspend fun archiveShoppingList(householdId: String): Result<Unit> = Result.success(Unit)
+    var archivedWithPantry: Boolean? = null
+    override suspend fun archiveShoppingList(householdId: String, stockPantry: Boolean): Result<Unit> {
+        archivedWithPantry = stockPantry
+        return Result.success(Unit)
+    }
 
     override fun observeShoppingHistory(householdId: String): Flow<List<ShoppingHistory>> = flowOf(emptyList())
 
@@ -42,5 +46,7 @@ class FakeShoppingRepository : ShoppingRepository {
 
     fun reset() {
         stubItems = emptyList()
+        addedItems = emptyList()
+        archivedWithPantry = null
     }
 }

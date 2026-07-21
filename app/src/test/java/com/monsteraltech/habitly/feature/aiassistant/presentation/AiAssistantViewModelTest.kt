@@ -2,15 +2,18 @@ package com.monsteraltech.habitly.feature.aiassistant.presentation
 
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeAuthRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeHouseholdRepository
+import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakePantryRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeRoutinesRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeShoppingRepository
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.AddAiItemsToShoppingListUseCase
-import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateRecipeSuggestionsUseCase
-import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateShoppingListUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.AddAiRoutinesUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateWeeklyMenuUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetAiContextUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetContextualQuickPromptsUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ParseAiRoutinesUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ParseAiShoppingListUseCase
+import com.monsteraltech.habitly.feature.routines.domain.usecase.AddRoutineUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -40,7 +43,8 @@ class AiAssistantViewModelTest {
             FakeAuthRepository(),
             FakeHouseholdRepository(),
             FakeRoutinesRepository(),
-            FakeShoppingRepository()
+            FakeShoppingRepository(),
+            FakePantryRepository()
         )
 
         val addItemsUseCase = AddAiItemsToShoppingListUseCase(
@@ -49,14 +53,29 @@ class AiAssistantViewModelTest {
             FakeShoppingRepository()
         )
 
+        val quickPromptsUseCase = GetContextualQuickPromptsUseCase(
+            FakeAuthRepository(),
+            FakeHouseholdRepository(),
+            FakeRoutinesRepository(),
+            FakeShoppingRepository(),
+            FakePantryRepository(),
+            GenerateWeeklyMenuUseCase()
+        )
+
+        val addRoutinesUseCase = AddAiRoutinesUseCase(
+            FakeAuthRepository(),
+            FakeHouseholdRepository(),
+            AddRoutineUseCase(FakeRoutinesRepository())
+        )
+
         viewModel = AiAssistantViewModel(
             repository = fakeRepository,
             getAiContextUseCase = getContextUseCase,
-            generateRecipeSuggestionsUseCase = GenerateRecipeSuggestionsUseCase(),
-            generateShoppingListUseCase = GenerateShoppingListUseCase(),
-            generateWeeklyMenuUseCase = GenerateWeeklyMenuUseCase(),
+            getContextualQuickPromptsUseCase = quickPromptsUseCase,
             parseAiShoppingListUseCase = ParseAiShoppingListUseCase(),
-            addAiItemsToShoppingListUseCase = addItemsUseCase
+            addAiItemsToShoppingListUseCase = addItemsUseCase,
+            parseAiRoutinesUseCase = ParseAiRoutinesUseCase(),
+            addAiRoutinesUseCase = addRoutinesUseCase
         )
 
         testDispatcher.scheduler.advanceUntilIdle()

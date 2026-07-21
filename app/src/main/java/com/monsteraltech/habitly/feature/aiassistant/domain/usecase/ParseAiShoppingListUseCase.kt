@@ -6,7 +6,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.stream.JsonReader
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiShoppingSuggestion
-import com.monsteraltech.habitly.feature.aiassistant.domain.util.AiShoppingListFormat
+import com.monsteraltech.habitly.feature.aiassistant.domain.util.AiStructuredBlocks
 import java.io.StringReader
 import javax.inject.Inject
 
@@ -29,40 +29,13 @@ class ParseAiShoppingListUseCase @Inject constructor() {
 
     operator fun invoke(text: String): List<AiShoppingSuggestion> {
         if (text.isBlank()) return emptyList()
-        val region = extractJsonRegion(text) ?: return emptyList()
+        val region = AiStructuredBlocks.extractJsonRegion(text, AiStructuredBlocks.SHOPPING_MARKER)
+            ?: return emptyList()
 
         val structured = structuredArray(region)?.let { arrayToSuggestions(it) }.orEmpty()
         if (structured.isNotEmpty()) return structured
 
         return regexFallback(region)
-    }
-
-    /** Aísla la porción del texto que contiene el JSON, priorizando el marcador. */
-    private fun extractJsonRegion(text: String): String? {
-        val markerIdx = text.indexOf(AiShoppingListFormat.MARKER)
-        val scope = if (markerIdx != -1) {
-            text.substring(markerIdx + AiShoppingListFormat.MARKER.length)
-        } else {
-            text
-        }
-
-        // Bloque con fences ```json ... ```
-        FENCE_REGEX.find(scope)?.let { match ->
-            val body = match.groupValues[1].trim()
-            if (body.contains("[") || body.contains("{")) return body
-        }
-
-        // Array suelto [ ... ]
-        val start = scope.indexOf('[')
-        val end = scope.lastIndexOf(']')
-        if (start != -1 && end > start) return scope.substring(start, end + 1)
-
-        // Objeto suelto { ... }
-        val objStart = scope.indexOf('{')
-        val objEnd = scope.lastIndexOf('}')
-        if (objStart != -1 && objEnd > objStart) return scope.substring(objStart, objEnd + 1)
-
-        return null
     }
 
     private fun structuredArray(region: String): JsonArray? {
@@ -156,7 +129,6 @@ class ParseAiShoppingListUseCase @Inject constructor() {
     }
 
     private companion object {
-        val FENCE_REGEX = Regex("```(?:json|JSON)?\\s*([\\s\\S]*?)```")
         // Llaves literales siempre escapadas: el motor ICU de Android 16+ rechaza una `}` suelta.
         val OBJECT_REGEX = Regex("\\{[^\\{\\}]*\\}")
         val DIGITS_REGEX = Regex("\\d+")
