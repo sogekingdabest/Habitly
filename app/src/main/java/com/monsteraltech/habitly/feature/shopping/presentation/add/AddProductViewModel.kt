@@ -3,8 +3,11 @@ package com.monsteraltech.habitly.feature.shopping.presentation.add
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.monsteraltech.habitly.feature.shopping.domain.model.PantryItem
 import com.monsteraltech.habitly.feature.shopping.domain.usecase.AddShoppingItemUseCase
 import com.monsteraltech.habitly.feature.shopping.domain.usecase.ObserveCustomStoresUseCase
+import com.monsteraltech.habitly.feature.shopping.domain.usecase.ObservePantryUseCase
+import com.monsteraltech.habitly.feature.shopping.domain.util.ProductNameNormalizer
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,13 +31,23 @@ data class AddProductUiState(
     val availableStores: List<String> = listOf("Mercadona", "Lidl", "Carrefour", "Cualquiera"),
     val isSaving: Boolean = false,
     val error: String? = null,
-    val success: Boolean = false
-)
+    val success: Boolean = false,
+    /** Lo que hay en casa, para avisar si ya se tiene lo que se va a añadir. */
+    val pantryItems: List<PantryItem> = emptyList()
+) {
+    /** Cuánto hay en casa del producto que se está escribiendo, o null si no hay nada. */
+    val pantryMatch: PantryItem?
+        get() {
+            val id = ProductNameNormalizer.toDocumentId(name) ?: return null
+            return pantryItems.find { it.id == id }
+        }
+}
 
 @HiltViewModel
 class AddProductViewModel @Inject constructor(
     private val addShoppingItemUseCase: AddShoppingItemUseCase,
     private val observeCustomStoresUseCase: ObserveCustomStoresUseCase,
+    private val observePantryUseCase: ObservePantryUseCase,
     private val observeUserProfileUseCase: ObserveUserProfileUseCase,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
@@ -54,7 +67,16 @@ class AddProductViewModel @Inject constructor(
                 .collectLatest { householdId ->
                     currentHouseholdId = householdId
                     observeStores(householdId)
+                    observePantry(householdId)
                 }
+        }
+    }
+
+    private fun observePantry(householdId: String) {
+        viewModelScope.launch {
+            observePantryUseCase(householdId)
+                .catch { /* el aviso de despensa es un extra: no debe romper el alta */ }
+                .collect { items -> _uiState.update { it.copy(pantryItems = items) } }
         }
     }
 

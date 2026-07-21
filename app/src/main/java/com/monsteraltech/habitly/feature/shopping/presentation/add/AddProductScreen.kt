@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.shopping.presentation.components.PantryHint
 
 val CATEGORIES = listOf(
     "Frutas y Verduras",
@@ -87,6 +88,12 @@ fun AddProductScreen(
                 singleLine = true,
                 shape = MaterialTheme.shapes.medium
             )
+
+            // Avisa de que ya lo tienes en casa antes de que lo compres otra vez.
+            uiState.pantryMatch?.let { inPantry ->
+                Spacer(modifier = Modifier.height(8.dp))
+                PantryHint(quantity = inPantry.quantity, unit = inPantry.unit)
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

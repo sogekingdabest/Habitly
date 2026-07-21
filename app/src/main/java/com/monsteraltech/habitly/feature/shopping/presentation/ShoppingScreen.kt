@@ -23,11 +23,17 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.shopping.presentation.components.PantryContent
+import com.monsteraltech.habitly.ui.components.HabitlyBackground
+import com.monsteraltech.habitly.ui.components.HabitlyCard
+import com.monsteraltech.habitly.ui.components.MeshArrangement
+import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,15 +74,41 @@ fun ShoppingScreen(
     }
 
     if (showArchiveDialog) {
+        var stockPantry by remember { mutableStateOf(true) }
+
         AlertDialog(
             onDismissRequest = { showArchiveDialog = false },
             icon = { Icon(Icons.Filled.Archive, contentDescription = null) },
             title = { Text(stringResource(R.string.shopping_archive_confirm_title)) },
-            text = { Text(stringResource(R.string.shopping_archive_confirm_message)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.shopping_archive_confirm_message))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .toggleable(
+                                value = stockPantry,
+                                onValueChange = { stockPantry = it },
+                                role = Role.Checkbox
+                            )
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(checked = stockPantry, onCheckedChange = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            stringResource(R.string.shopping_archive_stock_pantry),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showArchiveDialog = false
-                    viewModel.onArchiveList()
+                    viewModel.onArchiveList(stockPantry)
                 }) { Text(stringResource(R.string.shopping_archive)) }
             },
             dismissButton = {
@@ -133,7 +165,9 @@ fun ShoppingScreen(
         )
     }
 
+    HabitlyBackground(arrangement = MeshArrangement.Shopping) {
     Scaffold(
+        containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
@@ -182,6 +216,30 @@ fun ShoppingScreen(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = uiState.selectedTab == ShoppingTab.LIST,
+                    onClick = { viewModel.onSelectTab(ShoppingTab.LIST) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                ) { Text(stringResource(R.string.shopping_tab_list)) }
+                SegmentedButton(
+                    selected = uiState.selectedTab == ShoppingTab.PANTRY,
+                    onClick = { viewModel.onSelectTab(ShoppingTab.PANTRY) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                ) { Text(stringResource(R.string.shopping_tab_pantry)) }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (uiState.selectedTab == ShoppingTab.PANTRY) {
+                PantryContent(
+                    itemsByCategory = uiState.pantryByCategory,
+                    onAdjustQuantity = { itemId, delta -> viewModel.onAdjustPantryQuantity(itemId, delta) },
+                    onDelete = { itemId -> viewModel.onDeletePantryItem(itemId) }
+                )
+                return@Column
+            }
 
             if (uiState.totalItems > 0) {
                 LinearProgressIndicator(
@@ -338,6 +396,7 @@ fun ShoppingScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -347,12 +406,10 @@ fun StoreSectionCard(
     onToggle: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    OutlinedCard(
+    HabitlyCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.outlinedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        shape = LeafCornerMedium,
+        contentPadding = PaddingValues(0.dp)
     ) {
         Column {
             Row(
@@ -396,12 +453,12 @@ fun CompletedSectionCard(
     onToggle: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    OutlinedCard(
+    HabitlyCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.outlinedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
+        shape = LeafCornerMedium,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        elevation = 6.dp,
+        contentPadding = PaddingValues(0.dp)
     ) {
         Column {
             TextButton(

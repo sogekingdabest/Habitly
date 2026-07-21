@@ -44,8 +44,11 @@ interface ShoppingRepository {
 
     /**
      * Guarda la lista actual en el histórico y elimina los ítems de la lista activa.
+     *
+     * @param stockPantry si es true, los productos marcados como comprados pasan además a
+     * la despensa, dentro del mismo batch atómico.
      */
-    suspend fun archiveShoppingList(householdId: String): Result<Unit>
+    suspend fun archiveShoppingList(householdId: String, stockPantry: Boolean = true): Result<Unit>
     
     fun observeShoppingHistory(householdId: String): Flow<List<ShoppingHistory>>
 

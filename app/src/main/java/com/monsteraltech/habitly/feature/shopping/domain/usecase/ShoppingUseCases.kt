@@ -42,8 +42,9 @@ class DeleteShoppingItemUseCase @Inject constructor(
 class ArchiveShoppingListUseCase @Inject constructor(
     private val repository: ShoppingRepository
 ) {
-    suspend operator fun invoke(householdId: String): Result<Unit> {
-        return repository.archiveShoppingList(householdId)
+    /** @param stockPantry si lo comprado debe guardarse además en la despensa. */
+    suspend operator fun invoke(householdId: String, stockPantry: Boolean = true): Result<Unit> {
+        return repository.archiveShoppingList(householdId, stockPantry)
     }
 }
 

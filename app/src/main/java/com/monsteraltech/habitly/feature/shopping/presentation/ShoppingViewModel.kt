@@ -6,8 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.shopping.domain.model.PantryItem
 import com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem
 import com.monsteraltech.habitly.feature.shopping.domain.usecase.*
+import com.monsteraltech.habitly.feature.shopping.domain.util.ProductNameNormalizer
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -22,8 +24,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Pestañas de la pantalla: la lista de la compra y lo que ya hay en casa. */
+enum class ShoppingTab { LIST, PANTRY }
+
 data class ShoppingUiState(
     val allItems: List<ShoppingItem> = emptyList(),
+    val selectedTab: ShoppingTab = ShoppingTab.LIST,
+    val pantryItems: List<PantryItem> = emptyList(),
     val availableStores: List<String> = listOf("Mercadona", "Lidl", "Carrefour", "Cualquiera"),
     val selectedStore: String = "Cualquiera",
     val isLoading: Boolean = true,
@@ -60,6 +67,19 @@ data class ShoppingUiState(
     
     val progress: Float
         get() = if (totalItems == 0) 0f else checkedCount.toFloat() / totalItems.toFloat()
+
+    val pantryByCategory: Map<String, List<PantryItem>>
+        get() = pantryItems.groupBy { it.category.ifBlank { OTHER_CATEGORY } }.toSortedMap()
+
+    /** Cuánto hay en casa de un producto, buscándolo por nombre normalizado. */
+    fun pantryQuantityOf(name: String): Int? {
+        val id = ProductNameNormalizer.toDocumentId(name) ?: return null
+        return pantryItems.find { it.id == id }?.quantity
+    }
+
+    private companion object {
+        const val OTHER_CATEGORY = "Otros"
+    }
 }
 
 @HiltViewModel
@@ -75,6 +95,9 @@ class ShoppingViewModel @Inject constructor(
     private val checkAllItemsUseCase: CheckAllItemsUseCase,
     private val deleteCheckedItemsUseCase: DeleteCheckedItemsUseCase,
     private val getFrequentItemsUseCase: GetFrequentItemsUseCase,
+    private val observePantryUseCase: ObservePantryUseCase,
+    private val adjustPantryQuantityUseCase: AdjustPantryQuantityUseCase,
+    private val deletePantryItemUseCase: DeletePantryItemUseCase,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -87,6 +110,7 @@ class ShoppingViewModel @Inject constructor(
         
     private var observeListJob: Job? = null
     private var observeStoresJob: Job? = null
+    private var observePantryJob: Job? = null
 
     // Último producto borrado, guardado en memoria para poder deshacer (re-añadir).
     private var lastDeletedItem: ShoppingItem? = null
@@ -107,7 +131,14 @@ class ShoppingViewModel @Inject constructor(
     private fun startObserving(householdId: String) {
         observeListJob?.cancel()
         observeStoresJob?.cancel()
-        
+        observePantryJob?.cancel()
+
+        observePantryJob = viewModelScope.launch {
+            observePantryUseCase(householdId)
+                .catch { /* la despensa es secundaria: no debe tumbar la pantalla */ }
+                .collect { items -> _uiState.update { it.copy(pantryItems = items) } }
+        }
+
         observeStoresJob = viewModelScope.launch {
             observeCustomStoresUseCase(householdId)
                 .catch { /* ignorar errores silenciosos aquí por ahora */ }
@@ -211,11 +242,31 @@ class ShoppingViewModel @Inject constructor(
         _uiState.update { it.copy(recentlyDeletedName = null) }
     }
 
-    fun onArchiveList() {
+    fun onSelectTab(tab: ShoppingTab) {
+        _uiState.update { it.copy(selectedTab = tab) }
+    }
+
+    fun onAdjustPantryQuantity(itemId: String, delta: Int) {
+        val householdId = currentHouseholdId ?: return
+        viewModelScope.launch {
+            adjustPantryQuantityUseCase(householdId, itemId, delta)
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.shopping_error_update) } }
+        }
+    }
+
+    fun onDeletePantryItem(itemId: String) {
+        val householdId = currentHouseholdId ?: return
+        viewModelScope.launch {
+            deletePantryItemUseCase(householdId, itemId)
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.shopping_error_delete) } }
+        }
+    }
+
+    fun onArchiveList(stockPantry: Boolean = true) {
         val householdId = currentHouseholdId ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val result = archiveShoppingListUseCase(householdId)
+            val result = archiveShoppingListUseCase(householdId, stockPantry)
 
             _uiState.update { it.copy(isLoading = false) }
 

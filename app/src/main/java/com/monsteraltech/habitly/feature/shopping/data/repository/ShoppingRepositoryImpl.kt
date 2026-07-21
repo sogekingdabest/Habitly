@@ -4,9 +4,11 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import com.monsteraltech.habitly.feature.shopping.domain.model.PantryItem
 import com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingHistory
 import com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem
 import com.monsteraltech.habitly.feature.shopping.domain.repository.ShoppingRepository
+import com.monsteraltech.habitly.feature.shopping.domain.util.PantryMerge
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -122,17 +124,36 @@ class ShoppingRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun archiveShoppingList(householdId: String): Result<Unit> {
+    override suspend fun archiveShoppingList(householdId: String, stockPantry: Boolean): Result<Unit> {
         return try {
             val collectionRef = firestore.collection("households")
                 .document(householdId)
                 .collection("shopping_items")
-            
+
             // Obtenemos todos los items actuales
             val snapshot = collectionRef.get().await()
             val items = snapshot.documents.mapNotNull { doc -> doc.toObject(ShoppingItem::class.java)?.copy(id = doc.id) }
-            
+
             if (items.isEmpty()) return Result.success(Unit)
+
+            // Lo que se guarda en la despensa se calcula antes de abrir el batch, porque
+            // hay que leer lo que ya había para poder sumar cantidades.
+            val pantryWrites = if (stockPantry) {
+                val bought = items.filter { it.isChecked }
+                if (bought.isEmpty()) {
+                    emptyList()
+                } else {
+                    val pantryRef = firestore.collection("households")
+                        .document(householdId)
+                        .collection("pantry_items")
+                    val existing = pantryRef.get().await().documents.mapNotNull { doc ->
+                        doc.toObject(PantryItem::class.java)?.copy(id = doc.id)
+                    }
+                    PantryMerge.merge(existing, PantryMerge.fromShoppingItems(bought))
+                }
+            } else {
+                emptyList()
+            }
 
             val batch = firestore.batch()
 
@@ -155,8 +176,18 @@ class ShoppingRepositoryImpl @Inject constructor(
             for (doc in snapshot.documents) {
                 batch.delete(doc.reference)
             }
-            
-            // 3. Ejecutamos ambas acciones de forma 100% atómica
+
+            // 3. Lo comprado pasa a la despensa
+            if (pantryWrites.isNotEmpty()) {
+                val pantryRef = firestore.collection("households")
+                    .document(householdId)
+                    .collection("pantry_items")
+                for (item in pantryWrites) {
+                    batch.set(pantryRef.document(item.id), item)
+                }
+            }
+
+            // 4. Ejecutamos todo de forma 100% atómica
             batch.commit().await()
 
             Result.success(Unit)
