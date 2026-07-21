@@ -2,7 +2,6 @@ package com.monsteraltech.habitly.feature.login.presentation
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -12,12 +11,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.ui.components.HabitlyBackground
+import com.monsteraltech.habitly.ui.components.HabitlyPrimaryButton
+import com.monsteraltech.habitly.ui.components.HabitlyTextButton
+import com.monsteraltech.habitly.ui.components.HabitlyTextField
+import com.monsteraltech.habitly.ui.components.IconHalo
+import com.monsteraltech.habitly.ui.components.MeshArrangement
+import com.monsteraltech.habitly.ui.theme.habitly
 
 @Composable
 fun ForgotPasswordScreen(
@@ -25,89 +30,77 @@ fun ForgotPasswordScreen(
 ) {
     var email by remember { mutableStateOf("") }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .systemBarsPadding()
-            .imePadding()
-            .padding(24.dp)
-    ) {
+    HabitlyBackground(arrangement = MeshArrangement.Auth) {
         Column(
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .systemBarsPadding()
+                .imePadding()
+                .padding(horizontal = 26.dp, vertical = 20.dp)
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(80.dp)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.LockReset,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxSize()
+                Spacer(modifier = Modifier.height(32.dp))
+
+                IconHalo(size = 82.dp, cornerRadius = 26.dp) {
+                    Icon(
+                        imageVector = Icons.Rounded.LockReset,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(18.dp).fillMaxSize()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(22.dp))
+
+                Text(
+                    text = stringResource(R.string.forgot_title),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.forgot_subtitle),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.habitly.textSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.widthIn(max = 290.dp).padding(bottom = 30.dp)
+                )
+
+                HabitlyTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = stringResource(R.string.common_email),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Done
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                stringResource(R.string.forgot_title),
-                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            Text(
-                stringResource(R.string.forgot_subtitle),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 32.dp)
-            )
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text(stringResource(R.string.common_email)) },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Done
-                ),
+            // --- Parte inferior fija ---
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-
-        // --- Parte Inferior Fija ---
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Button(
-                onClick = { /* TODO: Enviar correo de recuperación */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-                shape = RoundedCornerShape(12.dp)
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(stringResource(R.string.forgot_send_link), fontSize = MaterialTheme.typography.titleMedium.fontSize)
-            }
+                HabitlyPrimaryButton(
+                    text = stringResource(R.string.forgot_send_link),
+                    onClick = { /* TODO: Enviar correo de recuperación */ },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-            TextButton(
-                onClick = onNavigateBack,
-                modifier = Modifier.height(50.dp)
-            ) {
-                Text(stringResource(R.string.forgot_back_to_login), fontWeight = FontWeight.Bold)
+                HabitlyTextButton(
+                    text = stringResource(R.string.forgot_back_to_login),
+                    onClick = onNavigateBack
+                )
             }
         }
     }

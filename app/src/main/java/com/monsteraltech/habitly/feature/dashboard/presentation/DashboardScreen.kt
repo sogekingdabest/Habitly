@@ -1,35 +1,58 @@
 package com.monsteraltech.habitly.feature.dashboard.presentation
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.*
+import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
+import com.monsteraltech.habitly.ui.components.HabitlyBackground
+import com.monsteraltech.habitly.ui.components.HabitlyCard
+import com.monsteraltech.habitly.ui.components.HabitlyPill
+import com.monsteraltech.habitly.ui.components.HabitlyPrimaryButton
+import com.monsteraltech.habitly.ui.components.HabitlyToggleCard
+import com.monsteraltech.habitly.ui.components.IconHalo
+import com.monsteraltech.habitly.ui.components.MeshArrangement
+import com.monsteraltech.habitly.ui.components.MineBadge
+import com.monsteraltech.habitly.ui.components.RitualToggle
+import com.monsteraltech.habitly.ui.components.StreakBadge
+import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
+import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
+import com.monsteraltech.habitly.ui.theme.habitly
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -38,6 +61,7 @@ import java.util.Locale
 fun DashboardScreen(
     onNavigateToShopping: () -> Unit = {},
     onNavigateToRoutines: () -> Unit = {},
+    onNavigateToAddRoutine: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -63,188 +87,183 @@ fun DashboardScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { innerPadding ->
-        if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+    HabitlyBackground(arrangement = MeshArrangement.Home) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { innerPadding ->
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+                return@Scaffold
             }
-            return@Scaffold
-        }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-        // Cabecera
-        item {
-            Column {
-                Text(
-                    text = today,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = stringResource(
-                        R.string.dashboard_greeting,
-                        uiState.household?.name ?: stringResource(R.string.dashboard_your_home)
-                    ),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-        }
-
-        // Widget de Compra
-        item {
-            DashboardCard(
-                title = stringResource(R.string.dashboard_shopping_title),
-                icon = { Icon(Icons.Filled.ShoppingCart, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                onClick = onNavigateToShopping
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                if (uiState.pendingShoppingItems.isEmpty()) {
-                    Text(stringResource(R.string.dashboard_shopping_empty), style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    Text(
-                        text = pluralStringResource(
-                            R.plurals.dashboard_pending_products,
-                            uiState.pendingShoppingItems.size,
-                            uiState.pendingShoppingItems.size
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
+                // Cabecera: fecha + saludo
+                item {
+                    Column {
+                        Text(
+                            text = today,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.habitly.accentText
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.dashboard_greeting,
+                                uiState.household?.name ?: stringResource(R.string.dashboard_your_home)
+                            ),
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                }
+
+                // Tarjeta de compra
+                item {
+                    ShoppingSummaryCard(
+                        pendingCount = uiState.pendingShoppingItems.size,
+                        onClick = onNavigateToShopping
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    uiState.pendingShoppingItems.take(3).forEach { item ->
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
-                            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(item.name, style = MaterialTheme.typography.bodyMedium)
+                }
+
+                // Sección "Tus hábitos para hoy"
+                item {
+                    Text(
+                        text = stringResource(R.string.dashboard_habits_today),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
+                if (uiState.pendingRoutines.isEmpty()) {
+                    item {
+                        HabitlyCard(shape = LeafCornerLarge) {
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = stringResource(R.string.dashboard_routines_done),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.habitly.textSecondary
+                                )
+                            }
                         }
                     }
-                    if (uiState.pendingShoppingItems.size > 3) {
-                        Text(stringResource(R.string.dashboard_and_more, uiState.pendingShoppingItems.size - 3), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    items(uiState.pendingRoutines, key = { it.id }) { routine ->
+                        val isMine = routine.type == RoutineType.HOUSEHOLD &&
+                            uiState.currentUserId.isNotBlank() &&
+                            routine.assignedTo == uiState.currentUserId
+                        RoutineDashboardItem(
+                            routine = routine,
+                            isMine = isMine,
+                            onToggle = { viewModel.onToggleRoutine(routine) }
+                        )
                     }
+                }
+
+                // Añadir rutina
+                item {
+                    HabitlyPrimaryButton(
+                        text = stringResource(R.string.routines_add_routine),
+                        onClick = onNavigateToAddRoutine,
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                    )
                 }
             }
         }
+    }
+}
 
-        // Widget de Rutinas
-        item {
-            Text(
-                text = stringResource(R.string.dashboard_habits_today),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
-        if (uiState.pendingRoutines.isEmpty()) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Box(modifier = Modifier.padding(24.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.dashboard_routines_done), style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-        } else {
-            items(uiState.pendingRoutines) { routine ->
-                RoutineDashboardItem(
-                    routine = routine,
-                    onToggle = { viewModel.onToggleRoutine(routine) }
+@Composable
+private fun ShoppingSummaryCard(
+    pendingCount: Int,
+    onClick: () -> Unit
+) {
+    HabitlyCard(shape = LeafCornerLarge, onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconHalo {
+                Icon(
+                    Icons.Outlined.ShoppingCart,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
-        }
-        }
-    }
-}
-
-@Composable
-fun DashboardCard(
-    title: String,
-    icon: @Composable () -> Unit,
-    onClick: () -> Unit,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        icon()
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-                Icon(Icons.Filled.ChevronRight, contentDescription = stringResource(R.string.dashboard_see_more))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.dashboard_shopping_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (pendingCount == 0) {
+                        stringResource(R.string.dashboard_shopping_empty)
+                    } else {
+                        pluralStringResource(R.plurals.dashboard_pending_products, pendingCount, pendingCount)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.habitly.textSecondary
+                )
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            content()
+            Spacer(Modifier.width(8.dp))
+            HabitlyPill(
+                text = stringResource(R.string.dashboard_see_more),
+                background = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.habitly.accentText
+            )
         }
     }
 }
 
 @Composable
-fun RoutineDashboardItem(
+private fun RoutineDashboardItem(
     routine: Routine,
+    isMine: Boolean,
     onToggle: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .toggleable(
-                value = false,
-                onValueChange = { onToggle() },
-                role = Role.Checkbox
-            ),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    HabitlyToggleCard(
+        checked = false,
+        onCheckedChange = { onToggle() },
+        shape = LeafCornerMedium,
+        contentPadding = PaddingValues(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), CircleShape)
-                    .background(MaterialTheme.colorScheme.surface),
-                contentAlignment = Alignment.Center
-            ) {
-                // Circular checkbox placeholder
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(routine.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                if (routine.description.isNotBlank()) {
-                    Text(routine.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RitualToggle(checked = false, size = 34.dp)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = routine.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(
+                    modifier = Modifier.padding(top = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (routine.description.isNotBlank()) {
+                        Text(
+                            text = routine.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.habitly.textSecondary
+                        )
+                    }
+                    if (routine.currentStreak >= 2) {
+                        StreakBadge(routine.currentStreak)
+                    }
+                    if (isMine) {
+                        MineBadge(stringResource(R.string.routines_assigned_to_me))
+                    }
                 }
             }
         }

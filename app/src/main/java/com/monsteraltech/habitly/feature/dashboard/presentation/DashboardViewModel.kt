@@ -9,7 +9,7 @@ import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserPro
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.usecase.ObserveRoutinesUseCase
 import com.monsteraltech.habitly.feature.routines.domain.usecase.ToggleRoutineUseCase
-import com.monsteraltech.habitly.feature.routines.presentation.RoutinesViewModel
+import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
 import com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem
 import com.monsteraltech.habitly.feature.shopping.domain.usecase.ObserveShoppingListUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class DashboardUiState(
@@ -32,6 +33,8 @@ data class DashboardUiState(
     val household: Household? = null,
     val pendingShoppingItems: List<ShoppingItem> = emptyList(),
     val pendingRoutines: List<Routine> = emptyList(),
+    /** Uid actual, para marcar con "Te toca" las rutinas de casa asignadas a este usuario. */
+    val currentUserId: String = "",
     val error: String? = null
 )
 
@@ -63,14 +66,17 @@ class DashboardViewModel @Inject constructor(
             val routinesFlow = observeRoutinesUseCase(currentUserId, householdId)
 
             combine(householdFlow, shoppingFlow, routinesFlow) { household, shoppingList, routines ->
+                val today = LocalDate.now()
                 val pendingShopping = shoppingList.filter { !it.isChecked }
-                val pendingRoutines = routines.filter { !RoutinesViewModel.isRoutineCompletedToday(it) }
-                
+                // Solo lo que toca hoy: antes se colaban rutinas de otros días de la semana.
+                val pendingRoutines = routines.filter { RoutineSchedule.isPendingOn(it, today) }
+
                 DashboardUiState(
                     isLoading = false,
                     household = household,
                     pendingShoppingItems = pendingShopping,
-                    pendingRoutines = pendingRoutines
+                    pendingRoutines = pendingRoutines,
+                    currentUserId = currentUserId
                 )
             }.catch { e ->
                 emit(DashboardUiState(isLoading = false, error = e.message))

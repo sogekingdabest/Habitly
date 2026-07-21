@@ -1,9 +1,8 @@
 package com.monsteraltech.habitly.feature.register.presentation.register
 
-import android.app.Activity
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,11 +16,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -39,6 +39,13 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.register.domain.model.RegisterError
 import com.monsteraltech.habitly.navigation.AuthRoute
 import com.monsteraltech.habitly.feature.login.presentation.findActivity
+import com.monsteraltech.habitly.ui.components.HabitlyBackground
+import com.monsteraltech.habitly.ui.components.HabitlyPrimaryButton
+import com.monsteraltech.habitly.ui.components.HabitlyTextButton
+import com.monsteraltech.habitly.ui.components.HabitlyTextField
+import com.monsteraltech.habitly.ui.components.IconHalo
+import com.monsteraltech.habitly.ui.components.MeshArrangement
+import com.monsteraltech.habitly.ui.theme.habitly
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 import java.util.UUID
@@ -71,13 +78,13 @@ fun RegisterScreen(
                         try {
                             val credentialManager = CredentialManager.create(context)
                             val webClientId = context.getString(R.string.default_web_client_id)
-                            
+
                             val rawNonce = UUID.randomUUID().toString()
                             val bytes = rawNonce.toByteArray()
                             val md = MessageDigest.getInstance("SHA-256")
                             val digest = md.digest(bytes)
                             val hashedNonce = digest.joinToString("") { "%02x".format(it) }
-                            
+
                             val googleIdOption = GetGoogleIdOption.Builder()
                                 .setFilterByAuthorizedAccounts(false)
                                 .setServerClientId(webClientId)
@@ -115,245 +122,236 @@ fun RegisterScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .imePadding()
-                .padding(24.dp)
-        ) {
-            // --- Parte Superior Desplazable ---
+    HabitlyBackground(arrangement = MeshArrangement.Auth) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { paddingValues ->
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .imePadding()
+                    .padding(horizontal = 26.dp, vertical = 12.dp)
             ) {
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(72.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PersonAddAlt1,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxSize()
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = stringResource(R.string.register_title),
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 32.dp)
-                )
-
-                OutlinedTextField(
-                    value = state.displayName,
-                    onValueChange = { viewModel.onIntent(RegisterIntent.DisplayNameChanged(it)) },
-                    label = { Text(stringResource(R.string.register_name)) },
-                    isError = state.displayNameError != null,
-                    supportingText = {
-                        if (state.displayNameError != null) {
-                            Text(
-                                text = getErrorMessage(state.displayNameError!!),
-                                modifier = Modifier.testTag("register_display_name_error")
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().testTag("register_display_name_field"),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                OutlinedTextField(
-                    value = state.email,
-                    onValueChange = { viewModel.onIntent(RegisterIntent.EmailChanged(it)) },
-                    label = { Text(stringResource(R.string.common_email)) },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next
-                    ),
-                    isError = state.emailError != null,
-                    supportingText = {
-                        if (state.emailError != null) {
-                            Text(
-                                text = getErrorMessage(state.emailError!!),
-                                modifier = Modifier.testTag("register_email_error")
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().testTag("register_email_field"),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                OutlinedTextField(
-                    value = state.password,
-                    onValueChange = { viewModel.onIntent(RegisterIntent.PasswordChanged(it)) },
-                    label = { Text(stringResource(R.string.common_password)) },
-                    isError = state.passwordError != null,
-                    supportingText = {
-                        if (state.passwordError != null) {
-                            Text(
-                                text = getErrorMessage(state.passwordError!!),
-                                modifier = Modifier.testTag("register_password_error")
-                            )
-                        }
-                    },
-                    visualTransformation = if (state.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        val image = if (state.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                        IconButton(onClick = { viewModel.onIntent(RegisterIntent.TogglePasswordVisibility) }) {
-                            Icon(
-                                imageVector = image,
-                                contentDescription = stringResource(
-                                    if (state.isPasswordVisible) R.string.register_hide_password else R.string.register_show_password
-                                )
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().testTag("register_password_field"),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                OutlinedTextField(
-                    value = state.confirmPassword,
-                    onValueChange = { viewModel.onIntent(RegisterIntent.ConfirmPasswordChanged(it)) },
-                    label = { Text(stringResource(R.string.register_confirm_password)) },
-                    isError = state.confirmPasswordError != null,
-                    supportingText = {
-                        if (state.confirmPasswordError != null) {
-                            Text(
-                                text = getErrorMessage(state.confirmPasswordError!!),
-                                modifier = Modifier.testTag("register_confirm_password_error")
-                            )
-                        }
-                    },
-                    visualTransformation = if (state.isConfirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        val image = if (state.isConfirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                        IconButton(onClick = { viewModel.onIntent(RegisterIntent.ToggleConfirmPasswordVisibility) }) {
-                            Icon(
-                                imageVector = image,
-                                contentDescription = stringResource(
-                                    if (state.isConfirmPasswordVisible) R.string.register_hide_password else R.string.register_show_password
-                                )
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().testTag("register_confirm_password_field"),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                if (state.globalError != null) {
-                    Text(
-                        text = getErrorMessage(state.globalError!!),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 8.dp).testTag("register_global_error_text")
-                    )
-                }
-                
-                // Espaciado extra para asegurar que el contenido se pueda mover debajo de los botones
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // --- Parte Inferior Fija ---
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Button(
-                    onClick = { viewModel.onIntent(RegisterIntent.RegisterWithEmailClicked) },
+                // --- Parte superior desplazable ---
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp)
-                        .testTag("register_submit_button"),
-                    enabled = state.isRegisterButtonEnabled,
-                    shape = RoundedCornerShape(12.dp)
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp).testTag("register_loading_indicator"),
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Text(stringResource(R.string.register_submit), fontSize = MaterialTheme.typography.titleMedium.fontSize)
-                    }
-                }
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f))
-                    Text(
-                        text = " ${stringResource(R.string.common_or)} ",
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    HorizontalDivider(modifier = Modifier.weight(1f))
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                OutlinedButton(
-                    onClick = { viewModel.onIntent(RegisterIntent.SignInWithGoogleClicked) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp)
-                        .testTag("register_google_button"),
-                    enabled = !state.isGoogleSignInLoading && !state.isLoading,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    if (state.isGoogleSignInLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp).testTag("register_google_loading_indicator"),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    } else {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_google),
+                    IconHalo(size = 74.dp, cornerRadius = 24.dp) {
+                        Icon(
+                            imageVector = Icons.Rounded.PersonAddAlt1,
                             contentDescription = null,
-                            modifier = Modifier.size(24.dp)
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(16.dp).fillMaxSize()
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(stringResource(R.string.register_with_google), color = MaterialTheme.colorScheme.onSurface)
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = stringResource(R.string.register_title),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+
+                    HabitlyTextField(
+                        value = state.displayName,
+                        onValueChange = { viewModel.onIntent(RegisterIntent.DisplayNameChanged(it)) },
+                        label = stringResource(R.string.register_name),
+                        isError = state.displayNameError != null,
+                        supportingText = {
+                            if (state.displayNameError != null) {
+                                Text(
+                                    text = getErrorMessage(state.displayNameError!!),
+                                    modifier = Modifier.testTag("register_display_name_error")
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("register_display_name_field")
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    HabitlyTextField(
+                        value = state.email,
+                        onValueChange = { viewModel.onIntent(RegisterIntent.EmailChanged(it)) },
+                        label = stringResource(R.string.common_email),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next
+                        ),
+                        isError = state.emailError != null,
+                        supportingText = {
+                            if (state.emailError != null) {
+                                Text(
+                                    text = getErrorMessage(state.emailError!!),
+                                    modifier = Modifier.testTag("register_email_error")
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("register_email_field")
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    HabitlyTextField(
+                        value = state.password,
+                        onValueChange = { viewModel.onIntent(RegisterIntent.PasswordChanged(it)) },
+                        label = stringResource(R.string.common_password),
+                        isError = state.passwordError != null,
+                        supportingText = {
+                            if (state.passwordError != null) {
+                                Text(
+                                    text = getErrorMessage(state.passwordError!!),
+                                    modifier = Modifier.testTag("register_password_error")
+                                )
+                            }
+                        },
+                        visualTransformation = if (state.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            val image = if (state.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                            IconButton(onClick = { viewModel.onIntent(RegisterIntent.TogglePasswordVisibility) }) {
+                                Icon(
+                                    imageVector = image,
+                                    contentDescription = stringResource(
+                                        if (state.isPasswordVisible) R.string.register_hide_password else R.string.register_show_password
+                                    )
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("register_password_field")
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    HabitlyTextField(
+                        value = state.confirmPassword,
+                        onValueChange = { viewModel.onIntent(RegisterIntent.ConfirmPasswordChanged(it)) },
+                        label = stringResource(R.string.register_confirm_password),
+                        isError = state.confirmPasswordError != null,
+                        supportingText = {
+                            if (state.confirmPasswordError != null) {
+                                Text(
+                                    text = getErrorMessage(state.confirmPasswordError!!),
+                                    modifier = Modifier.testTag("register_confirm_password_error")
+                                )
+                            }
+                        },
+                        visualTransformation = if (state.isConfirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            val image = if (state.isConfirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                            IconButton(onClick = { viewModel.onIntent(RegisterIntent.ToggleConfirmPasswordVisibility) }) {
+                                Icon(
+                                    imageVector = image,
+                                    contentDescription = stringResource(
+                                        if (state.isConfirmPasswordVisible) R.string.register_hide_password else R.string.register_show_password
+                                    )
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("register_confirm_password_field")
+                    )
+
+                    if (state.globalError != null) {
+                        Text(
+                            text = getErrorMessage(state.globalError!!),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 8.dp).testTag("register_global_error_text")
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                // --- Parte inferior fija ---
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(stringResource(R.string.register_have_account))
-                    TextButton(
-                        onClick = { viewModel.onIntent(RegisterIntent.NavigateToLoginClicked) },
-                        modifier = Modifier.testTag("register_navigate_to_login_link")
+                    HabitlyPrimaryButton(
+                        text = stringResource(R.string.register_submit),
+                        onClick = { viewModel.onIntent(RegisterIntent.RegisterWithEmailClicked) },
+                        enabled = state.isRegisterButtonEnabled,
+                        loading = state.isLoading,
+                        modifier = Modifier.fillMaxWidth().testTag("register_submit_button")
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(stringResource(R.string.register_login_link), fontWeight = FontWeight.Bold)
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.habitly.border)
+                        Text(
+                            text = " ${stringResource(R.string.common_or)} ",
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.habitly.navIdle
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.habitly.border)
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    OutlinedButton(
+                        onClick = { viewModel.onIntent(RegisterIntent.SignInWithGoogleClicked) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .testTag("register_google_button"),
+                        enabled = !state.isGoogleSignInLoading && !state.isLoading,
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.habitly.card,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = BorderStroke(1.5.dp, MaterialTheme.habitly.border)
+                    ) {
+                        if (state.isGoogleSignInLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp).testTag("register_google_loading_indicator"),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_google),
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = stringResource(R.string.register_with_google),
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.register_have_account),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.habitly.textSecondary
+                        )
+                        HabitlyTextButton(
+                            text = stringResource(R.string.register_login_link),
+                            onClick = { viewModel.onIntent(RegisterIntent.NavigateToLoginClicked) },
+                            modifier = Modifier.testTag("register_navigate_to_login_link")
+                        )
                     }
                 }
             }

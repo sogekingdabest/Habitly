@@ -32,6 +32,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.graphics.Color
+import com.monsteraltech.habitly.ui.components.HabitlyBackground
+import com.monsteraltech.habitly.ui.components.HabitlyCard
+import com.monsteraltech.habitly.ui.components.MeshArrangement
+import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
+import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
 
 @Composable
 fun HouseholdScreen(
@@ -83,9 +89,10 @@ fun HouseholdScreen(
         }
     }
 
+    HabitlyBackground(arrangement = MeshArrangement.Household) {
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -117,10 +124,11 @@ fun HouseholdScreen(
             } else if (uiState.household != null) {
                 
                 // === SECCIÓN: Tu Perfil ===
-                Card(
+                HabitlyCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    shape = LeafCornerLarge,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentPadding = PaddingValues(0.dp)
                 ) {
                     Column(
                         modifier = Modifier
@@ -175,10 +183,11 @@ fun HouseholdScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // === SECCIÓN: Info de la Casa ===
-                Card(
+                HabitlyCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    shape = LeafCornerLarge,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentPadding = PaddingValues(0.dp)
                 ) {
                     Column(
                         modifier = Modifier
@@ -253,12 +262,13 @@ fun HouseholdScreen(
                     val memberName = member.nickname.ifBlank { member.displayName }
                     val isYou = member.id == uiState.userProfile?.id
                     
-                    Card(
+                    HabitlyCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        shape = LeafCornerMedium,
+                        elevation = 6.dp,
+                        contentPadding = PaddingValues(0.dp)
                     ) {
                         Row(
                             modifier = Modifier
@@ -392,6 +402,7 @@ fun HouseholdScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
     }
 
     // Dialog de confirmación de salir de la casa

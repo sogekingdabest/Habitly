@@ -2,12 +2,12 @@ package com.monsteraltech.habitly.feature.widget.domain
 
 import com.monsteraltech.habitly.feature.household.domain.repository.HouseholdRepository
 import com.monsteraltech.habitly.feature.login.domain.repository.AuthRepository
-import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepository
+import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
 import com.monsteraltech.habitly.feature.shopping.domain.repository.ShoppingRepository
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.Calendar
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -43,10 +43,9 @@ class BuildWidgetSnapshotUseCase @Inject constructor(
 
         val pendingItems = shopping.filter { !it.isChecked }.map { it.name }
 
-        val today = Calendar.getInstance()
-        val dayOfWeek = today.get(Calendar.DAY_OF_WEEK)
+        val today = LocalDate.now()
         val pendingRoutines = (personal + household)
-            .filter { it.isScheduledForDayOfWeek(dayOfWeek) && !isCompletedToday(it, today) }
+            .filter { RoutineSchedule.isPendingOn(it, today) }
             .map { it.title }
 
         return WidgetSnapshot(
@@ -54,13 +53,6 @@ class BuildWidgetSnapshotUseCase @Inject constructor(
             pendingItems = pendingItems,
             pendingRoutines = pendingRoutines
         )
-    }
-
-    private fun isCompletedToday(routine: Routine, today: Calendar): Boolean {
-        val last = routine.lastCompletedAt ?: return false
-        val completed = Calendar.getInstance().apply { timeInMillis = last }
-        return today.get(Calendar.YEAR) == completed.get(Calendar.YEAR) &&
-            today.get(Calendar.DAY_OF_YEAR) == completed.get(Calendar.DAY_OF_YEAR)
     }
 
     private companion object {
