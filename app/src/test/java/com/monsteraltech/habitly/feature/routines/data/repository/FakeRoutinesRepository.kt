@@ -1,12 +1,12 @@
 package com.monsteraltech.habitly.feature.routines.data.repository
 
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
-import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineCompletion
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
+import java.time.LocalDate
 
 class FakeRoutinesRepository : RoutinesRepository {
 
@@ -39,22 +39,69 @@ class FakeRoutinesRepository : RoutinesRepository {
         return Result.success(Unit)
     }
 
-    override suspend fun updateRoutineCompletion(
+    override suspend fun getRoutine(
         userId: String,
         householdId: String,
         routineId: String,
-        type: RoutineType,
+        type: RoutineType
+    ): Result<Routine?> {
+        if (shouldFail) return Result.failure(Exception(errorMessage))
+        val list = if (type == RoutineType.PERSONAL) personalRoutines else householdRoutines
+        return Result.success(list.value.find { it.id == routineId })
+    }
+
+    override suspend fun updateRoutineCompletion(
+        userId: String,
+        householdId: String,
+        routine: Routine,
         completedAt: Long?,
         completedBy: String?
     ): Result<Unit> {
         if (shouldFail) return Result.failure(Exception(errorMessage))
         updateCompletionCalls++
-        val list = if (type == RoutineType.PERSONAL) personalRoutines else householdRoutines
-        val updated = list.value.map { routine ->
-            if (routine.id == routineId) {
-                routine.copy(lastCompletedAt = completedAt, lastCompletedBy = completedBy)
-            } else routine
+        val list = if (routine.type == RoutineType.PERSONAL) personalRoutines else householdRoutines
+        val updated = list.value.map { existing ->
+            if (existing.id == routine.id) {
+                existing.copy(lastCompletedAt = completedAt, lastCompletedBy = completedBy)
+            } else existing
         }
+        if (routine.type == RoutineType.PERSONAL) {
+            personalRoutines.value = updated
+        } else {
+            householdRoutines.value = updated
+        }
+        return Result.success(Unit)
+    }
+
+    /** Completados por id de rutina; la clave vacía sirve de comodín para cualquiera. */
+    var stubCompletions: Map<String, List<RoutineCompletion>> = emptyMap()
+
+    override suspend fun getCompletions(
+        userId: String,
+        householdId: String,
+        routineId: String,
+        type: RoutineType,
+        from: LocalDate,
+        to: LocalDate
+    ): Result<List<RoutineCompletion>> {
+        if (shouldFail) return Result.failure(Exception(errorMessage))
+        val forRoutine = stubCompletions[routineId] ?: stubCompletions[""] ?: emptyList()
+        return Result.success(forRoutine.filter { !it.date.isBefore(from) && !it.date.isAfter(to) })
+    }
+
+    var assignments: MutableMap<String, String?> = mutableMapOf()
+
+    override suspend fun updateRoutineAssignment(
+        userId: String,
+        householdId: String,
+        routineId: String,
+        type: RoutineType,
+        assignedTo: String?
+    ): Result<Unit> {
+        if (shouldFail) return Result.failure(Exception(errorMessage))
+        assignments[routineId] = assignedTo
+        val list = if (type == RoutineType.PERSONAL) personalRoutines else householdRoutines
+        val updated = list.value.map { if (it.id == routineId) it.copy(assignedTo = assignedTo) else it }
         if (type == RoutineType.PERSONAL) {
             personalRoutines.value = updated
         } else {
@@ -84,29 +131,15 @@ class FakeRoutinesRepository : RoutinesRepository {
     override suspend fun updateRoutine(
         userId: String,
         householdId: String,
-        routineId: String,
-        type: RoutineType,
-        title: String,
-        description: String,
-        frequency: RoutineFrequency,
-        scheduledDays: List<Int>,
-        reminderTime: Int?
+        routine: Routine
     ): Result<Unit> {
         if (shouldFail) return Result.failure(Exception(errorMessage))
         updateRoutineCalls++
-        val list = if (type == RoutineType.PERSONAL) personalRoutines else householdRoutines
-        val updated = list.value.map { routine ->
-            if (routine.id == routineId) {
-                routine.copy(
-                    title = title.trim(),
-                    description = description.trim(),
-                    frequency = frequency,
-                    scheduledDays = scheduledDays,
-                    reminderTime = reminderTime
-                )
-            } else routine
+        val list = if (routine.type == RoutineType.PERSONAL) personalRoutines else householdRoutines
+        val updated = list.value.map { existing ->
+            if (existing.id == routine.id) routine else existing
         }
-        if (type == RoutineType.PERSONAL) {
+        if (routine.type == RoutineType.PERSONAL) {
             personalRoutines.value = updated
         } else {
             householdRoutines.value = updated
@@ -145,6 +178,8 @@ class FakeRoutinesRepository : RoutinesRepository {
     fun reset() {
         personalRoutines.value = emptyList()
         householdRoutines.value = emptyList()
+        stubCompletions = emptyMap()
+        assignments = mutableMapOf()
         shouldFail = false
         errorMessage = "Fake error"
         addRoutineCalls = 0

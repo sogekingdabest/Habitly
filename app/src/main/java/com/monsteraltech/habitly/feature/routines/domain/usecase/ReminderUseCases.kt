@@ -17,7 +17,12 @@ import javax.inject.Singleton
 class ScheduleReminderUseCase @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    operator fun invoke(routine: Routine) {
+    /**
+     * [userId] y [householdId] viajan en el trabajo para que el worker pueda releer la rutina
+     * al dispararse: su frecuencia, su pausa o su última vez pueden haber cambiado desde que
+     * se programó el recordatorio.
+     */
+    operator fun invoke(routine: Routine, userId: String, householdId: String) {
         val workManager = WorkManager.getInstance(context)
         val workId = RoutineReminderWorker.getUniqueWorkId(routine.id)
 
@@ -47,8 +52,9 @@ class ScheduleReminderUseCase @Inject constructor(
                 workDataOf(
                     RoutineReminderWorker.KEY_ROUTINE_TITLE to routine.title,
                     RoutineReminderWorker.KEY_ROUTINE_ID to routine.id,
-                    RoutineReminderWorker.KEY_FREQUENCY to routine.frequency.name,
-                    RoutineReminderWorker.KEY_SCHEDULED_DAYS to routine.scheduledDays.toIntArray()
+                    RoutineReminderWorker.KEY_ROUTINE_TYPE to routine.type.name,
+                    RoutineReminderWorker.KEY_USER_ID to userId,
+                    RoutineReminderWorker.KEY_HOUSEHOLD_ID to householdId
                 )
             )
             .build()

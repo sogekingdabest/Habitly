@@ -7,40 +7,64 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.work.Worker
+import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.monsteraltech.habitly.R
-import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
-import java.util.Calendar
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
+import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
+import dagger.hilt.android.EntryPointAccessors
+import java.time.LocalDate
 
+/**
+ * Notifica una rutina a su hora. El trabajo es periódico diario, así que en cada disparo
+ * hay que decidir si hoy toca de verdad.
+ *
+ * Relee la rutina de Firestore (que resuelve desde su caché offline, sin necesitar red) en vez
+ * de fiarse de lo que se guardó al programar el recordatorio: la frecuencia, la pausa o la
+ * última vez que se hizo pueden haber cambiado desde entonces, y en las rutinas "cada N días"
+ * el "¿toca hoy?" depende justo de ese último dato.
+ */
 class RoutineReminderWorker(
     context: Context,
     workerParams: WorkerParameters
-) : Worker(context, workerParams) {
+) : CoroutineWorker(context, workerParams) {
 
-    override fun doWork(): Result {
-        val routineTitle = inputData.getString(KEY_ROUTINE_TITLE) ?: return Result.failure()
+    override suspend fun doWork(): Result {
         val routineId = inputData.getString(KEY_ROUTINE_ID) ?: return Result.failure()
-        val frequency = inputData.getString(KEY_FREQUENCY) ?: RoutineFrequency.DAILY.name
-        val scheduledDays = inputData.getIntArray(KEY_SCHEDULED_DAYS) ?: IntArray(0)
+        val fallbackTitle = inputData.getString(KEY_ROUTINE_TITLE) ?: return Result.failure()
+        val userId = inputData.getString(KEY_USER_ID).orEmpty()
+        val householdId = inputData.getString(KEY_HOUSEHOLD_ID).orEmpty()
+        val type = runCatching {
+            RoutineType.valueOf(inputData.getString(KEY_ROUTINE_TYPE) ?: RoutineType.PERSONAL.name)
+        }.getOrDefault(RoutineType.PERSONAL)
 
-        // El trabajo periódico se dispara cada día; solo notificamos si HOY toca
-        // según la frecuencia y los días programados de la rutina.
-        if (!isScheduledToday(frequency, scheduledDays)) {
+        val repository = EntryPointAccessors
+            .fromApplication(applicationContext, RoutinesEntryPoint::class.java)
+            .routinesRepository()
+
+        val routineResult = repository.getRoutine(userId, householdId, routineId, type)
+
+        // No se pudo leer (sin red y sin caché): avisamos con lo último que sabíamos.
+        if (routineResult.isFailure) {
+            showNotification(fallbackTitle, routineId)
             return Result.success()
         }
 
-        showNotification(routineTitle, routineId)
-        return Result.success()
-    }
+        // Se leyó bien pero no existe: la rutina se borró, el recordatorio sobra.
+        val routine = routineResult.getOrNull() ?: return Result.success()
 
-    private fun isScheduledToday(frequency: String, scheduledDays: IntArray): Boolean {
-        val today = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
-        return when (frequency) {
-            RoutineFrequency.WEEKLY.name -> scheduledDays.contains(today)
-            RoutineFrequency.CUSTOM.name -> scheduledDays.isEmpty() || scheduledDays.contains(today)
-            else -> true // DAILY o desconocido: notificar siempre
+        // No molestamos si hoy no toca, si está en pausa o si ya está hecha.
+        if (!RoutineSchedule.isPendingOn(routine, LocalDate.now())) return Result.success()
+
+        // Si la rutina está asignada a otro miembro, no es asunto de este usuario.
+        // Esto da el "te toca a ti" sin necesitar FCM ni backend.
+        val assignedTo = routine.assignedTo
+        if (assignedTo != null && userId.isNotBlank() && assignedTo != userId) {
+            return Result.success()
         }
+
+        showNotification(routine.title, routineId)
+        return Result.success()
     }
 
     private fun showNotification(title: String, routineId: String) {
@@ -88,8 +112,9 @@ class RoutineReminderWorker(
     companion object {
         const val KEY_ROUTINE_TITLE = "routine_title"
         const val KEY_ROUTINE_ID = "routine_id"
-        const val KEY_FREQUENCY = "routine_frequency"
-        const val KEY_SCHEDULED_DAYS = "routine_scheduled_days"
+        const val KEY_ROUTINE_TYPE = "routine_type"
+        const val KEY_USER_ID = "user_id"
+        const val KEY_HOUSEHOLD_ID = "household_id"
 
         fun getUniqueWorkId(routineId: String): String = "routine_reminder_$routineId"
     }

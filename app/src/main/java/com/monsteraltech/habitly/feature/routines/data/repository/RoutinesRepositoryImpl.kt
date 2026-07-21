@@ -1,9 +1,10 @@
 package com.monsteraltech.habitly.feature.routines.data.repository
 
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
-import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineCompletion
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepository
 import com.monsteraltech.habitly.feature.routines.domain.util.StreakCalculator
@@ -72,16 +73,29 @@ class RoutinesRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateRoutineCompletion(
+    override suspend fun getRoutine(
         userId: String,
         householdId: String,
         routineId: String,
-        type: RoutineType,
+        type: RoutineType
+    ): Result<Routine?> {
+        return try {
+            val document = documentFor(type, userId, householdId, routineId).get().await()
+            Result.success(document.toObject(Routine::class.java)?.copy(id = document.id))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateRoutineCompletion(
+        userId: String,
+        householdId: String,
+        routine: Routine,
         completedAt: Long?,
         completedBy: String?
     ): Result<Unit> {
         return try {
-            val routineRef = documentFor(type, userId, householdId, routineId)
+            val routineRef = documentFor(routine.type, userId, householdId, routine.id)
             val completionsRef = routineRef.collection("completions")
             val zone = ZoneId.systemDefault()
 
@@ -107,11 +121,14 @@ class RoutinesRepositoryImpl @Inject constructor(
                 .limit(MAX_COMPLETIONS_SCANNED)
                 .get()
                 .await()
-            val dates = snapshot.documents.mapNotNull { doc ->
-                val value = doc.getString("date") ?: doc.id
-                runCatching { LocalDate.parse(value) }.getOrNull()
-            }
-            val streak = StreakCalculator.calculate(dates)
+            val dates = snapshot.toLocalDates()
+
+            // La racha depende de la frecuencia, así que se calcula con la rutina ya actualizada.
+            val streak = StreakCalculator.forRoutine(
+                routine = routine.copy(lastCompletedAt = completedAt, lastCompletedBy = completedBy),
+                completedDates = dates,
+                today = LocalDate.now(zone)
+            )
 
             // 3. Denormalizamos en el documento de la rutina (para pintarla sin listeners extra).
             routineRef.update(
@@ -119,10 +136,58 @@ class RoutinesRepositoryImpl @Inject constructor(
                     "lastCompletedAt" to completedAt,
                     "lastCompletedBy" to completedBy,
                     "currentStreak" to streak.current,
-                    "bestStreak" to streak.best
+                    "bestStreak" to streak.best,
+                    "streakGraceUsed" to streak.graceUsed
                 )
             ).await()
 
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getCompletions(
+        userId: String,
+        householdId: String,
+        routineId: String,
+        type: RoutineType,
+        from: LocalDate,
+        to: LocalDate
+    ): Result<List<RoutineCompletion>> {
+        return try {
+            // Los ids/campos son fechas ISO (yyyy-MM-dd), así que el orden lexicográfico
+            // coincide con el cronológico y se puede filtrar por rango como texto.
+            val snapshot = documentFor(type, userId, householdId, routineId)
+                .collection("completions")
+                .whereGreaterThanOrEqualTo("date", from.toString())
+                .whereLessThanOrEqualTo("date", to.toString())
+                .limit(MAX_COMPLETIONS_SCANNED)
+                .get()
+                .await()
+
+            val completions = snapshot.documents.mapNotNull { doc ->
+                val value = doc.getString("date") ?: doc.id
+                val date = runCatching { LocalDate.parse(value) }.getOrNull() ?: return@mapNotNull null
+                RoutineCompletion(date = date, userId = doc.getString("userId").orEmpty())
+            }
+            Result.success(completions)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateRoutineAssignment(
+        userId: String,
+        householdId: String,
+        routineId: String,
+        type: RoutineType,
+        assignedTo: String?
+    ): Result<Unit> {
+        return try {
+            documentFor(type, userId, householdId, routineId)
+                .update("assignedTo", assignedTo)
+                .await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -146,23 +211,21 @@ class RoutinesRepositoryImpl @Inject constructor(
     override suspend fun updateRoutine(
         userId: String,
         householdId: String,
-        routineId: String,
-        type: RoutineType,
-        title: String,
-        description: String,
-        frequency: RoutineFrequency,
-        scheduledDays: List<Int>,
-        reminderTime: Int?
+        routine: Routine
     ): Result<Unit> {
         return try {
-            documentFor(type, userId, householdId, routineId)
+            documentFor(routine.type, userId, householdId, routine.id)
                 .update(
                     mapOf(
-                        "title" to title.trim(),
-                        "description" to description.trim(),
-                        "frequency" to frequency.name,
-                        "scheduledDays" to scheduledDays,
-                        "reminderTime" to reminderTime
+                        "title" to routine.title.trim(),
+                        "description" to routine.description.trim(),
+                        "frequency" to routine.frequency.name,
+                        "scheduledDays" to routine.scheduledDays,
+                        "reminderTime" to routine.reminderTime,
+                        "intervalDays" to routine.intervalDays,
+                        "pausedUntil" to routine.pausedUntil,
+                        "assignedTo" to routine.assignedTo,
+                        "rotationEnabled" to routine.rotationEnabled
                     )
                 ).await()
             Result.success(Unit)
@@ -190,7 +253,13 @@ class RoutinesRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun collectionFor(type: RoutineType, userId: String, householdId: String) =
+    private fun com.google.firebase.firestore.QuerySnapshot.toLocalDates(): List<LocalDate> =
+        documents.mapNotNull { doc ->
+            val value = doc.getString("date") ?: doc.id
+            runCatching { LocalDate.parse(value) }.getOrNull()
+        }
+
+    private fun collectionFor(type: RoutineType, userId: String, householdId: String): CollectionReference =
         if (type == RoutineType.PERSONAL) {
             firestore.collection("users").document(userId).collection("routines")
         } else {

@@ -1,7 +1,7 @@
 package com.monsteraltech.habitly.feature.routines.presentation
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -22,7 +23,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,18 +39,41 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
+import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
+import com.monsteraltech.habitly.feature.routines.presentation.components.HouseholdBalanceCard
+import com.monsteraltech.habitly.ui.components.HabitlyBackground
+import com.monsteraltech.habitly.ui.components.HabitlyToggleCard
+import com.monsteraltech.habitly.ui.components.MeshArrangement
+import com.monsteraltech.habitly.ui.components.RitualToggle
+import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
+import androidx.compose.ui.graphics.Color
+import java.time.LocalDate
 import java.util.Calendar
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+/** Lo que devuelve el formulario de alta/edición de una rutina. */
+data class RoutineFormResult(
+    val title: String,
+    val description: String,
+    val type: RoutineType,
+    val frequency: RoutineFrequency,
+    val scheduledDays: List<Int>,
+    val reminderTime: Int?,
+    val intervalDays: Int?,
+    val rotationEnabled: Boolean = false,
+    val assignedTo: String? = null
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutinesScreen(
+    onNavigateToAddRoutine: (RoutineType) -> Unit,
     viewModel: RoutinesViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    var showAddDialog by remember { mutableStateOf(false) }
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val today = LocalDate.now()
 
     val tabs = listOf(
         stringResource(R.string.routines_tab_personal),
@@ -64,11 +87,17 @@ fun RoutinesScreen(
         }
     }
 
+    HabitlyBackground(arrangement = MeshArrangement.Routines) {
     Scaffold(
+        containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = {
+                    onNavigateToAddRoutine(
+                        if (selectedTabIndex == 0) RoutineType.PERSONAL else RoutineType.HOUSEHOLD
+                    )
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
@@ -98,7 +127,6 @@ fun RoutinesScreen(
             } else {
                 val currentType = if (selectedTabIndex == 0) RoutineType.PERSONAL else RoutineType.HOUSEHOLD
                 val filteredRoutines = uiState.routines.filter { it.type == currentType }.sortedBy { it.order }
-                var routinesList by remember(filteredRoutines) { mutableStateOf(filteredRoutines) }
 
                 if (filteredRoutines.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -113,16 +141,37 @@ fun RoutinesScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        if (currentType == RoutineType.HOUSEHOLD) {
+                            item(key = "balance") {
+                                HouseholdBalanceCard(
+                                    balance = uiState.weeklyBalance,
+                                    memberNicknames = uiState.memberNicknames,
+                                    members = uiState.householdMembers,
+                                    currentUserId = uiState.currentUserId
+                                )
+                            }
+                        }
+
                         items(filteredRoutines, key = { it.id }) { routine ->
                             RoutineCard(
                                 routine = routine,
-                                isCompleted = RoutinesViewModel.isRoutineCompletedToday(routine),
+                                isCompleted = RoutineSchedule.isCompletedOn(routine, today),
+                                isPaused = RoutineSchedule.isPausedOn(routine, today),
                                 completedByName = routine.lastCompletedBy?.let { uiState.memberNicknames[it] },
+                                assignedToName = routine.assignedTo?.let { uiState.memberNicknames[it] },
+                                isAssignedToMe = routine.assignedTo == uiState.currentUserId,
+                                members = uiState.householdMembers,
+                                memberNicknames = uiState.memberNicknames,
                                 onToggle = { viewModel.onToggleRoutine(routine) },
-                                onEdit = { newTitle, newDescription, newFrequency, newDays, newReminderTime ->
-                                    viewModel.onEditRoutine(routine, newTitle, newDescription, newFrequency, newDays, newReminderTime)
+                                onEdit = { form ->
+                                    viewModel.onEditRoutine(
+                                        routine, form.title, form.description, form.frequency,
+                                        form.scheduledDays, form.reminderTime, form.intervalDays,
+                                        routine.pausedUntil, form.rotationEnabled, form.assignedTo
+                                    )
                                 },
                                 onDelete = { viewModel.onDeleteRoutine(routine) },
+                                onOpenDetail = { viewModel.onOpenRoutineDetail(routine) },
                                 onMoveUp = {
                                     val currentIndex = filteredRoutines.indexOfFirst { it.id == routine.id }
                                     if (currentIndex > 0) {
@@ -148,38 +197,80 @@ fun RoutinesScreen(
             }
         }
     }
+    }
 
-    if (showAddDialog) {
-        var title by remember { mutableStateOf("") }
-        var description by remember { mutableStateOf("") }
-        var type by remember { mutableStateOf(if (selectedTabIndex == 0) RoutineType.PERSONAL else RoutineType.HOUSEHOLD) }
-        var frequency by remember { mutableStateOf(RoutineFrequency.DAILY) }
-        var selectedDays by remember { mutableStateOf<List<Int>>(emptyList()) }
-        var reminderTime by remember { mutableStateOf<Int?>(null) }
-        var showTimePicker by remember { mutableStateOf(false) }
+    uiState.routineDetail?.let { detail ->
+        RoutineDetailSheet(
+            detail = detail,
+            onDismiss = { viewModel.onCloseRoutineDetail() },
+            onMonthShift = { viewModel.onDetailMonthShift(it) },
+            onPause = { viewModel.onSetPaused(detail.routine, it) }
+        )
+    }
+}
 
-        AlertDialog(
-            onDismissRequest = { showAddDialog = false },
-            title = { Text(stringResource(R.string.routines_new_routine_title)) },
-            text = {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    OutlinedTextField(
-                        value = title,
-                        onValueChange = { title = it },
-                        label = { Text(stringResource(R.string.routines_field_title)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = description,
-                        onValueChange = { description = it },
-                        label = { Text(stringResource(R.string.routines_field_description)) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    
+/**
+ * Formulario compartido por el alta y la edición: antes eran dos diálogos casi idénticos,
+ * y cada campo nuevo (como el intervalo) había que añadirlo por duplicado.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RoutineFormDialog(
+    dialogTitleRes: Int,
+    confirmLabelRes: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (RoutineFormResult) -> Unit,
+    showTypeSelector: Boolean = false,
+    initialTitle: String = "",
+    initialDescription: String = "",
+    initialType: RoutineType = RoutineType.PERSONAL,
+    initialFrequency: RoutineFrequency = RoutineFrequency.DAILY,
+    initialDays: List<Int> = emptyList(),
+    initialReminderTime: Int? = null,
+    initialIntervalDays: Int? = null,
+    initialRotationEnabled: Boolean = false,
+    initialAssignedTo: String? = null,
+    members: List<String> = emptyList(),
+    memberNicknames: Map<String, String> = emptyMap()
+) {
+    var title by remember { mutableStateOf(initialTitle) }
+    var description by remember { mutableStateOf(initialDescription) }
+    var type by remember { mutableStateOf(initialType) }
+    var frequency by remember { mutableStateOf(initialFrequency) }
+    var selectedDays by remember { mutableStateOf(initialDays) }
+    var reminderTime by remember { mutableStateOf(initialReminderTime) }
+    var intervalDays by remember { mutableIntStateOf(initialIntervalDays ?: DEFAULT_INTERVAL_DAYS) }
+    var rotationEnabled by remember { mutableStateOf(initialRotationEnabled) }
+    var assignedTo by remember { mutableStateOf(initialAssignedTo) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    val needsDays = frequency == RoutineFrequency.WEEKLY || frequency == RoutineFrequency.CUSTOM
+    // La rotación solo tiene sentido en una casa con más de un miembro.
+    val canRotate = type == RoutineType.HOUSEHOLD && members.size > 1
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(dialogTitleRes)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text(stringResource(R.string.routines_field_title)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text(stringResource(R.string.routines_field_description)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (showTypeSelector) {
                     Text(stringResource(R.string.routines_type_label), style = MaterialTheme.typography.labelLarge)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -196,143 +287,226 @@ fun RoutinesScreen(
                             label = { Text(stringResource(R.string.routines_type_household)) }
                         )
                     }
+                }
 
-                    Text(stringResource(R.string.routines_frequency_label), style = MaterialTheme.typography.labelLarge)
-                    Row(
+                Text(stringResource(R.string.routines_frequency_label), style = MaterialTheme.typography.labelLarge)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    RoutineFrequency.entries.forEach { freq ->
+                        FilterChip(
+                            selected = frequency == freq,
+                            onClick = {
+                                frequency = freq
+                                if (freq != RoutineFrequency.WEEKLY && freq != RoutineFrequency.CUSTOM) {
+                                    selectedDays = emptyList()
+                                }
+                            },
+                            label = { Text(stringResource(freq.stringRes)) }
+                        )
+                    }
+                }
+
+                if (needsDays) {
+                    Text(stringResource(R.string.routines_select_days_label), style = MaterialTheme.typography.labelLarge)
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        RoutineFrequency.entries.forEach { freq ->
+                        DAY_LABELS.forEach { (day, res) ->
+                            val isSelected = selectedDays.contains(day)
                             FilterChip(
-                                selected = frequency == freq,
+                                selected = isSelected,
                                 onClick = {
-                                    frequency = freq
-                                    if (freq != RoutineFrequency.WEEKLY && freq != RoutineFrequency.CUSTOM) {
-                                        selectedDays = emptyList()
-                                    }
+                                    selectedDays = if (isSelected) selectedDays - day else selectedDays + day
                                 },
-                                label = { Text(stringResource(freq.stringRes)) }
+                                label = { Text(stringResource(res)) }
                             )
                         }
                     }
+                }
 
-                    if (frequency == RoutineFrequency.WEEKLY || frequency == RoutineFrequency.CUSTOM) {
-                        Text(stringResource(R.string.routines_select_days_label), style = MaterialTheme.typography.labelLarge)
-                        val dayLabels = listOf(
-                            Calendar.MONDAY to R.string.routines_day_mon,
-                            Calendar.TUESDAY to R.string.routines_day_tue,
-                            Calendar.WEDNESDAY to R.string.routines_day_wed,
-                            Calendar.THURSDAY to R.string.routines_day_thu,
-                            Calendar.FRIDAY to R.string.routines_day_fri,
-                            Calendar.SATURDAY to R.string.routines_day_sat,
-                            Calendar.SUNDAY to R.string.routines_day_sun
+                if (frequency == RoutineFrequency.EVERY_N_DAYS) {
+                    Text(stringResource(R.string.routines_interval_label), style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        IconButton(
+                            onClick = { if (intervalDays > MIN_INTERVAL_DAYS) intervalDays-- },
+                            enabled = intervalDays > MIN_INTERVAL_DAYS
+                        ) {
+                            Text(
+                                text = "−",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        }
+                        Text(
+                            text = pluralStringResource(R.plurals.routines_interval_days, intervalDays, intervalDays),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        IconButton(
+                            onClick = { if (intervalDays < MAX_INTERVAL_DAYS) intervalDays++ },
+                            enabled = intervalDays < MAX_INTERVAL_DAYS
+                        ) {
+                            Text(
+                                text = "+",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        }
+                    }
+                }
+
+                if (canRotate) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                stringResource(R.string.routines_rotation_label),
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                            Text(
+                                stringResource(R.string.routines_rotation_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = rotationEnabled,
+                            onCheckedChange = { enabled ->
+                                rotationEnabled = enabled
+                                // Al activarla hay que empezar por alguien.
+                                if (enabled && assignedTo == null) assignedTo = members.firstOrNull()
+                                if (!enabled) assignedTo = null
+                            }
+                        )
+                    }
+
+                    if (rotationEnabled) {
+                        Text(
+                            stringResource(R.string.routines_rotation_starts_with),
+                            style = MaterialTheme.typography.labelLarge
                         )
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            dayLabels.forEach { (day, res) ->
-                                val isSelected = selectedDays.contains(day)
+                            members.forEach { memberId ->
                                 FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        selectedDays = if (isSelected) {
-                                            selectedDays - day
-                                        } else {
-                                            selectedDays + day
-                                        }
-                                    },
-                                    label = { Text(stringResource(res)) }
+                                    selected = assignedTo == memberId,
+                                    onClick = { assignedTo = memberId },
+                                    label = {
+                                        Text(
+                                            memberNicknames[memberId]
+                                                ?: stringResource(R.string.routines_completed_by_unknown)
+                                        )
+                                    }
                                 )
                             }
                         }
                     }
+                }
 
-                    Text(stringResource(R.string.routines_reminder_label), style = MaterialTheme.typography.labelLarge)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Text(stringResource(R.string.routines_reminder_label), style = MaterialTheme.typography.labelLarge)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showTimePicker = true },
+                        modifier = Modifier.weight(1f)
                     ) {
-                        OutlinedButton(
-                            onClick = { showTimePicker = true },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = reminderTime?.let { minutes ->
-                                    val hours = minutes / 60
-                                    val mins = minutes % 60
-                                    stringResource(R.string.routines_reminder_set, "${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}")
-                                } ?: stringResource(R.string.routines_reminder_none)
-                            )
-                        }
-                        if (reminderTime != null) {
-                            IconButton(onClick = { reminderTime = null }) {
-                                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.routines_reminder_clear))
-                            }
-                        }
-                    }
-
-                    if (showTimePicker) {
-                        TimePickerDialog(
-                            initialMinutes = reminderTime,
-                            onDismiss = { showTimePicker = false },
-                            onConfirm = { hour, minute ->
-                                reminderTime = hour * 60 + minute
-                                showTimePicker = false
-                            }
+                        Text(
+                            text = reminderTime?.let { minutes ->
+                                val hours = minutes / 60
+                                val mins = minutes % 60
+                                stringResource(
+                                    R.string.routines_reminder_set,
+                                    "${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}"
+                                )
+                            } ?: stringResource(R.string.routines_reminder_none)
                         )
                     }
+                    if (reminderTime != null) {
+                        IconButton(onClick = { reminderTime = null }) {
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.routines_reminder_clear))
+                        }
+                    }
                 }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.onAddRoutine(title, description, type, frequency, selectedDays, reminderTime)
-                        showAddDialog = false
-                    },
-                    enabled = title.isNotBlank() && (frequency != RoutineFrequency.WEEKLY || selectedDays.isNotEmpty())
-                ) {
-                    Text(stringResource(R.string.routines_create))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) {
-                    Text(stringResource(R.string.routines_cancel))
+
+                if (showTimePicker) {
+                    TimePickerDialog(
+                        initialMinutes = reminderTime,
+                        onDismiss = { showTimePicker = false },
+                        onConfirm = { hour, minute ->
+                            reminderTime = hour * 60 + minute
+                            showTimePicker = false
+                        }
+                    )
                 }
             }
-        )
-    }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(
+                        RoutineFormResult(
+                            title = title,
+                            description = description,
+                            type = type,
+                            frequency = frequency,
+                            scheduledDays = selectedDays,
+                            reminderTime = reminderTime,
+                            intervalDays = if (frequency == RoutineFrequency.EVERY_N_DAYS) intervalDays else null,
+                            rotationEnabled = canRotate && rotationEnabled,
+                            assignedTo = if (canRotate && rotationEnabled) assignedTo else null
+                        )
+                    )
+                },
+                enabled = title.isNotBlank() &&
+                    (frequency != RoutineFrequency.WEEKLY || selectedDays.isNotEmpty())
+            ) {
+                Text(stringResource(confirmLabelRes))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.routines_cancel))
+            }
+        }
+    )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RoutineCard(
     routine: Routine,
     isCompleted: Boolean,
-    completedByName: String? = null,
     onToggle: () -> Unit,
-    onEdit: (String, String, RoutineFrequency, List<Int>, Int?) -> Unit,
+    onEdit: (RoutineFormResult) -> Unit,
     onDelete: () -> Unit,
+    onOpenDetail: () -> Unit = {},
+    isPaused: Boolean = false,
+    completedByName: String? = null,
+    assignedToName: String? = null,
+    isAssignedToMe: Boolean = false,
+    members: List<String> = emptyList(),
+    memberNicknames: Map<String, String> = emptyMap(),
     onMoveUp: () -> Unit = {},
     onMoveDown: () -> Unit = {}
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .toggleable(
-                value = isCompleted,
-                onValueChange = { onToggle() },
-                role = Role.Checkbox
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isCompleted) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            else MaterialTheme.colorScheme.surfaceVariant
-        )
+    HabitlyToggleCard(
+        checked = isCompleted,
+        onCheckedChange = { onToggle() },
+        shape = LeafCornerMedium,
+        contentPadding = PaddingValues(0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -364,21 +538,8 @@ fun RoutineCard(
 
             Spacer(modifier = Modifier.width(4.dp))
 
-            // Indicador visual de completado; el toggle accesible es la Card (Role.Checkbox).
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (isCompleted) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surface
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isCompleted) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
-                }
-            }
+            // Indicador visual de completado; el toggle accesible es la tarjeta (Role.Checkbox).
+            RitualToggle(checked = isCompleted, size = 28.dp)
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -398,7 +559,7 @@ fun RoutineCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                
+
                 if (isCompleted && routine.type == RoutineType.HOUSEHOLD && routine.lastCompletedBy != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -411,7 +572,36 @@ fun RoutineCard(
                     )
                 }
 
-                if (routine.currentStreak >= 2) {
+                if (isPaused) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.routines_pause_title),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                // De quién es el turno. "Te toca a ti" se destaca porque es lo accionable.
+                if (routine.assignedTo != null && !isCompleted) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (isAssignedToMe) {
+                            stringResource(R.string.routines_assigned_to_me)
+                        } else {
+                            stringResource(
+                                R.string.routines_assigned_to,
+                                assignedToName ?: stringResource(R.string.routines_completed_by_unknown)
+                            )
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isAssignedToMe) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (isAssignedToMe) FontWeight.Bold else FontWeight.SemiBold
+                    )
+                }
+
+                if (routine.currentStreak >= MIN_STREAK_SHOWN) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = pluralStringResource(
@@ -423,12 +613,27 @@ fun RoutineCard(
                         color = MaterialTheme.colorScheme.tertiary,
                         fontWeight = FontWeight.SemiBold
                     )
+                    if (routine.streakGraceUsed) {
+                        Text(
+                            text = stringResource(R.string.routines_streak_protected),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
+            }
+
+            IconButton(onClick = onOpenDetail) {
+                Icon(
+                    Icons.Filled.CalendarMonth,
+                    contentDescription = stringResource(R.string.routines_detail_open),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
             }
 
             IconButton(onClick = { showEditDialog = true }) {
                 Icon(
-                    Icons.Filled.Edit, 
+                    Icons.Filled.Edit,
                     contentDescription = stringResource(R.string.routines_edit_routine),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
@@ -470,194 +675,55 @@ fun RoutineCard(
     }
 
     if (showEditDialog) {
-        var editTitle by remember { mutableStateOf(routine.title) }
-        var editDescription by remember { mutableStateOf(routine.description) }
-        var editFrequency by remember { mutableStateOf(routine.frequency) }
-        var editSelectedDays by remember { mutableStateOf(routine.scheduledDays) }
-        var editReminderTime by remember { mutableStateOf(routine.reminderTime) }
-        var showTimePicker by remember { mutableStateOf(false) }
-
-        AlertDialog(
-            onDismissRequest = { showEditDialog = false },
-            title = { Text(stringResource(R.string.routines_edit_routine_title)) },
-            text = {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    OutlinedTextField(
-                        value = editTitle,
-                        onValueChange = { editTitle = it },
-                        label = { Text(stringResource(R.string.routines_field_title)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = editDescription,
-                        onValueChange = { editDescription = it },
-                        label = { Text(stringResource(R.string.routines_field_description)) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Text(stringResource(R.string.routines_frequency_label), style = MaterialTheme.typography.labelLarge)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        RoutineFrequency.entries.forEach { freq ->
-                            FilterChip(
-                                selected = editFrequency == freq,
-                                onClick = {
-                                    editFrequency = freq
-                                    if (freq != RoutineFrequency.WEEKLY && freq != RoutineFrequency.CUSTOM) {
-                                        editSelectedDays = emptyList()
-                                    }
-                                },
-                                label = { Text(stringResource(freq.stringRes)) }
-                            )
-                        }
-                    }
-
-                    if (editFrequency == RoutineFrequency.WEEKLY || editFrequency == RoutineFrequency.CUSTOM) {
-                        Text(stringResource(R.string.routines_select_days_label), style = MaterialTheme.typography.labelLarge)
-                        val dayLabels = listOf(
-                            Calendar.MONDAY to R.string.routines_day_mon,
-                            Calendar.TUESDAY to R.string.routines_day_tue,
-                            Calendar.WEDNESDAY to R.string.routines_day_wed,
-                            Calendar.THURSDAY to R.string.routines_day_thu,
-                            Calendar.FRIDAY to R.string.routines_day_fri,
-                            Calendar.SATURDAY to R.string.routines_day_sat,
-                            Calendar.SUNDAY to R.string.routines_day_sun
-                        )
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            dayLabels.forEach { (day, res) ->
-                                val isSelected = editSelectedDays.contains(day)
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        editSelectedDays = if (isSelected) {
-                                            editSelectedDays - day
-                                        } else {
-                                            editSelectedDays + day
-                                        }
-                                    },
-                                    label = { Text(stringResource(res)) }
-                                )
-                            }
-                        }
-                    }
-
-                    Text(stringResource(R.string.routines_reminder_label), style = MaterialTheme.typography.labelLarge)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { showTimePicker = true },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = editReminderTime?.let { minutes ->
-                                    val hours = minutes / 60
-                                    val mins = minutes % 60
-                                    stringResource(R.string.routines_reminder_set, "${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}")
-                                } ?: stringResource(R.string.routines_reminder_none)
-                            )
-                        }
-                        if (editReminderTime != null) {
-                            IconButton(onClick = { editReminderTime = null }) {
-                                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.routines_reminder_clear))
-                            }
-                        }
-                    }
-
-                    if (showTimePicker) {
-                        TimePickerDialog(
-                            initialMinutes = editReminderTime,
-                            onDismiss = { showTimePicker = false },
-                            onConfirm = { hour, minute ->
-                                editReminderTime = hour * 60 + minute
-                                showTimePicker = false
-                            }
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onEdit(editTitle, editDescription, editFrequency, editSelectedDays, editReminderTime)
-                        showEditDialog = false
-                    },
-                    enabled = editTitle.isNotBlank() && (editFrequency != RoutineFrequency.WEEKLY || editSelectedDays.isNotEmpty())
-                ) {
-                    Text(stringResource(R.string.routines_save))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEditDialog = false }) {
-                    Text(stringResource(R.string.routines_cancel))
-                }
+        RoutineFormDialog(
+            dialogTitleRes = R.string.routines_edit_routine_title,
+            confirmLabelRes = R.string.routines_save,
+            showTypeSelector = false,
+            initialTitle = routine.title,
+            initialDescription = routine.description,
+            initialType = routine.type,
+            initialFrequency = routine.frequency,
+            initialDays = routine.scheduledDays,
+            initialReminderTime = routine.reminderTime,
+            initialIntervalDays = routine.intervalDays,
+            initialRotationEnabled = routine.rotationEnabled,
+            initialAssignedTo = routine.assignedTo,
+            members = members,
+            memberNicknames = memberNicknames,
+            onDismiss = { showEditDialog = false },
+            onConfirm = { form ->
+                onEdit(form)
+                showEditDialog = false
             }
         )
     }
 }
 
-private val RoutineFrequency.stringRes: Int
-    get() = when (this) {
-        RoutineFrequency.DAILY -> R.string.routines_frequency_daily
-        RoutineFrequency.WEEKLY -> R.string.routines_frequency_weekly
-        RoutineFrequency.CUSTOM -> R.string.routines_frequency_custom
-    }
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimePickerDialog(
     initialMinutes: Int?,
     onDismiss: () -> Unit,
     onConfirm: (hour: Int, minute: Int) -> Unit
 ) {
-    var hour by remember { mutableIntStateOf(initialMinutes?.let { it / 60 } ?: Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
-    var minute by remember { mutableIntStateOf(initialMinutes?.let { it % 60 } ?: Calendar.getInstance().get(Calendar.MINUTE)) }
+    val state = rememberTimePickerState(
+        initialHour = initialMinutes?.let { it / 60 }
+            ?: Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
+        initialMinute = initialMinutes?.let { it % 60 }
+            ?: Calendar.getInstance().get(Calendar.MINUTE),
+        is24Hour = DateFormat.is24HourFormat(LocalContext.current)
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.routines_reminder_label)) },
+        title = { Text(stringResource(R.string.routines_reminder_pick_time)) },
         text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { if (hour > 0) hour-- }) {
-                        Text("-", style = MaterialTheme.typography.headlineMedium)
-                    }
-                    Text(
-                        text = hour.toString().padStart(2, '0'),
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                    Text(":", style = MaterialTheme.typography.headlineMedium)
-                    Text(
-                        text = minute.toString().padStart(2, '0'),
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                    IconButton(onClick = { if (hour < 23) hour++ }) {
-                        Text("+", style = MaterialTheme.typography.headlineMedium)
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { if (minute > 0) minute -= 5 }) {
-                        Text("-", style = MaterialTheme.typography.headlineMedium)
-                    }
-                    IconButton(onClick = { if (minute < 55) minute += 5 }) {
-                        Text("+", style = MaterialTheme.typography.headlineMedium)
-                    }
-                }
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                TimePicker(state = state)
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(hour, minute) }) {
+            TextButton(onClick = { onConfirm(state.hour, state.minute) }) {
                 Text(stringResource(R.string.routines_save))
             }
         },
@@ -668,3 +734,26 @@ fun TimePickerDialog(
         }
     )
 }
+
+private val RoutineFrequency.stringRes: Int
+    get() = when (this) {
+        RoutineFrequency.DAILY -> R.string.routines_frequency_daily
+        RoutineFrequency.WEEKLY -> R.string.routines_frequency_weekly
+        RoutineFrequency.CUSTOM -> R.string.routines_frequency_custom
+        RoutineFrequency.EVERY_N_DAYS -> R.string.routines_frequency_interval
+    }
+
+private val DAY_LABELS = listOf(
+    Calendar.MONDAY to R.string.routines_day_mon,
+    Calendar.TUESDAY to R.string.routines_day_tue,
+    Calendar.WEDNESDAY to R.string.routines_day_wed,
+    Calendar.THURSDAY to R.string.routines_day_thu,
+    Calendar.FRIDAY to R.string.routines_day_fri,
+    Calendar.SATURDAY to R.string.routines_day_sat,
+    Calendar.SUNDAY to R.string.routines_day_sun
+)
+
+private const val MIN_STREAK_SHOWN = 2
+private const val DEFAULT_INTERVAL_DAYS = 3
+private const val MIN_INTERVAL_DAYS = 1
+private const val MAX_INTERVAL_DAYS = 365
