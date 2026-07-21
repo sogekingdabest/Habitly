@@ -9,11 +9,13 @@ El orden no es el de la lista original del análisis, sino el que dictan las dep
 
 | Fase | Feature | Tamaño | Depende de |
 |---|---|---|---|
-| 1 | Contexto IA enriquecido + quick prompts contextuales | S (~1 sesión) | — |
-| 2 | Rutinas flexibles: "cada N días", rachas conscientes del calendario, protector de racha, heatmap | M (~2-3 sesiones) | — |
-| 3 | `@@RUTINA@@`: crear rutinas desde el chat | M (~2 sesiones) | 1 (prompt), 2 (frecuencias) |
-| 4 | Despensa ligera + "qué cocino con lo que tengo" | M-L (~2-3 sesiones) | 1 (extiende contexto y prompts) |
-| 5 | Rotación y balance del hogar | M (~2 sesiones) | 2 (recomendable, no estricta) |
+| 1 ✅ | Contexto IA enriquecido + quick prompts contextuales | S (~1 sesión) | — |
+| 2 ✅ | Rutinas flexibles: "cada N días", rachas conscientes del calendario, protector de racha, heatmap | M (~2-3 sesiones) | — |
+| 3 ✅ | `@@RUTINA@@`: crear rutinas desde el chat | M (~2 sesiones) | 1 (prompt), 2 (frecuencias) |
+| 4 ✅ | Despensa ligera + "qué cocino con lo que tengo" | M-L (~2-3 sesiones) | 1 (extiende contexto y prompts) |
+| 5 ✅ | Rotación y balance del hogar | M (~2 sesiones) | 2 (recomendable, no estricta) |
+
+**TOP 5 COMPLETADO el 2026-07-18** — `assembleDebug` OK y 240 tests unitarios en verde.
 
 **Dos hechos que simplifican todo el plan:**
 
@@ -28,9 +30,26 @@ El orden no es el de la lista original del análisis, sino el que dictan las dep
 
 ---
 
-## Fase 1 — Contexto IA enriquecido + quick prompts contextuales
+## Fase 1 — Contexto IA enriquecido + quick prompts contextuales ✅ COMPLETADA (2026-07-18)
 
 **Objetivo:** que el asistente deje de responder "a ciegas": hoy `GetAiContextUseCase` solo pasa nombres de la lista y rutinas personales, sin fecha, sin cantidades, sin rutinas de casa, sin rachas.
+
+> **Resultado:** compila y los 140 tests unitarios pasan (41 nuevos o reescritos).
+>
+> **Dos desviaciones respecto a lo planificado, a tener en cuenta en fases siguientes:**
+> 1. **`RoutineSchedule` se creó ya en la fase 1** (no en la 2): el contexto y los quick prompts
+>    necesitaban los dos "¿toca hoy?" / "¿está hecha hoy?" y no tenía sentido duplicarlos para
+>    luego unificarlos. Hoy expone `isScheduledOn`, `isCompletedOn` e `isPendingOn`. **La fase 2
+>    lo extiende** con `EVERY_N_DAYS` y pausa, y sigue pendiente el refactor de los 4 call sites
+>    que aún duplican la lógica (`RoutinesViewModel.isRoutineCompletedToday`, `DashboardViewModel`,
+>    `BuildWidgetSnapshotUseCase`, `RoutineReminderWorker`).
+> 2. **Se borraron `GenerateShoppingListUseCase` y `GenerateRecipeSuggestionsUseCase`**: su texto
+>    era un *system prompt* que se enviaba como mensaje de usuario. Los chips ahora usan prompts
+>    redactados como peticiones reales dentro de `GetContextualQuickPromptsUseCase`.
+>    `GenerateWeeklyMenuUseCase` **sí** se conserva (estaba bien redactado) y lo usa el chip
+>    "Menú semanal".
+>
+> También se unificó el modelo duplicado `QuickPrompt` (presentación) en `AiQuickPrompt` (dominio).
 
 ### Diseño
 
@@ -61,9 +80,32 @@ El orden no es el de la lista original del análisis, sino el que dictan las dep
 
 ---
 
-## Fase 2 — Rutinas flexibles: "cada N días", rachas conscientes del calendario, protector, heatmap
+## Fase 2 — Rutinas flexibles: "cada N días", rachas conscientes del calendario, protector, heatmap ✅ COMPLETADA (2026-07-18)
 
 **Objetivo:** atacar la causa nº 1 de abandono (ansiedad de racha + rigidez) y arreglar de paso una limitación real: hoy `StreakCalculator` cuenta días de calendario consecutivos, así que **una rutina semanal nunca pasa de racha 1** y el badge 🔥 (≥2) le es inalcanzable.
+
+> **Resultado:** `assembleDebug` OK y 157 tests unitarios en verde (44 de rutinas, entre nuevos y reescritos).
+>
+> **Desviaciones y decisiones que conviene recordar:**
+> 1. **Se eliminaron `RoutinesViewModel.isRoutineCompletedToday` y `Routine.isScheduledForDayOfWeek`**
+>    en lugar de dejarlos delegando: toda la lógica vive ya en `RoutineSchedule`. `RoutinesViewModelTest`
+>    se borró porque solo probaba esos dos métodos; su cobertura está en `RoutineScheduleTest`.
+> 2. **Corrección de comportamiento en el dashboard**: antes listaba como pendientes rutinas de
+>    otros días de la semana (filtraba solo por "no completada"). Ahora usa `isPendingOn`.
+> 3. **El worker pasó de `Worker` a `CoroutineWorker`** y lee la rutina fresca vía `RoutinesEntryPoint`.
+>    Eso obligó a cambiar la firma de `ScheduleReminderUseCase(routine, userId, householdId)` y a
+>    meter `userId`/`householdId`/`type` en el `inputData`. Efecto secundario bueno: ya no avisa de
+>    algo que ya está hecho, ni de una rutina en pausa, ni con títulos obsoletos.
+> 4. **Se extrajo `RoutineFormDialog`**: los diálogos de crear y editar eran casi idénticos y cada
+>    campo nuevo había que añadirlo por duplicado.
+> 5. **El modo vacaciones se controla desde la ficha de progreso**, no desde el diálogo de edición
+>    (que ya estaba cargado). La ficha se abre con el icono de calendario de cada tarjeta.
+> 6. **`StreakCalculator` tiene dos reglas**: por ocurrencias programadas (diaria/semanal/personalizada)
+>    y por huecos entre completados (cada N días). `forRoutine` despacha según la frecuencia.
+>
+> ⚠️ **Migración de datos:** `currentStreak`/`bestStreak`/`streakGraceUsed` están denormalizados y solo
+> se recalculan al marcar/desmarcar una rutina. Las rutinas existentes conservarán su racha antigua
+> hasta el siguiente toggle; a partir de ahí las semanales empezarán a subir de verdad.
 
 ### Diseño
 
@@ -101,9 +143,31 @@ El orden no es el de la lista original del análisis, sino el que dictan las dep
 
 ---
 
-## Fase 3 — `@@RUTINA@@`: crear rutinas desde el chat
+## Fase 3 — `@@RUTINA@@`: crear rutinas desde el chat ✅ COMPLETADA (2026-07-18)
 
 **Objetivo:** replicar el flujo probado de `@@LISTA@@` para que "proponme un plan de limpieza semanal" termine en una tarjeta "Crear 5 rutinas". Es además el mejor onboarding posible de la app.
+
+> **Resultado:** `assembleDebug` OK y 195 tests unitarios en verde (38 nuevos en esta fase).
+>
+> **Decisiones que conviene recordar:**
+> 1. **`AiShoppingListFormat` se absorbió en `AiStructuredBlocks`** (la opción que el plan dejaba
+>    abierta). Ahí viven los dos marcadores, el `stripFromDisplay` común y un `extractJsonRegion`
+>    compartido por ambos parsers, que **corta el alcance en el siguiente marcador** para que una
+>    respuesta con los dos bloques no mezcle un JSON con el otro.
+> 2. **El parser de rutinas es deliberadamente más estricto que el de la compra**: exige el marcador
+>    `@@RUTINA@@` o una clave propia (`routines`/`rutinas`). Sin eso devolvería rutinas fantasma a
+>    partir del bloque de la compra, porque ambos usan `name`/`nombre`.
+> 3. **Coherencias que aplica el parser** porque los modelos pequeños se las saltan: una semanal sin
+>    días válidos se degrada a diaria (si no, no tocaría nunca), `intervalDays` solo sobrevive en las
+>    de intervalo, y las de intervalo sin número reciben uno por defecto.
+> 4. **Las rutinas se crean sin recordatorio**: ponerle hora a cinco rutinas de golpe sin preguntar
+>    sería invasivo. El usuario se lo añade al editarlas.
+> 5. **La tarjeta lista los títulos propuestos** y deja elegir Personal/Casa antes de crear: crear
+>    cosas a ciegas da mal cuerpo.
+> 6. **Éxito parcial**: si alguna rutina falla pero otras entran, se informa del número creado; solo
+>    es error si no entra ninguna (no hay batch porque personales y de casa viven en colecciones
+>    distintas).
+> 7. **Quick prompt "Plan de limpieza"** contextual: aparece cuando la casa tiene menos de 3 rutinas.
 
 ### Diseño
 
@@ -137,9 +201,34 @@ El orden no es el de la lista original del análisis, sino el que dictan las dep
 
 ---
 
-## Fase 4 — Despensa ligera + "¿qué cocino con lo que tengo?"
+## Fase 4 — Despensa ligera + "¿qué cocino con lo que tengo?" ✅ COMPLETADA (2026-07-18)
 
 **Objetivo:** el diferenciador señalado por el análisis de mercado: cruzar lista, casa e IA. MVP deliberadamente simple: "esto hay en casa", sin caducidades ni escaneos.
+
+> **Resultado:** `assembleDebug` OK y 222 tests unitarios en verde (27 nuevos en esta fase).
+> Como se anticipó, **no hizo falta tocar `firestore.rules`**: `pantry_items` cae bajo el comodín
+> `{document=**}` de `households`.
+>
+> **Decisiones que conviene recordar:**
+> 1. **La fusión de cantidades vive en `PantryMerge`, una función pura y testeada**, no en el
+>    repositorio. Así la comparten los dos sitios que escriben en la despensa: el archivado de la
+>    compra (dentro de su mismo batch atómico) y `PantryRepositoryImpl`.
+> 2. **Se descartó `FieldValue.increment`**: no permite aplicar la regla de "solo sumo si la unidad
+>    coincide". En su lugar se lee la despensa antes de montar el batch y se escribe el estado final.
+>    Efecto secundario: dos dispositivos archivando a la vez podrían pisarse (última escritura gana).
+>    Asumido y documentado; es un caso poco probable y de impacto bajo.
+> 3. **El id de documento es el nombre normalizado** (`ProductNameNormalizer`), así que "Plátano",
+>    " platano " y "PLÁTANO" son la misma entrada. El normalizador es reutilizable para el
+>    autocompletado predictivo que quedó fuera del top 5.
+> 4. **Unidades distintas no se suman** ("2 kg" + "3 unidad" no significa nada): se conserva lo que
+>    había y solo se refresca la fecha. Convertir unidades sería sobreingeniería.
+> 5. **El aviso "ya tienes N en casa" se pinta en el alta de producto**, que es donde evita la
+>    compra duplicada, además de alimentar el contexto de la IA.
+> 6. **La regla de prompt más valiosa de la fase**: si el modelo propone recetas usando la despensa,
+>    en `@@LISTA@@` debe incluir **solo lo que falte**. Ese es el momento "wow" de la feature.
+>
+> **Fuera de alcance, como estaba previsto:** consumir la despensa automáticamente al cocinar
+> (requiere emparejar receta→despensa) y añadir productos a mano sin pasar por la compra.
 
 ### Diseño
 
@@ -173,9 +262,31 @@ El orden no es el de la lista original del análisis, sino el que dictan las dep
 
 ---
 
-## Fase 5 — Rotación y balance del hogar
+## Fase 5 — Rotación y balance del hogar ✅ COMPLETADA (2026-07-18)
 
 **Objetivo:** la feature por la que la gente instala Sweepy/Flatastic, con la ventaja de que Habitly ya tiene el household nativo. Sin leaderboard competitivo: asignación, rotación y un balance neutro.
+
+> **Resultado:** `assembleDebug` OK y 240 tests unitarios en verde (18 nuevos en esta fase).
+>
+> **Decisiones que conviene recordar:**
+> 1. **`updateRoutine` pasó a recibir la `Routine` entera** en vez de una lista de parámetros:
+>    con la rotación habrían sido 13. `UpdateRoutineUseCase` mantiene su API por parámetros
+>    (la usa la UI) y construye el `copy` internamente, así que sus tests siguieron valiendo.
+> 2. **`getCompletions` devuelve `RoutineCompletion(date, userId)`**, no solo fechas: el balance
+>    necesita saber quién. El heatmap mapea a fechas dentro de su use case.
+> 3. **El balance NO es un ranking**: no ordena por "ganador" ni pinta posiciones, respeta el
+>    orden de miembros de la casa y añade un total cooperativo. Los leaderboards motivan a unos
+>    y queman a otros, y esto es una casa.
+> 4. **Deshacer un completado devuelve el turno a quien desmarcó**, no al anterior: si la
+>    desmarcas es porque en realidad no estaba hecha.
+> 5. **El "te toca a ti" funciona sin backend**: el worker de recordatorios omite la notificación
+>    si la rutina está asignada a otro miembro. FCM sigue sin hacer falta.
+> 6. **N+1 consultas asumidas** en el balance (una por rutina de casa), como estaba previsto.
+>    La alternativa (*collection group query*) obligaría a tocar `firestore.rules`.
+>
+> **Concurrencia:** dos miembros completando a la vez pueden pisarse el `assignedTo` (última
+> escritura gana). Es inofensivo: ambos completados quedan registrados en `completions` y el
+> balance los cuenta bien. Sin transacción, como estaba previsto.
 
 ### Diseño
 
