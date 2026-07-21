@@ -51,6 +51,61 @@
         <item quantity="one">🔥 %d día seguido</item>
         <item quantity="other">🔥 %d días seguidos</item>
     </plurals>
+    <!-- Rotación e balance -->
+    <string name="routines_rotation_label">Rotar entre membros</string>
+    <string name="routines_rotation_description">Ao completala, a quenda pasa ao seguinte.</string>
+    <string name="routines_rotation_starts_with">Comeza por</string>
+    <string name="routines_assigned_to">Tócalle a %1$s</string>
+    <string name="routines_assigned_to_me">Tócache a ti</string>
+    <string name="routines_balance_title">Reparto da semana</string>
+    <plurals name="routines_balance_total">
+        <item quantity="one">Entre todos completastes %d rutina da casa</item>
+        <item quantity="other">Entre todos completastes %d rutinas da casa</item>
+    </plurals>
+    <string name="routines_frequency_interval">Cada N días</string>
+    <string name="routines_interval_label">Repetir cada</string>
+    <plurals name="routines_interval_days">
+        <item quantity="one">%d día</item>
+        <item quantity="other">%d días</item>
+    </plurals>
+    <string name="routines_interval_less">Reducir intervalo</string>
+    <string name="routines_interval_more">Aumentar intervalo</string>
+    <string name="routines_streak_protected">🛡️ Racha protexida: perdoóuseche un fallo</string>
+    <!-- Ficha de progreso -->
+    <string name="routines_detail_open">Ver progreso</string>
+    <string name="routines_detail_current_streak">Racha actual</string>
+    <string name="routines_detail_best_streak">Mellor racha</string>
+    <string name="routines_detail_completion">Cumprimento</string>
+    <string name="routines_detail_no_data">Este mes aínda non tocaba ningunha vez.</string>
+    <string name="routines_detail_prev_month">Mes anterior</string>
+    <string name="routines_detail_next_month">Mes seguinte</string>
+    <string name="routines_detail_close">Pechar</string>
+    <string name="routines_detail_legend">Os días marcados son os que a completaches.</string>
+    <!-- Modo vacacións -->
+    <string name="routines_pause_title">Modo vacacións</string>
+    <string name="routines_pause_description">Mentres estea activo non toca nin avisa, e os días saltados non rompen a racha.</string>
+    <string name="routines_paused_until">En pausa ata o %s</string>
+    <plurals name="routines_pause_for_days">
+        <item quantity="one">Pausar %d día</item>
+        <item quantity="other">Pausar %d días</item>
+    </plurals>
+    <string name="routines_resume">Retomar</string>
+
+    <!-- Alta de rutina (pantalla completa) -->
+    <string name="routines_add_section_what">Que rutina é?</string>
+    <string name="routines_add_section_type">De quen é?</string>
+    <string name="routines_add_section_frequency">Cada canto toca?</string>
+    <string name="routines_type_personal_desc">Só a ves e a completas ti</string>
+    <string name="routines_type_household_desc">Compartida con todos os da casa</string>
+    <string name="routines_frequency_daily_desc">Todos os días</string>
+    <string name="routines_frequency_weekly_desc">Os mesmos días cada semana</string>
+    <string name="routines_frequency_custom_desc">Os días soltos que marques; sen ningún, conta a diario</string>
+    <string name="routines_frequency_interval_desc">Tras completala, volve tocar pasados uns días</string>
+    <string name="routines_days_hint">Escolle polo menos un día</string>
+    <string name="routines_reminder_title">Recordatorio</string>
+    <string name="routines_reminder_switch_desc">Avísate cunha notificación á hora que escollas</string>
+    <string name="routines_reminder_pick_time">Escolle a hora</string>
+    <string name="routines_add_save">Crear rutina</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title">Benvido a Habitly!</string>
@@ -183,6 +238,16 @@
     <string name="shopping_clear_confirm_message">Eliminaranse da lista todos os produtos marcados. Esta acción non se pode desfacer.</string>
     <string name="shopping_completed">Completados</string>
     <string name="shopping_progress">%1$d/%2$d produtos</string>
+    <!-- Despensa -->
+    <string name="shopping_tab_list">Lista</string>
+    <string name="shopping_tab_pantry">Despensa</string>
+    <string name="shopping_archive_stock_pantry">Gardar o mercado na despensa</string>
+    <string name="pantry_empty_title">A despensa está baleira</string>
+    <string name="pantry_empty_subtitle">Ao arquivar unha compra, o que marcases aparecerá aquí.</string>
+    <string name="pantry_increase">Engadir un de %1$s</string>
+    <string name="pantry_decrease">Quitar un de %1$s</string>
+    <string name="pantry_remove">Sacar %1$s da despensa</string>
+    <string name="pantry_already_have">Xa tes %1$d %2$s na casa</string>
     <plurals name="shopping_products_count">
         <item quantity="one">%d produto</item>
         <item quantity="other">%d produtos</item>
@@ -276,6 +341,18 @@
     <plurals name="ai_added_to_list">
         <item quantity="one">%d produto engadido á lista</item>
         <item quantity="other">%d produtos engadidos á lista</item>
+    </plurals>
+    <string name="ai_routine_add">Crear rutinas</string>
+    <string name="ai_routine_added">Creadas</string>
+    <plurals name="ai_routine_count">
+        <item quantity="one">%d rutina proposta</item>
+        <item quantity="other">%d rutinas propostas</item>
+    </plurals>
+    <string name="ai_routine_more">+%d máis</string>
+    <string name="ai_preparing_suggestions">Preparando suxestións…</string>
+    <plurals name="ai_routines_created">
+        <item quantity="one">%d rutina creada</item>
+        <item quantity="other">%d rutinas creadas</item>
     </plurals>
 
     <!-- Widget -->

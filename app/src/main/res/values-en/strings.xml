@@ -51,6 +51,61 @@
         <item quantity="one">🔥 %d-day streak</item>
         <item quantity="other">🔥 %d-day streak</item>
     </plurals>
+    <!-- Rotation and balance -->
+    <string name="routines_rotation_label">Rotate between members</string>
+    <string name="routines_rotation_description">When it is completed, the turn passes to the next person.</string>
+    <string name="routines_rotation_starts_with">Starts with</string>
+    <string name="routines_assigned_to">%1$s\'s turn</string>
+    <string name="routines_assigned_to_me">Your turn</string>
+    <string name="routines_balance_title">This week\'s split</string>
+    <plurals name="routines_balance_total">
+        <item quantity="one">Together you completed %d household routine</item>
+        <item quantity="other">Together you completed %d household routines</item>
+    </plurals>
+    <string name="routines_frequency_interval">Every N days</string>
+    <string name="routines_interval_label">Repeat every</string>
+    <plurals name="routines_interval_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <string name="routines_interval_less">Decrease interval</string>
+    <string name="routines_interval_more">Increase interval</string>
+    <string name="routines_streak_protected">🛡️ Streak protected: one miss was forgiven</string>
+    <!-- Progress sheet -->
+    <string name="routines_detail_open">View progress</string>
+    <string name="routines_detail_current_streak">Current streak</string>
+    <string name="routines_detail_best_streak">Best streak</string>
+    <string name="routines_detail_completion">Completion</string>
+    <string name="routines_detail_no_data">It wasn\'t due even once this month.</string>
+    <string name="routines_detail_prev_month">Previous month</string>
+    <string name="routines_detail_next_month">Next month</string>
+    <string name="routines_detail_close">Close</string>
+    <string name="routines_detail_legend">Highlighted days are the ones you completed.</string>
+    <!-- Vacation mode -->
+    <string name="routines_pause_title">Vacation mode</string>
+    <string name="routines_pause_description">While it is on, the routine is not due, sends no reminders, and skipped days do not break your streak.</string>
+    <string name="routines_paused_until">Paused until %s</string>
+    <plurals name="routines_pause_for_days">
+        <item quantity="one">Pause for %d day</item>
+        <item quantity="other">Pause for %d days</item>
+    </plurals>
+    <string name="routines_resume">Resume</string>
+
+    <!-- New routine (full screen) -->
+    <string name="routines_add_section_what">What\'s the routine?</string>
+    <string name="routines_add_section_type">Whose is it?</string>
+    <string name="routines_add_section_frequency">How often is it due?</string>
+    <string name="routines_type_personal_desc">Only you can see and complete it</string>
+    <string name="routines_type_household_desc">Shared with everyone at home</string>
+    <string name="routines_frequency_daily_desc">Every day</string>
+    <string name="routines_frequency_weekly_desc">The same days every week</string>
+    <string name="routines_frequency_custom_desc">Whichever days you mark; with none marked, it counts daily</string>
+    <string name="routines_frequency_interval_desc">After you complete it, it\'s due again a few days later</string>
+    <string name="routines_days_hint">Pick at least one day</string>
+    <string name="routines_reminder_title">Reminder</string>
+    <string name="routines_reminder_switch_desc">Notifies you at the time you choose</string>
+    <string name="routines_reminder_pick_time">Pick a time</string>
+    <string name="routines_add_save">Create routine</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title">Welcome to Habitly!</string>
@@ -183,6 +238,16 @@
     <string name="shopping_clear_confirm_message">All checked products will be removed from the list. This can\'t be undone.</string>
     <string name="shopping_completed">Completed</string>
     <string name="shopping_progress">%1$d/%2$d products</string>
+    <!-- Pantry -->
+    <string name="shopping_tab_list">List</string>
+    <string name="shopping_tab_pantry">Pantry</string>
+    <string name="shopping_archive_stock_pantry">Move what I bought to the pantry</string>
+    <string name="pantry_empty_title">Your pantry is empty</string>
+    <string name="pantry_empty_subtitle">When you archive a shop, whatever you ticked shows up here.</string>
+    <string name="pantry_increase">Add one more %1$s</string>
+    <string name="pantry_decrease">Remove one %1$s</string>
+    <string name="pantry_remove">Take %1$s out of the pantry</string>
+    <string name="pantry_already_have">You already have %1$d %2$s at home</string>
     <plurals name="shopping_products_count">
         <item quantity="one">%d product</item>
         <item quantity="other">%d products</item>
@@ -276,6 +341,18 @@
     <plurals name="ai_added_to_list">
         <item quantity="one">%d product added to the list</item>
         <item quantity="other">%d products added to the list</item>
+    </plurals>
+    <string name="ai_routine_add">Create routines</string>
+    <string name="ai_routine_added">Created</string>
+    <plurals name="ai_routine_count">
+        <item quantity="one">%d suggested routine</item>
+        <item quantity="other">%d suggested routines</item>
+    </plurals>
+    <string name="ai_routine_more">+%d more</string>
+    <string name="ai_preparing_suggestions">Preparing suggestions…</string>
+    <plurals name="ai_routines_created">
+        <item quantity="one">%d routine created</item>
+        <item quantity="other">%d routines created</item>
     </plurals>
 
     <!-- Widget -->
