@@ -10,6 +10,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -29,6 +30,7 @@ fun ModelDownloadCard(
     progress: Float,
     isDownloading: Boolean,
     onDownload: () -> Unit,
+    onCancel: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val sizeText = remember(modelConfig) {
@@ -76,6 +78,10 @@ fun ModelDownloadCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    // Al cancelar se conserva lo descargado: si vuelve a darle, reanuda.
+                    TextButton(onClick = onCancel) {
+                        Text(stringResource(R.string.ai_cancel_download))
+                    }
                 }
             } else {
                 Button(onClick = onDownload) {

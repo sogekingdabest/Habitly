@@ -12,9 +12,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +33,9 @@ fun PromptInput(
     input: String,
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
+    isGenerating: Boolean = false,
+    onStop: () -> Unit = {},
+    onVoiceInput: (() -> Unit)? = null,
     quickPrompts: List<AiQuickPrompt> = emptyList(),
     onQuickPrompt: (String) -> Unit = {},
     modifier: Modifier = Modifier
@@ -69,17 +75,44 @@ fun PromptInput(
                 // repetir algo que en un chat ya se da por sabido.
                 placeholder = { Text(stringResource(R.string.ai_input_hint)) },
                 shape = RoundedCornerShape(24.dp),
-                maxLines = 4
+                maxLines = 4,
+                // El micro se retira en cuanto hay texto: ahí el hueco es del contenido.
+                trailingIcon = if (onVoiceInput != null && input.isBlank()) {
+                    {
+                        IconButton(onClick = onVoiceInput) {
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = stringResource(R.string.ai_voice_input)
+                            )
+                        }
+                    }
+                } else {
+                    null
+                }
             )
-            FilledIconButton(
-                onClick = onSend,
-                enabled = input.isNotBlank(),
-                modifier = Modifier.size(56.dp)
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Send,
-                    contentDescription = stringResource(R.string.ai_send)
-                )
+            // Mientras el modelo genera, el botón pasa a "detener": enviar ya no procede
+            // (el ViewModel lo ignora) y así siempre hay una acción útil disponible.
+            if (isGenerating) {
+                FilledIconButton(
+                    onClick = onStop,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Stop,
+                        contentDescription = stringResource(R.string.ai_stop)
+                    )
+                }
+            } else {
+                FilledIconButton(
+                    onClick = onSend,
+                    enabled = input.isNotBlank(),
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = stringResource(R.string.ai_send)
+                    )
+                }
             }
         }
     }

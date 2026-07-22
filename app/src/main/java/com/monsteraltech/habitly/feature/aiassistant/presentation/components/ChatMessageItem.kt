@@ -1,26 +1,32 @@
 package com.monsteraltech.habitly.feature.aiassistant.presentation.components
 
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiMessage
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
 import com.monsteraltech.habitly.feature.aiassistant.domain.util.AiStructuredBlocks
@@ -34,13 +40,21 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ChatMessageItem(
     message: AiMessage,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Último mensaje del asistente aún generándose: sin botón de copiar y, si sigue vacío, con puntos. */
+    isStreaming: Boolean = false,
+    onCopy: (String) -> Unit = {}
 ) {
     val isUser = message.role is MessageRole.User
+    // Texto que se muestra y se copia: el del usuario tal cual; el del asistente sin el
+    // bloque estructurado @@…@@ (metadato que la UI oculta).
+    val displayText = if (isUser) message.content
+        else AiStructuredBlocks.stripFromDisplay(message.content)
+    val isAwaitingFirstToken = isStreaming && displayText.isBlank()
 
-    Row(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
+        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
         Card(
             // Sin margen en el lado propio: la burbuja apura hasta el borde (el aire que
@@ -70,16 +84,19 @@ fun ChatMessageItem(
                 modifier = Modifier.padding(12.dp)
             ) {
                 if (isUser) {
-                    Text(
-                        text = message.content,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    val segments = remember(message.content) {
-                        MarkdownTableSegments.split(
-                            AiStructuredBlocks.stripFromDisplay(message.content)
+                    // SelectionContainer: el Text plano del usuario no era seleccionable.
+                    SelectionContainer {
+                        Text(
+                            text = message.content,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
+                    }
+                } else if (isAwaitingFirstToken) {
+                    TypingIndicator()
+                } else {
+                    val segments = remember(displayText) {
+                        MarkdownTableSegments.split(displayText)
                     }
                     val markdownStyle = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface
@@ -89,7 +106,10 @@ fun ChatMessageItem(
                             is MarkdownTableSegments.Segment.Text -> MarkdownText(
                                 markdown = segment.content,
                                 style = markdownStyle,
-                                linkColor = MaterialTheme.colorScheme.primary
+                                linkColor = MaterialTheme.colorScheme.primary,
+                                // SelectionContainer no llega al TextView de la librería:
+                                // hay que activar su selección explícitamente.
+                                isTextSelectable = true
                             )
 
                             is MarkdownTableSegments.Segment.Table -> AssistantTable(
@@ -99,14 +119,32 @@ fun ChatMessageItem(
                         }
                     }
                 }
-                Text(
-                    text = remember(message.timestamp) { formatTimestamp(message.timestamp) },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isUser)
-                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(top = 4.dp)
+                if (!isAwaitingFirstToken) {
+                    Text(
+                        text = remember(message.timestamp) { formatTimestamp(message.timestamp) },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isUser)
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+        }
+
+        // Botón de copiar bajo la burbuja: el prompt propio (lo pedía el usuario) y las
+        // respuestas ya terminadas. Durante el streaming se oculta (copiar a medias no aporta).
+        if (!isStreaming && displayText.isNotBlank()) {
+            IconButton(
+                onClick = { onCopy(displayText) },
+                modifier = Modifier.size(28.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.ContentCopy,
+                    contentDescription = stringResource(R.string.ai_copy),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
@@ -133,7 +171,8 @@ private fun AssistantTable(
             MarkdownText(
                 markdown = segment.content,
                 style = style,
-                modifier = Modifier.width(tableWidth)
+                modifier = Modifier.width(tableWidth),
+                isTextSelectable = true
             )
         }
     }

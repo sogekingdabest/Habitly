@@ -1,6 +1,16 @@
 package com.monsteraltech.habitly.feature.aiassistant.presentation
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.os.Build
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,6 +32,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.AlertDialog
@@ -39,8 +51,10 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -52,11 +66,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -64,6 +85,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiModelConfig
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiQuickPrompt
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStatus
 import com.monsteraltech.habitly.feature.aiassistant.domain.util.AiStructuredBlocks
@@ -77,10 +100,100 @@ import com.monsteraltech.habitly.ui.components.HabitlyBackground
 import com.monsteraltech.habitly.ui.components.MeshArrangement
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+/** A partir de esta fracción de contexto ocupado se muestra el aviso de compactar. */
+private const val CONTEXT_WARN_THRESHOLD = 0.7f
+
+/** `2,6 GB` o `850 MB`, con el separador decimal del idioma del dispositivo. */
+private fun formatModelSize(bytes: Long): String {
+    val gb = bytes / 1_000_000_000.0
+    return if (gb >= 1) {
+        String.format(Locale.getDefault(), "%.1f GB", gb)
+    } else {
+        String.format(Locale.getDefault(), "%d MB", bytes / 1_000_000)
+    }
+}
+
+/**
+ * Botón flotante "ir al final". En su propio composable (sin ColumnScope/RowScope alrededor)
+ * para que [AnimatedVisibility] resuelva a la sobrecarga genérica; el `align` del padre llega
+ * por [modifier]. Es la pieza de scroll de la fase 3 (equivalente al ScrollToBottomButton del
+ * AI Edge Gallery).
+ */
+@Composable
+private fun ScrollToBottomFab(
+    visible: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier
+    ) {
+        SmallFloatingActionButton(onClick = onClick) {
+            Icon(
+                Icons.Default.KeyboardArrowDown,
+                contentDescription = stringResource(R.string.ai_scroll_to_bottom)
+            )
+        }
+    }
+}
+
+/**
+ * Aviso de "conversación larga" con acción de compactar (fase 6). El historial visible no
+ * cambia: compactar solo resume la parte antigua que se le pasa al modelo.
+ */
+@Composable
+private fun ContextCompactBanner(
+    usagePercent: Int,
+    isCompacting: Boolean,
+    onCompact: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = RoundedCornerShape(12.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.ai_context_long, usagePercent),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.weight(1f)
+            )
+            if (isCompacting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp
+                )
+                Text(
+                    text = stringResource(R.string.ai_compacting),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            } else {
+                TextButton(onClick = onCompact) {
+                    Text(stringResource(R.string.ai_compact))
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,16 +202,84 @@ fun AiAssistantScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    // Seguimiento del final durante el streaming. Se rompe cuando el usuario sube a releer
+    // (gesto hacia arriba) y se vuelve a enganchar al llegar de nuevo al final.
+    val autoFollow = remember { mutableStateOf(true) }
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // available.y > 0 = el dedo arrastra hacia abajo = se revela lo anterior: el
+                // usuario quiere releer, así que dejamos de seguir la cola del stream.
+                if (available.y > 0f) autoFollow.value = false
+                return Offset.Zero
+            }
+        }
+    }
+    var showScrollToBottom by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    // Copiar mensajes al portapapeles. En Android 13+ el sistema ya muestra su propia
+    // confirmación al copiar, así que el snackbar solo se lanza por debajo de esa versión.
+    val clipboard = LocalClipboardManager.current
+    val copiedMessage = stringResource(R.string.ai_copied)
+    val onCopyMessage: (String) -> Unit = { text ->
+        clipboard.setText(AnnotatedString(text))
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            scope.launch { snackbarHostState.showSnackbar(copiedMessage) }
+        }
+    }
     var expandedModelMenu by remember { mutableStateOf(false) }
     var chatToDelete by remember { mutableStateOf<AiChatSession?>(null) }
+    var showDownloadDialog by remember { mutableStateOf(false) }
+    var modelToDelete by remember { mutableStateOf<AiModelConfig?>(null) }
 
-    LaunchedEffect(uiState.chatSession.messages.count { it.role == com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole.User }) {
-        val userMessageCount = uiState.chatSession.messages.count { it.role == com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole.User }
+    // Dictado por voz con el reconocedor del sistema: sin permisos propios ni modelos extra.
+    // El texto reconocido se deja en el campo para que el usuario lo revise antes de enviar.
+    val voicePromptText = stringResource(R.string.ai_voice_prompt)
+    val voiceUnavailableText = stringResource(R.string.ai_voice_unavailable)
+    val speechLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val spoken = result.data
+            ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()
+        if (!spoken.isNullOrBlank()) viewModel.onInputChange(spoken)
+    }
+
+    // Al enviar un mensaje nuevo, baja al final y vuelve a enganchar el seguimiento.
+    val userMessageCount = uiState.chatSession.messages.count { it.role is MessageRole.User }
+    LaunchedEffect(userMessageCount) {
         if (userMessageCount > 0) {
-            listState.animateScrollToItem(uiState.chatSession.messages.size - 1)
+            autoFollow.value = true
+            val total = listState.layoutInfo.totalItemsCount
+            if (total > 0) listState.animateScrollToItem(total - 1)
+        }
+    }
+
+    // Sigue la cola de la respuesta durante el streaming, solo mientras autoFollow siga vivo
+    // (si el usuario subió a releer, no se le interrumpe). El objetivo es el item ancla del
+    // final: sobre el mensaje —que es un item muy alto— scrollToItem fijaría su INICIO, no la
+    // cola que crece. Sin animación: relanzarla en cada refresco del stream la corta a tirones.
+    val streamingLength = uiState.chatSession.messages.lastOrNull()?.content?.length ?: 0
+    LaunchedEffect(uiState.isGenerating, streamingLength) {
+        if (!uiState.isGenerating || !autoFollow.value) return@LaunchedEffect
+        val total = listState.layoutInfo.totalItemsCount
+        if (total > 0) listState.scrollToItem(total - 1)
+    }
+
+    // Botón "ir al final" + re-enganche del seguimiento. canScrollForward = queda contenido
+    // por debajo; con 500 ms de margen el botón no parpadea mientras se sigue el stream.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.canScrollForward }.collectLatest { canScroll ->
+            if (!canScroll) {
+                autoFollow.value = true
+                showScrollToBottom = false
+            } else {
+                delay(500)
+                showScrollToBottom = true
+            }
         }
     }
 
@@ -124,6 +305,14 @@ fun AiAssistantScreen(
         LaunchedEffect(addedRoutines) {
             snackbarHostState.showSnackbar(addedRoutinesMessage)
             viewModel.onAddedRoutinesShown()
+        }
+    }
+
+    val contextCompactedMessage = stringResource(R.string.ai_compacted)
+    LaunchedEffect(uiState.contextCompacted) {
+        if (uiState.contextCompacted) {
+            snackbarHostState.showSnackbar(contextCompactedMessage)
+            viewModel.onContextCompactedShown()
         }
     }
 
@@ -220,19 +409,50 @@ fun AiAssistantScreen(
                                 onDismissRequest = { expandedModelMenu = false }
                             ) {
                                 uiState.availableModels.forEach { model ->
+                                    val isDownloaded = model.id in uiState.downloadedModelIds
                                     DropdownMenuItem(
-                                        text = { Text(model.name) },
+                                        text = {
+                                            Column {
+                                                Text(model.name)
+                                                Text(
+                                                    text = if (isDownloaded) {
+                                                        stringResource(
+                                                            R.string.ai_model_size_downloaded,
+                                                            formatModelSize(model.sizeBytes)
+                                                        )
+                                                    } else {
+                                                        formatModelSize(model.sizeBytes)
+                                                    },
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        },
                                         onClick = {
                                             viewModel.onSelectModel(model.id)
                                             expandedModelMenu = false
                                         },
                                         trailingIcon = {
-                                            if (model.id == uiState.selectedModel?.id) {
-                                                Icon(
-                                                    Icons.Default.Check,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                if (model.id == uiState.selectedModel?.id) {
+                                                    Icon(
+                                                        Icons.Default.Check,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                                if (isDownloaded) {
+                                                    IconButton(onClick = {
+                                                        expandedModelMenu = false
+                                                        modelToDelete = model
+                                                    }) {
+                                                        Icon(
+                                                            Icons.Default.Delete,
+                                                            contentDescription = stringResource(R.string.ai_delete_model),
+                                                            modifier = Modifier.size(20.dp)
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     )
@@ -272,7 +492,8 @@ fun AiAssistantScreen(
                             modelConfig = uiState.selectedModel,
                             progress = 0f,
                             isDownloading = false,
-                            onDownload = { viewModel.onDownloadModel() },
+                            // Antes de encolar GB se pregunta con qué red (Wi-Fi o datos).
+                            onDownload = { showDownloadDialog = true },
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
                         )
                     }
@@ -283,6 +504,7 @@ fun AiAssistantScreen(
                             progress = progress,
                             isDownloading = true,
                             onDownload = {},
+                            onCancel = { viewModel.onCancelDownload() },
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
                         )
                     }
@@ -316,10 +538,11 @@ fun AiAssistantScreen(
                         }
                     }
                     is ModelStatus.Ready -> {
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         LazyColumn(
                             modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
+                                .fillMaxSize()
+                                .nestedScroll(nestedScrollConnection),
                             state = listState,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
                         ) {
@@ -358,9 +581,19 @@ fun AiAssistantScreen(
                                 }
                             }
 
-                            items(uiState.chatSession.messages) { message ->
+                            // key por id: durante el streaming solo recompone el mensaje que
+                            // crece, en vez de rehacer todas las filas en cada refresco.
+                            items(uiState.chatSession.messages, key = { it.id }) { message ->
                                 Column {
-                                    ChatMessageItem(message = message)
+                                    ChatMessageItem(
+                                        message = message,
+                                        // El último mensaje del asistente mientras se genera:
+                                        // sin botón de copiar y, si sigue vacío, con puntos.
+                                        isStreaming = uiState.isGenerating &&
+                                            message.id == uiState.chatSession.messages.lastOrNull()?.id &&
+                                            message.role is MessageRole.Assistant,
+                                        onCopy = onCopyMessage
+                                    )
                                     val suggestions = uiState.shoppingSuggestions[message.id]
                                     if (!suggestions.isNullOrEmpty()) {
                                         ShoppingSuggestionCard(
@@ -382,35 +615,89 @@ fun AiAssistantScreen(
                                 }
                             }
 
-                            if (uiState.isGenerating) {
-                                item {
-                                    // Si el stream ya va por el bloque @@…@@ oculto, el texto
-                                    // visible deja de crecer un buen rato: se avisa de que
-                                    // vienen sugerencias en vez de dejar un spinner mudo.
-                                    val streamingTail = uiState.chatSession.messages.lastOrNull()
-                                        ?.takeIf { it.role is MessageRole.Assistant }
-                                        ?.content.orEmpty()
-                                    if (AiStructuredBlocks.hasPendingStructuredBlock(streamingTail)) {
-                                        SuggestionPreparingCard()
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator()
-                                        }
-                                    }
+                            // Si el stream ya va por el bloque @@…@@ oculto, el texto visible
+                            // deja de crecer un buen rato: se avisa de que vienen sugerencias.
+                            // Ya no hay spinner: el mensaje se completa solo y los puntos de la
+                            // burbuja cubren la espera hasta el primer token.
+                            if (uiState.isGenerating || uiState.isExtractingSuggestions) {
+                                val streamingTail = uiState.chatSession.messages.lastOrNull()
+                                    ?.takeIf { it.role is MessageRole.Assistant }
+                                    ?.content.orEmpty()
+                                if (uiState.isExtractingSuggestions ||
+                                    AiStructuredBlocks.hasPendingStructuredBlock(streamingTail)) {
+                                    item(key = "preparing") { SuggestionPreparingCard() }
                                 }
                             }
+
+                            // Ancla del final: objetivo del scroll de seguimiento. Sobre el
+                            // mensaje (item muy alto) scrollToItem fijaría su inicio, no la cola.
+                            // Solo con mensajes, para no hacer scrollable la pantalla vacía.
+                            if (uiState.chatSession.messages.isNotEmpty()) {
+                                item(key = "bottom-anchor") { Spacer(Modifier.height(1.dp)) }
+                            }
+                        }
+
+                        // "Ir al final": solo cuando el usuario se ha quedado arriba.
+                        ScrollToBottomFab(
+                            visible = showScrollToBottom,
+                            onClick = {
+                                autoFollow.value = true
+                                scope.launch {
+                                    val total = listState.layoutInfo.totalItemsCount
+                                    if (total > 0) listState.animateScrollToItem(total - 1)
+                                }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 8.dp)
+                        )
+                        }
+
+                        // Métricas de la última respuesta: solo llegan en builds debug.
+                        uiState.lastGenerationStats?.let { stats ->
+                            Text(
+                                text = stats,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                        }
+
+                        // Aviso de conversación larga con acción de compactar (fase 6).
+                        if (uiState.contextUsage >= CONTEXT_WARN_THRESHOLD && !uiState.isGenerating) {
+                            ContextCompactBanner(
+                                usagePercent = (uiState.contextUsage * 100).toInt(),
+                                isCompacting = uiState.isCompacting,
+                                onCompact = { viewModel.onCompactContext() }
+                            )
                         }
 
                         PromptInput(
                             input = uiState.currentInput,
                             onInputChange = { viewModel.onInputChange(it) },
                             onSend = { viewModel.onSendMessage() },
-                            quickPrompts = uiState.quickPrompts,
+                            isGenerating = uiState.isGenerating,
+                            onStop = { viewModel.onStopGeneration() },
+                            onVoiceInput = {
+                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                    putExtra(
+                                        RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                                    )
+                                    putExtra(RecognizerIntent.EXTRA_PROMPT, voicePromptText)
+                                }
+                                try {
+                                    speechLauncher.launch(intent)
+                                } catch (e: ActivityNotFoundException) {
+                                    scope.launch { snackbarHostState.showSnackbar(voiceUnavailableText) }
+                                }
+                            },
+                            // El chip de seguimiento ("Sí, créalas" / "Sí, a la lista") va
+                            // delante de los fijos; aquí solo se pinta, su destino lo enruta
+                            // el ViewModel al reconocer el prompt en onQuickPrompt.
+                            quickPrompts = listOfNotNull(
+                                uiState.followUpPrompt?.let { AiQuickPrompt(it.label, it.prompt) }
+                            ) + uiState.quickPrompts,
                             onQuickPrompt = { viewModel.onQuickPrompt(it) }
                         )
                     }
@@ -418,6 +705,70 @@ fun AiAssistantScreen(
             }
         }
         }
+    }
+
+    if (showDownloadDialog) {
+        AlertDialog(
+            onDismissRequest = { showDownloadDialog = false },
+            title = { Text(stringResource(R.string.ai_download_network_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.ai_download_network_message,
+                        formatModelSize(uiState.selectedModel?.sizeBytes ?: 0L)
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDownloadDialog = false
+                    viewModel.onDownloadModel(wifiOnly = true)
+                }) {
+                    Text(stringResource(R.string.ai_download_wifi_only))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDownloadDialog = false
+                    viewModel.onDownloadModel(wifiOnly = false)
+                }) {
+                    Text(stringResource(R.string.ai_download_any_network))
+                }
+            }
+        )
+    }
+
+    modelToDelete?.let { model ->
+        AlertDialog(
+            onDismissRequest = { modelToDelete = null },
+            icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(R.string.ai_delete_model_confirm_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.ai_delete_model_confirm_message,
+                        model.name,
+                        formatModelSize(model.sizeBytes)
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.onDeleteModel(model.id)
+                        modelToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.cd_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { modelToDelete = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
 
     chatToDelete?.let { session ->
