@@ -17,6 +17,8 @@ class AiChatSessionTest {
         assertTrue(session.systemPrompt.isEmpty())
         assertEquals(AvailableAiModels.Gemma4_E2B_IT.id, session.modelId)
         assertTrue(session.messages.isEmpty())
+        assertTrue(session.contextSummary.isEmpty())
+        assertEquals(0, session.summarizedUpTo)
     }
 
     @Test

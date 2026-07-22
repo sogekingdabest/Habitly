@@ -246,4 +246,27 @@ class ParseAiRoutinesUseCaseTest {
         assertEquals(1, shopping.size)
         assertEquals("Lejía", shopping[0].name)
     }
+
+    @Test
+    fun `recovers a truncated last routine`() {
+        // El modelo se quedó sin tokens: el último objeto no tiene llave de cierre.
+        val text =
+            "@@RUTINA@@ {\"routines\":[{\"title\":\"Barrer\",\"frequency\":\"diaria\"}," +
+                "{\"title\":\"Fregar\",\"frequency\":\"seman"
+
+        val result = useCase(text)
+
+        assertEquals(2, result.size)
+        assertEquals("Barrer", result[0].title)
+        assertEquals("Fregar", result[1].title)
+    }
+
+    @Test
+    fun `stray json object with title but no routines key is ignored`() {
+        // Antes, la palabra suelta "rutinas" activaba el parseo y este objeto colado producía una
+        // tarjeta espuria. Ahora se exige marcador o la clave "routines" en forma JSON.
+        val text = "Podrías organizar tus rutinas. Por ejemplo {\"title\":\"algo\"} sería una idea."
+
+        assertTrue(useCase(text).isEmpty())
+    }
 }

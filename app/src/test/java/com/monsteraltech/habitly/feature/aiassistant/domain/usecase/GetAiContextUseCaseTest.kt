@@ -259,7 +259,7 @@ class GetAiContextUseCaseTest {
     fun `personality tells the model to only ask for missing ingredients`() = runBlocking {
         val result = useCase()
 
-        assertTrue(result.contains("SOLO los ingredientes que FALTEN"))
+        assertTrue(result.contains("qué productos harían falta COMPRAR"))
     }
 
     // ---------- Rutinas ----------

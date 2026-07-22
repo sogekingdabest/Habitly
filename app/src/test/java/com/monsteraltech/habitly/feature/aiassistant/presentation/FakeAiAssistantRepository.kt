@@ -5,6 +5,7 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiModelConfig
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AvailableAiModels
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiAssistantRepository
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStatus
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
@@ -15,6 +16,16 @@ class FakeAiAssistantRepository : AiAssistantRepository {
     var shouldFailSendMessage = false
     var errorMessage = "Error simulado"
 
+    /** Emite un chunk parcial y se queda colgado hasta que lo cancelen (para testear "parar"). */
+    var hangAfterFirstChunk = false
+
+    /** Respuesta que emite el stream (configurable para simular propuestas del asistente). */
+    var cannedReply = "Respuesta simulada"
+
+    /** Título que devuelve generateSessionTitle ("" = no se pudo generar). */
+    var generatedTitle = ""
+    var generateTitleCallCount = 0
+
     private val _activeSession = MutableStateFlow<AiChatSession?>(null)
     private val _modelStatus = MutableStateFlow<ModelStatus>(ModelStatus.Ready)
     private val _selectedModel = MutableStateFlow<AiModelConfig>(AvailableAiModels.Gemma4_E2B_IT)
@@ -22,8 +33,18 @@ class FakeAiAssistantRepository : AiAssistantRepository {
 
     val savedSessions = mutableListOf<AiChatSession>()
     val deletedSessionIds = mutableListOf<String>()
+    val deletedModelIds = mutableListOf<String>()
+    var downloadedModelIds = setOf<String>()
+    var cancelDownloadCallCount = 0
+    var lastDownloadWifiOnly: Boolean? = null
     var resetSessionCallCount = 0
     var sendMessageCallCount = 0
+    var extractRoutinesCallCount = 0
+    var extractShoppingCallCount = 0
+    var routinesResult = ""
+    var shoppingResult = ""
+    var summaryResult = ""
+    var summarizeCallCount = 0
 
     override fun getAvailableModels(): List<AiModelConfig> = AvailableAiModels.models
 
@@ -36,9 +57,21 @@ class FakeAiAssistantRepository : AiAssistantRepository {
 
     override fun observeModelStatus(): Flow<ModelStatus> = _modelStatus
 
-    override suspend fun downloadModel() {
+    override suspend fun downloadModel(wifiOnly: Boolean) {
+        lastDownloadWifiOnly = wifiOnly
         _modelStatus.value = ModelStatus.Ready
     }
+
+    override fun cancelDownload() {
+        cancelDownloadCallCount++
+    }
+
+    override suspend fun deleteModel(modelId: String) {
+        deletedModelIds.add(modelId)
+        downloadedModelIds = downloadedModelIds - modelId
+    }
+
+    override suspend fun getDownloadedModelIds(): Set<String> = downloadedModelIds
 
     override fun setActiveSession(session: AiChatSession) {
         _activeSession.value = session
@@ -49,7 +82,31 @@ class FakeAiAssistantRepository : AiAssistantRepository {
         if (shouldFailSendMessage) {
             throw Exception(errorMessage)
         }
-        emit("Respuesta simulada")
+        if (hangAfterFirstChunk) {
+            emit("Respuesta parcial")
+            awaitCancellation()
+        }
+        emit(cannedReply)
+    }
+
+    override suspend fun generateSessionTitle(userMessage: String, assistantReply: String): String {
+        generateTitleCallCount++
+        return generatedTitle
+    }
+
+    override suspend fun summarizeConversation(sourceText: String): String {
+        summarizeCallCount++
+        return summaryResult
+    }
+
+    override suspend fun extractRoutines(sourceText: String): String {
+        extractRoutinesCallCount++
+        return routinesResult
+    }
+
+    override suspend fun extractShopping(sourceText: String): String {
+        extractShoppingCallCount++
+        return shoppingResult
     }
 
     override suspend fun resetSession() {
@@ -83,10 +140,24 @@ class FakeAiAssistantRepository : AiAssistantRepository {
     fun reset() {
         shouldFailSendMessage = false
         errorMessage = "Error simulado"
+        hangAfterFirstChunk = false
+        cannedReply = "Respuesta simulada"
+        generatedTitle = ""
+        generateTitleCallCount = 0
+        deletedModelIds.clear()
+        downloadedModelIds = setOf()
+        cancelDownloadCallCount = 0
+        lastDownloadWifiOnly = null
         savedSessions.clear()
         deletedSessionIds.clear()
         resetSessionCallCount = 0
         sendMessageCallCount = 0
+        extractRoutinesCallCount = 0
+        extractShoppingCallCount = 0
+        routinesResult = ""
+        shoppingResult = ""
+        summaryResult = ""
+        summarizeCallCount = 0
         _activeSession.value = null
         _modelStatus.value = ModelStatus.Ready
         _selectedModel.value = AvailableAiModels.Gemma4_E2B_IT
