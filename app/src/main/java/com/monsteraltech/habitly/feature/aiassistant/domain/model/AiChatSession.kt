@@ -8,7 +8,11 @@ data class AiChatSession(
     val systemPrompt: String = "",
     val modelId: String = AvailableAiModels.Gemma4_E2B_IT.id,
     val timestamp: Long = System.currentTimeMillis(),
-    val messages: List<AiMessage> = emptyList()
+    val messages: List<AiMessage> = emptyList(),
+    /** Resumen de la parte antigua de la conversación tras compactar. Vacío = sin compactar. */
+    val contextSummary: String = "",
+    /** Nº de mensajes (desde el principio) ya cubiertos por [contextSummary]. */
+    val summarizedUpTo: Int = 0
 ) {
     fun addUserMessage(content: String): AiChatSession {
         val newTitle = if (messages.isEmpty() && title == "Nueva conversación") {

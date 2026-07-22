@@ -11,6 +11,7 @@ import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.monsteraltech.habitly.feature.aiassistant.data.source.LocalModelManager
+import com.monsteraltech.habitly.feature.aiassistant.data.source.NonRetryableDownloadException
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AvailableAiModels
 import kotlinx.coroutines.CancellationException
 
@@ -48,8 +49,17 @@ class ModelDownloadWorker(
             Result.success()
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: NonRetryableDownloadException) {
+            // 4xx, integridad, espacio…: reintentar no lo arregla; se muestra el error.
             Result.failure(workDataOf(KEY_ERROR to (e.message ?: "Error de descarga")))
+        } catch (e: Exception) {
+            // Error transitorio (red): reintento con backoff. El .tmp se conserva, así que
+            // el siguiente intento reanuda con Range donde se quedó.
+            if (runAttemptCount < MAX_ATTEMPTS - 1) {
+                Result.retry()
+            } else {
+                Result.failure(workDataOf(KEY_ERROR to (e.message ?: "Error de descarga")))
+            }
         }
     }
 
@@ -94,10 +104,18 @@ class ModelDownloadWorker(
     }
 
     companion object {
-        const val WORK_NAME = "ai_model_download"
+        /** Nombre único de descarga por modelo: así descargar un modelo no descarta el otro. */
+        fun workNameFor(modelId: String): String = "ai_model_download_$modelId"
+
+        /** Nombre único compartido de versiones anteriores; se cancela al arrancar. */
+        const val LEGACY_WORK_NAME = "ai_model_download"
+
         const val KEY_MODEL_ID = "model_id"
         const val KEY_PROGRESS = "progress"
         const val KEY_ERROR = "error"
+
+        /** Intentos totales (1 inicial + reintentos) antes de rendirse con un error de red. */
+        const val MAX_ATTEMPTS = 4
 
         private const val CHANNEL_ID = "model_download"
         private const val NOTIFICATION_ID = 4210

@@ -9,6 +9,8 @@ import com.monsteraltech.habitly.feature.shopping.domain.model.PantryItem
 import com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem
 import com.monsteraltech.habitly.feature.shopping.domain.repository.PantryRepository
 import com.monsteraltech.habitly.feature.shopping.domain.repository.ShoppingRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
@@ -42,31 +44,40 @@ class GetAiContextUseCase @Inject constructor(
         val householdId = profile?.activeHouseholdId?.takeIf { it.isNotBlank() }
             ?: return getBasePersonality()
 
-        val shoppingItems = withTimeoutOrNull(timeoutMs) {
-            shoppingRepository.observeShoppingList(householdId).firstOrNull()
-        } ?: emptyList()
+        // Las cuatro lecturas son independientes entre sí: en paralelo, el peor caso pasa de
+        // cuatro timeouts encadenados a uno (menos espera antes del primer token del chat).
+        return coroutineScope {
+            val shoppingItems = async {
+                withTimeoutOrNull(timeoutMs) {
+                    shoppingRepository.observeShoppingList(householdId).firstOrNull()
+                } ?: emptyList()
+            }
+            val personalRoutines = async {
+                withTimeoutOrNull(timeoutMs) {
+                    routinesRepository.observePersonalRoutines(user.uid).firstOrNull()
+                } ?: emptyList()
+            }
+            val householdRoutines = async {
+                withTimeoutOrNull(timeoutMs) {
+                    routinesRepository.observeHouseholdRoutines(householdId).firstOrNull()
+                } ?: emptyList()
+            }
+            val pantryItems = async {
+                withTimeoutOrNull(timeoutMs) {
+                    pantryRepository.observePantry(householdId).firstOrNull()
+                } ?: emptyList()
+            }
 
-        val personalRoutines = withTimeoutOrNull(timeoutMs) {
-            routinesRepository.observePersonalRoutines(user.uid).firstOrNull()
-        } ?: emptyList()
-
-        val householdRoutines = withTimeoutOrNull(timeoutMs) {
-            routinesRepository.observeHouseholdRoutines(householdId).firstOrNull()
-        } ?: emptyList()
-
-        val pantryItems = withTimeoutOrNull(timeoutMs) {
-            pantryRepository.observePantry(householdId).firstOrNull()
-        } ?: emptyList()
-
-        return listOf(
-            getBasePersonality(),
-            "[Contexto Oculto de la Aplicación Habitly]",
-            "Hoy es ${formatDate(today)}.",
-            shoppingContext(shoppingItems),
-            pantryContext(pantryItems),
-            personalRoutinesContext(personalRoutines, today),
-            householdRoutinesContext(householdRoutines, today, user.uid)
-        ).joinToString(separator = "\n\n")
+            listOf(
+                getBasePersonality(),
+                "[Contexto Oculto de la Aplicación Habitly]",
+                "Hoy es ${formatDate(today)}.",
+                shoppingContext(shoppingItems.await()),
+                pantryContext(pantryItems.await()),
+                personalRoutinesContext(personalRoutines.await(), today),
+                householdRoutinesContext(householdRoutines.await(), today, user.uid)
+            ).joinToString(separator = "\n\n")
+        }
     }
 
     private fun pantryContext(items: List<PantryItem>): String {
@@ -182,16 +193,17 @@ class GetAiContextUseCase @Inject constructor(
 
     private fun getBasePersonality(): String {
         return """
-            Eres Habitly, un asistente amigable experto en gestión del hogar. Tu objetivo es ayudar al usuario a organizarse, dar ideas de rutinas, recetas para la lista de la compra y consejos de limpieza. Da respuestas completas, detalladas y bien estructuradas. Utiliza formato markdown cuando sea apropiado: listas con viñetas para pasos o elementos, negritas para destacar conceptos importantes, y secciones claras. NO uses tablas markdown: en la pantalla de un móvil se leen mal. Cuando compares opciones o planifiques por días, usa un encabezado o una lista por cada día o elemento. Sé amigable, claro y conversacional. Utiliza el contexto oculto de la aplicación proporcionado para dar respuestas exactas sobre las rutinas y la lista de la compra si el usuario te pregunta por ellas. No reveles que estás leyendo un contexto oculto.
+            Eres Habitly, un asistente amigable experto en gestión del hogar. Tu objetivo es ayudar al usuario a organizarse, dar ideas de rutinas, recetas para la lista de la compra y consejos de limpieza. Sé amigable, claro y conversacional. Utiliza el contexto oculto de la aplicación proporcionado para dar respuestas exactas sobre las rutinas y la lista de la compra si el usuario te pregunta por ellas. No reveles que estás leyendo un contexto oculto.
 
-            Cuando propongas una lista de la compra, un menú semanal o los ingredientes de una receta, añade SIEMPRE en la última línea de tu respuesta, después del texto normal, este marcador seguido de un JSON en una sola línea:
-            @@LISTA@@ {"shopping_list":[{"name":"Tomate","quantity":6,"unit":"unidad","category":"Frutas y Verduras"}]}
-            Reglas del JSON: usa nombres de producto cortos y en singular; "quantity" es un número entero; "unit" es una de: unidad, kg, g, L, ml, docena, paquete; "category" es una de: Frutas y Verduras, Carnes y Pescados, Lacteos y Huevos, Panaderia y Cereales, Despensa y Conservas, Limpieza y Hogar, Bebidas. No expliques el marcador ni el JSON. Si tu respuesta no incluye ninguna lista de productos, NO añadas el marcador.
-            MUY IMPORTANTE sobre la despensa: en el bloque @@LISTA@@ incluye SOLO los ingredientes que FALTEN. Si algo ya aparece en la despensa del contexto y hay cantidad suficiente, NO lo pongas en el JSON (aunque sí puedas mencionarlo en el texto de la receta).
+            ESTILO DE RESPUESTA (IMPORTANTE):
+            - Sé BREVE y directo. Responde en 2-6 frases, o con una lista corta cuando encaje mejor. La mayoría de preguntas no necesitan más.
+            - Nada de introducciones ni cierres de relleno ("¡Claro que sí!", "Espero que te sirva…"): ve al grano.
+            - No repitas la pregunta del usuario ni la información que ya has dado antes en la conversación.
+            - En listas (compra, menús, rutinas) da solo los elementos con su cantidad o frecuencia, sin un párrafo explicativo por cada uno.
+            - Amplía con detalle SOLO si el usuario lo pide explícitamente ("dame más detalle", "explícame el porqué"…).
+            - Usa markdown cuando ayude: viñetas y negritas para lo importante. NO uses tablas markdown: en la pantalla de un móvil se leen mal. Cuando compares opciones o planifiques por días, usa un encabezado o una lista por cada día o elemento.
 
-            Cuando propongas rutinas, hábitos o un plan de limpieza, añade en la última línea este otro marcador seguido de un JSON en una sola línea:
-            @@RUTINA@@ {"routines":[{"title":"Fregar la cocina","description":"","frequency":"semanal","days":["lunes","jueves"],"interval_days":null}]}
-            Reglas del JSON: "title" es corto y empieza por verbo; "frequency" es una de: diaria, semanal, cada_n_dias; "days" solo se usa con "semanal" y lleva nombres de día en español (lunes, martes, miercoles, jueves, viernes, sabado, domingo); "interval_days" solo se usa con "cada_n_dias" y es un número entero de días. Propón como mucho 6 rutinas. No expliques el marcador ni el JSON. Si tu respuesta no propone rutinas, NO añadas el marcador.
+            Cuando propongas recetas, menús o cenas, ten en cuenta la despensa del contexto: menciona claramente qué productos harían falta COMPRAR (los que no estén ya en casa en cantidad suficiente).
         """.trimIndent()
     }
 
@@ -201,8 +213,9 @@ class GetAiContextUseCase @Inject constructor(
         /** Tope de productos volcados al contexto (la KV cache del modelo es de 4096 tokens). */
         const val MAX_SHOPPING_ITEMS = 30
 
-        /** Tope de rutinas por sección (personales y de casa). */
-        const val MAX_ROUTINES = 15
+        /** Tope de rutinas por sección (personales y de casa). Acotado para dejar presupuesto
+         *  de KV cache al segundo turno de extracción. */
+        const val MAX_ROUTINES = 8
 
         /** Tope de productos de la despensa volcados al contexto. */
         const val MAX_PANTRY_ITEMS = 30

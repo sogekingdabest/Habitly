@@ -34,7 +34,9 @@ abstract class AiAssistantModule {
                 context,
                 AiAssistantDatabase::class.java,
                 "ai_assistant_db"
-            ).build()
+            )
+                .addMigrations(AiAssistantDatabase.MIGRATION_1_2)
+                .build()
         }
 
         @Provides

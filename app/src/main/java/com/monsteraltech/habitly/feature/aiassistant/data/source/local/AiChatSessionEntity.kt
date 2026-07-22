@@ -12,7 +12,12 @@ data class AiChatSessionEntity(
     val systemPrompt: String,
     val modelId: String,
     val timestamp: Long,
-    val messages: List<AiMessage>
+    val messages: List<AiMessage>,
+    // Columnas añadidas en la v2 (compactación de contexto). La migración las crea con
+    // DEFAULT '' / 0 para las filas existentes; la entidad no declara @ColumnInfo(defaultValue)
+    // a propósito, así Room omite la comparación de defaults al validar la migración.
+    val contextSummary: String = "",
+    val summarizedUpTo: Int = 0
 ) {
     fun toDomain(): AiChatSession {
         return AiChatSession(
@@ -21,7 +26,9 @@ data class AiChatSessionEntity(
             systemPrompt = systemPrompt,
             modelId = modelId,
             timestamp = timestamp,
-            messages = messages
+            messages = messages,
+            contextSummary = contextSummary,
+            summarizedUpTo = summarizedUpTo
         )
     }
 
@@ -33,7 +40,9 @@ data class AiChatSessionEntity(
                 systemPrompt = session.systemPrompt,
                 modelId = session.modelId,
                 timestamp = session.timestamp,
-                messages = session.messages
+                messages = session.messages,
+                contextSummary = session.contextSummary,
+                summarizedUpTo = session.summarizedUpTo
             )
         }
     }

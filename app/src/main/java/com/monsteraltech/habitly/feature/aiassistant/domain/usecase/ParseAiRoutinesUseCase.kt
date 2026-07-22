@@ -43,7 +43,7 @@ class ParseAiRoutinesUseCase @Inject constructor() {
 
     private fun looksLikeRoutinesBlock(text: String): Boolean =
         text.contains(AiStructuredBlocks.ROUTINES_MARKER) ||
-            ARRAY_KEYS.any { text.contains(it, ignoreCase = true) }
+            ARRAY_KEY_JSON.containsMatchIn(text)
 
     private fun structuredArray(region: String): JsonArray? {
         val element = parseLenient(region) ?: return null
@@ -96,33 +96,50 @@ class ParseAiRoutinesUseCase @Inject constructor() {
         return byTitle.values.toList()
     }
 
-    /** Último recurso: extrae los campos con regex sobre cada objeto `{ ... }`. */
+    /**
+     * Último recurso: extrae los campos con regex sobre cada objeto `{ ... }`. Además intenta
+     * recuperar un último objeto **truncado** (sin llave de cierre): es lo que ocurre cuando el
+     * modelo se queda sin presupuesto de tokens generando el JSON, y sin esto la última rutina
+     * se perdía.
+     */
     private fun regexFallback(region: String): List<AiRoutineSuggestion> {
         val byTitle = LinkedHashMap<String, AiRoutineSuggestion>()
         for (match in OBJECT_REGEX.findAll(region)) {
-            val body = match.value
-            val title = TITLE_REGEX.find(body)?.groupValues?.get(1)?.cleanTitle() ?: continue
-
-            val frequency = FREQUENCY_REGEX.find(body)?.groupValues?.get(1).toFrequency()
-            val days = DAYS_ARRAY_REGEX.find(body)?.groupValues?.get(1)
-                ?.split(',')
-                ?.mapNotNull { it.trim().trim('"').toCalendarDay() }
-                .orEmpty()
-            val interval = INTERVAL_REGEX.find(body)?.groupValues?.get(1)?.toIntOrNull()
-
-            byTitle.putIfAbsent(
-                title.normalizeKey(),
-                buildSuggestion(
-                    title = title,
-                    description = DESCRIPTION_REGEX.find(body)?.groupValues?.get(1)?.trim().orEmpty(),
-                    frequency = frequency,
-                    days = days,
-                    interval = interval
-                )
-            )
+            addFromBody(match.value, byTitle)
             if (byTitle.size >= MAX_ROUTINES) break
         }
+
+        // Objeto final sin cerrar: lo que quede tras la última '}' y contenga un '{'.
+        val lastClose = region.lastIndexOf('}')
+        val tail = if (lastClose == -1) region else region.substring(lastClose + 1)
+        val open = tail.indexOf('{')
+        if (open != -1) addFromBody(tail.substring(open), byTitle)
+
         return byTitle.values.toList()
+    }
+
+    /** Construye una sugerencia desde el cuerpo de un objeto (cerrado o truncado) y la añade. */
+    private fun addFromBody(body: String, byTitle: LinkedHashMap<String, AiRoutineSuggestion>) {
+        if (byTitle.size >= MAX_ROUTINES) return
+        val title = TITLE_REGEX.find(body)?.groupValues?.get(1)?.cleanTitle() ?: return
+
+        val frequency = FREQUENCY_REGEX.find(body)?.groupValues?.get(1).toFrequency()
+        val days = DAYS_ARRAY_REGEX.find(body)?.groupValues?.get(1)
+            ?.split(',')
+            ?.mapNotNull { it.trim().trim('"').toCalendarDay() }
+            .orEmpty()
+        val interval = INTERVAL_REGEX.find(body)?.groupValues?.get(1)?.toIntOrNull()
+
+        byTitle.putIfAbsent(
+            title.normalizeKey(),
+            buildSuggestion(
+                title = title,
+                description = DESCRIPTION_REGEX.find(body)?.groupValues?.get(1)?.trim().orEmpty(),
+                frequency = frequency,
+                days = days,
+                interval = interval
+            )
+        )
     }
 
     /**
@@ -238,6 +255,9 @@ class ParseAiRoutinesUseCase @Inject constructor() {
         val INTERVAL_REGEX = Regex("\"(?:interval_days|intervalo|cada|interval)\"\\s*:\\s*\"?(\\d+)", RegexOption.IGNORE_CASE)
 
         val ARRAY_KEYS = listOf("routines", "rutinas", "habits", "habitos")
+        // Clave en forma JSON (p. ej. `"routines": [`), no la palabra suelta: evita disparar el
+        // parseo solo porque el texto mencione "rutinas" en prosa normal.
+        val ARRAY_KEY_JSON = Regex("\"(?:routines|rutinas|habits|habitos)\"\\s*:\\s*\\[", RegexOption.IGNORE_CASE)
         val TITLE_KEYS = listOf("title", "titulo", "título", "nombre")
         val DESCRIPTION_KEYS = listOf("description", "descripcion", "descripción", "desc")
         val FREQUENCY_KEYS = listOf("frequency", "frecuencia", "freq")

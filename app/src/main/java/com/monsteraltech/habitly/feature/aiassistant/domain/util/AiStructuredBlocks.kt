@@ -87,10 +87,14 @@ object AiStructuredBlocks {
             if (body.contains("[") || body.contains("{")) return body
         }
 
-        // Array suelto [ ... ]
+        // Array [ ... ]. Si viene sin cerrar (respuesta truncada por falta de tokens), lo
+        // tomamos desde '[' hasta el final para que el parser tolerante recupere el último
+        // objeto en vez de que se pierda al recortar por la última ']'.
         val start = scope.indexOf('[')
-        val end = scope.lastIndexOf(']')
-        if (start != -1 && end > start) return scope.substring(start, end + 1)
+        if (start != -1) {
+            val end = scope.lastIndexOf(']')
+            return if (end > start) scope.substring(start, end + 1) else scope.substring(start)
+        }
 
         // Objeto suelto { ... }
         val objStart = scope.indexOf('{')

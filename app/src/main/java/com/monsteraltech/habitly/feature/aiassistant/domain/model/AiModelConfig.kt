@@ -5,18 +5,24 @@ data class AiModelConfig(
     val name: String,
     val downloadUrl: String,
     val sizeBytes: Long,
-    val filename: String
+    val filename: String,
+    /**
+     * SHA-256 (hex) del fichero publicado, para verificar la descarga. Nulo = sin pin: el
+     * gestor loguea el hash calculado al terminar una descarga; cópialo aquí (o desde los
+     * metadatos LFS de Hugging Face) para activar la verificación estricta.
+     */
+    val sha256: String? = null,
+    /** Tope de tokens (contexto + generación) del EngineConfig. Ajustable por modelo. */
+    val maxTokens: Int = 4096,
+    /** Temperatura del turno conversacional (el turno de extracción usa la suya, más baja). */
+    val defaultTemperature: Double = 0.9,
+    /** El artefacto trae drafter MTP (speculative decoding); solo aporta en GPU. */
+    val supportsSpeculativeDecoding: Boolean = true,
+    /** El modelo hace function-calling con fiabilidad: usa el extractor por tools en vez del de JSON. */
+    val supportsToolCalling: Boolean = true
 )
 
 object AvailableAiModels {
-    val Qwen2_5_1_5B = AiModelConfig(
-        id = "qwen2.5-1.5b",
-        name = "Qwen 2.5 (1.5B) - Equilibrado",
-        downloadUrl = "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
-        sizeBytes = 1_600_000_000L, // 1.6 GB
-        filename = "qwen2.5-1.5b.litertlm"
-    )
-
     val Gemma4_E2B_IT = AiModelConfig(
         id = "gemma-4-e2b",
         name = "Gemma 4 (2B) - Inteligente",
@@ -33,5 +39,5 @@ object AvailableAiModels {
         filename = "gemma-4-e4b.litertlm"
     )
 
-    val models = listOf(Qwen2_5_1_5B, Gemma4_E2B_IT, Gemma4_E4B_IT)
+    val models = listOf(Gemma4_E2B_IT, Gemma4_E4B_IT)
 }

@@ -7,6 +7,8 @@ import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepo
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
 import com.monsteraltech.habitly.feature.shopping.domain.repository.PantryRepository
 import com.monsteraltech.habitly.feature.shopping.domain.repository.ShoppingRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.DayOfWeek
@@ -41,26 +43,45 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
         val householdId = profile?.activeHouseholdId?.takeIf { it.isNotBlank() }
             ?: return build(today, null)
 
-        val pendingItems = withTimeoutOrNull(timeoutMs) {
-            shoppingRepository.observeShoppingList(householdId).firstOrNull()
-        }?.count { !it.isChecked }
+        // Mismas lecturas que el contexto del chat: independientes → en paralelo, un solo
+        // timeout de peor caso en vez de cuatro encadenados.
+        return coroutineScope {
+            val pendingItems = async {
+                withTimeoutOrNull(timeoutMs) {
+                    shoppingRepository.observeShoppingList(householdId).firstOrNull()
+                }?.count { !it.isChecked }
+            }
+            val personalRoutines = async {
+                withTimeoutOrNull(timeoutMs) {
+                    routinesRepository.observePersonalRoutines(user.uid).firstOrNull()
+                }.orEmpty()
+            }
+            val householdRoutines = async {
+                withTimeoutOrNull(timeoutMs) {
+                    routinesRepository.observeHouseholdRoutines(householdId).firstOrNull()
+                }.orEmpty()
+            }
+            val pantrySize = async {
+                withTimeoutOrNull(timeoutMs) {
+                    pantryRepository.observePantry(householdId).firstOrNull()
+                }?.size ?: 0
+            }
+            // Nº de personas de la casa: el menú semanal pide cantidades para todas.
+            val memberCount = async {
+                withTimeoutOrNull(timeoutMs) {
+                    householdRepository.observeHousehold(householdId).firstOrNull()
+                }?.members?.size ?: 1
+            }
 
-        val personalRoutines = withTimeoutOrNull(timeoutMs) {
-            routinesRepository.observePersonalRoutines(user.uid).firstOrNull()
-        }.orEmpty()
+            val allRoutines = personalRoutines.await() + householdRoutines.await()
+            val pendingRoutinesToday = allRoutines.count { RoutineSchedule.isPendingOn(it, today) }
 
-        val householdRoutines = withTimeoutOrNull(timeoutMs) {
-            routinesRepository.observeHouseholdRoutines(householdId).firstOrNull()
-        }.orEmpty()
-
-        val allRoutines = personalRoutines + householdRoutines
-        val pendingRoutinesToday = allRoutines.count { RoutineSchedule.isPendingOn(it, today) }
-
-        val pantrySize = withTimeoutOrNull(timeoutMs) {
-            pantryRepository.observePantry(householdId).firstOrNull()
-        }?.size ?: 0
-
-        return build(today, Snapshot(pendingItems, pendingRoutinesToday, allRoutines.size, pantrySize))
+            build(
+                today,
+                Snapshot(pendingItems.await(), pendingRoutinesToday, allRoutines.size, pantrySize.await()),
+                memberCount.await().coerceAtLeast(1)
+            )
+        }
     }
 
     /** Estado de la casa que influye en los chips. Nulo cuando no se pudo leer. */
@@ -71,12 +92,12 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
         val pantrySize: Int
     )
 
-    private fun build(today: LocalDate, snapshot: Snapshot?): List<AiQuickPrompt> {
+    private fun build(today: LocalDate, snapshot: Snapshot?, memberCount: Int = 1): List<AiQuickPrompt> {
         val contextual = mutableListOf<AiQuickPrompt>()
 
         // Fin de semana y lunes: es cuando se planifica la semana.
         if (today.dayOfWeek in PLANNING_DAYS) {
-            contextual += AiQuickPrompt("Menú semanal", generateWeeklyMenuUseCase())
+            contextual += AiQuickPrompt("Menú semanal", generateWeeklyMenuUseCase(memberCount))
         }
 
         if (snapshot != null) {
@@ -105,7 +126,7 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
 
         // Se rellena con los de siempre hasta el tope, sin repetir etiqueta.
         val byLabel = LinkedHashMap<String, AiQuickPrompt>()
-        (contextual + staticPrompts()).forEach { byLabel.putIfAbsent(it.label, it) }
+        (contextual + staticPrompts(memberCount)).forEach { byLabel.putIfAbsent(it.label, it) }
         return byLabel.values.take(MAX_PROMPTS)
     }
 
@@ -113,11 +134,11 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
      * Relleno de siempre. "Menú semanal" va el último a propósito: sigue estando siempre
      * disponible, pero solo sube al primer puesto cuando toca planificar ([PLANNING_DAYS]).
      */
-    private fun staticPrompts(): List<AiQuickPrompt> = listOf(
+    private fun staticPrompts(memberCount: Int = 1): List<AiQuickPrompt> = listOf(
         AiQuickPrompt("Cena rápida", QUICK_DINNER),
         AiQuickPrompt("Ideas de rutinas", ROUTINE_IDEAS),
         AiQuickPrompt("Trucos de limpieza", CLEANING_TIPS),
-        AiQuickPrompt("Menú semanal", generateWeeklyMenuUseCase())
+        AiQuickPrompt("Menú semanal", generateWeeklyMenuUseCase(memberCount))
     )
 
     companion object {
