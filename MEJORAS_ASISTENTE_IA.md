@@ -7,7 +7,7 @@
 
 ## 1. Estado actual de Habitly
 
-- **100% on-device** con LiteRT-LM: Qwen 2.5 1.5B (1,6 GB), Gemma 4 E2B (2,6 GB), Gemma 4 E4B (3,7 GB). Descarga robusta vía WorkManager (sobrevive a navegación y muerte de proceso).
+- **100% on-device** con LiteRT-LM: Gemma 4 E2B (2,6 GB), Gemma 4 E4B (3,7 GB). Descarga robusta vía WorkManager (sobrevive a navegación y muerte de proceso).
 - **Chat** con streaming, markdown, historial de sesiones en Room, cambio de modelo por sesión.
 - **Contexto oculto** (`GetAiContextUseCase`): personalidad base + lista de la compra (solo nombre y estado) + rutinas **personales** (solo título y si están marcadas).
 - **Acción sobre la app**: marcador `@@LISTA@@` + JSON → parser tolerante (`ParseAiShoppingListUseCase`, testeado, con fallback regex) → tarjeta "Añadir a la lista" → batch a Firestore. La UI oculta el bloque (`AiShoppingListFormat.stripFromDisplay`).
@@ -61,7 +61,7 @@ La demanda de soberanía de datos está en máximos en 2026; Gemini Nano/ML Kit 
 ### Largo plazo / ambicioso
 
 - **Reducir la fricción de descarga**:
-  - Modelo "Ligero" ~0,5 GB (p. ej. Gemma 1B / Qwen 0.5B en LiteRT) para la primera experiencia.
+  - Modelo "Ligero" ~0,5 GB (p. ej. Gemma 1B en LiteRT) para la primera experiencia.
   - **Gemini Nano vía ML Kit GenAI** como opción de 0 bytes de descarga en dispositivos compatibles (sigue siendo on-device → mantiene la promesa de privacidad).
   - Descarga solo con Wi-Fi por defecto + valor visible antes de descargar (quick prompts de ejemplo con respuestas precocinadas).
 - **Resumen semanal proactivo** generado por IA (notificación local, sin backend): "tu semana: rachas, compra, sugerencia de menú".

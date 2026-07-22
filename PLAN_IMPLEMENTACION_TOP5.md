@@ -76,7 +76,7 @@ El orden no es el de la lista original del análisis, sino el que dictan las dep
 
 ### Riesgos
 
-- Contexto demasiado largo degrada a los modelos pequeños → los caps son parte del diseño, no opcionales. Verificar manualmente con Qwen 1.5B (el peor caso).
+- Contexto demasiado largo degrada a los modelos pequeños → los caps son parte del diseño, no opcionales. Verificar manualmente con Gemma 4 E2B (el peor caso).
 
 ---
 
@@ -196,7 +196,7 @@ El orden no es el de la lista original del análisis, sino el que dictan las dep
 
 ### Riesgos
 
-- Los modelos pequeños pueden mezclar los dos JSON o inventar esquema → por eso parser tolerante + verificación manual con Qwen 1.5B y Gemma E2B antes de dar por cerrada la fase.
+- Los modelos pequeños pueden mezclar los dos JSON o inventar esquema → por eso parser tolerante + verificación manual con Gemma 4 E2B antes de dar por cerrada la fase.
 - Prompt más largo = menos hueco de contexto → medir con los caps de la fase 1 ya puestos.
 
 ---

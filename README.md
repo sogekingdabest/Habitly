@@ -26,7 +26,7 @@ Habitly is a modern Android app designed to simplify household coordination. Man
 - **Household Management** — Create or join households with invite codes, multi-user support with member management
 - **Shopping List** — Add, edit, and remove items in real-time, mark items as purchased, and view shopping history
 - **Routines** — Create and manage household routines, track recurring tasks
-- **AI Assistant** — 100% on-device inference with LiteRT-LM, downloadable models (Qwen2.5, Gemma 4), generate recipe suggestions and auto-generate shopping lists, persistent chat sessions with Room database
+- **AI Assistant** — 100% on-device inference with LiteRT-LM, downloadable models (Gemma 4), generate recipe suggestions and auto-generate shopping lists, persistent chat sessions with Room database
 
 ### Tech Stack
 
@@ -98,7 +98,7 @@ Habitly es una aplicación Android moderna diseñada para simplificar la coordin
 - **Gestión del Hogar** — Crea o únete a hogares con códigos de invitación, soporte multiusuario con gestión de miembros
 - **Lista de la Compra** — Añade, edita y elimina artículos en tiempo real, marca artículos como comprados y consulta el historial
 - **Rutinas** — Crea y gestiona rutinas del hogar, haz seguimiento de tareas recurrentes
-- **Asistente de IA** — Inferencia 100% local con LiteRT-LM, modelos descargables (Qwen2.5, Gemma 4), genera sugerencias de recetas y listas de la compra automáticas, sesiones de chat persistentes con base de datos Room
+- **Asistente de IA** — Inferencia 100% local con LiteRT-LM, modelos descargables (Gemma 4), genera sugerencias de recetas y listas de la compra automáticas, sesiones de chat persistentes con base de datos Room
 
 ### Tecnologías
 
@@ -170,7 +170,7 @@ Habitly é unha aplicación Android moderna deseñada para simplificar a coordin
 - **Xestión do Fogar** — Crea ou únete a fogares con códigos de invitación, soporte multiusuario con xestión de membros
 - **Lista da Compra** — Engade, edita e elimina artigos en tempo real, marca artigos como comprados e consulta o historial
 - **Rutinas** — Crea e xestiona rutinas do fogar, fai seguimento de tarefas recorrentes
-- **Asistente de IA** — Inferencia 100% local con LiteRT-LM, modelos descargables (Qwen2.5, Gemma 4), xera suxestións de receitas e listas da compra automáticas, sesións de chat persistentes con base de datos Room
+- **Asistente de IA** — Inferencia 100% local con LiteRT-LM, modelos descargables (Gemma 4), xera suxestións de receitas e listas da compra automáticas, sesións de chat persistentes con base de datos Room
 
 ### Tecnoloxías
 
