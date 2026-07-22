@@ -40,6 +40,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Con targetSdk >= 34 el tipo de foreground service debe ir declarado en el
+             <service>; el manifest de WorkManager no lo trae, así que se fusiona aquí
+             para que ModelDownloadWorker pueda llamar a setForeground con DATA_SYNC. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
         <!-- Widget de pantalla de inicio: lista de la compra y rutinas de hoy -->
         <receiver
             android:name=".feature.widget.HabitlyWidgetReceiver"

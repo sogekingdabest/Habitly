@@ -333,6 +333,26 @@
     <string name="ai_download_model">Descargar Modelo (%s)</string>
     <string name="ai_input_hint">Escribe tu mensaje…</string>
     <string name="ai_send">Enviar</string>
+    <string name="ai_stop">Detener respuesta</string>
+    <string name="ai_scroll_to_bottom">Ir al final</string>
+    <string name="ai_copy">Copiar mensaje</string>
+    <string name="ai_copied">Copiado</string>
+    <string name="ai_context_long">Conversación larga (%1$d%%)</string>
+    <string name="ai_compact">Compactar</string>
+    <string name="ai_compacting">Compactando…</string>
+    <string name="ai_compacted">Conversación compactada</string>
+    <string name="ai_download_network_title">Descargar modelo</string>
+    <string name="ai_download_network_message">El modelo ocupa %s. ¿Descargarlo solo con Wi-Fi o también con datos móviles?</string>
+    <string name="ai_download_wifi_only">Solo Wi-Fi</string>
+    <string name="ai_download_any_network">Wi-Fi o datos</string>
+    <string name="ai_cancel_download">Cancelar descarga</string>
+    <string name="ai_model_size_downloaded">%s · descargado</string>
+    <string name="ai_delete_model">Borrar modelo</string>
+    <string name="ai_delete_model_confirm_title">¿Borrar el modelo?</string>
+    <string name="ai_delete_model_confirm_message">Se borrará %1$s (%2$s) del dispositivo. Podrás descargarlo de nuevo cuando quieras.</string>
+    <string name="ai_voice_input">Dictar por voz</string>
+    <string name="ai_voice_prompt">Habla ahora…</string>
+    <string name="ai_voice_unavailable">El dictado por voz no está disponible en este dispositivo</string>
 
     <!-- AI shopping suggestions -->
     <string name="ai_suggestion_add">Añadir a la lista</string>

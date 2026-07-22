@@ -39,12 +39,37 @@ android {
     }
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG controla las métricas dev del chat (TTFT, chunks/s).
+        buildConfig = true
+    }
+
+    testOptions {
+        // android.util.Log como no-op en tests JVM en vez de "not mocked": sin esto, el
+        // primer Log.d dentro de un try lanzaba, el catch del ViewModel se lo tragaba y los
+        // tests dejaban de cubrir en silencio todo lo posterior a ese log.
+        unitTests.isReturnDefaultValues = true
     }
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+// litertlm 0.14.0 se compiló con Kotlin 2.2 (-Xjvm-default=all), así que llama a
+// SendChannel.close$default(...) como método ESTÁTICO SOBRE LA INTERFAZ. En coroutines 1.9.0 y
+// 1.10.2 ese método vive en SendChannel$DefaultImpls, no en la interfaz -> NoSuchMethodError al
+// enviar cualquier mensaje. Solo coroutines >= 1.11.0 (compilado con Kotlin 2.2+) lo expone en la
+// interfaz. Forzamos 1.11.0 en todo el grafo para que coincida con el ABI que litertlm espera.
+configurations.all {
+    resolutionStrategy {
+        force(
+            "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0",
+            "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0",
+            "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0",
+            "org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0"
+        )
     }
 }
 
@@ -94,7 +119,7 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.hilt.navigation.compose)
 
-    // LiteRT-LM - Local AI inference (Gemma, Qwen on-device)
+    // LiteRT-LM - Local AI inference (Gemma on-device)
     implementation(libs.litertlm.android)
 
     // Room Database

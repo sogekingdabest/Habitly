@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+   Reglas de Auto Backup (API <= 30; en 31+ mandan las de data_extraction_rules.xml).
+   Se excluye el asistente de IA:
+   - litertlm-models: 2.5-3.6 GB por modelo; revientan la cuota de 25 MB de Auto Backup
+     (romperían la copia de TODA la app) y se redescargan solos.
+   - ai_assistant_db / ai_assistant_prefs: historial de chat y su system prompt
+     persistido, que incluye el contexto privado de la casa (lista, despensa, rutinas).
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="file" path="litertlm-models" />
+    <exclude domain="database" path="ai_assistant_db" />
+    <exclude domain="database" path="ai_assistant_db-wal" />
+    <exclude domain="database" path="ai_assistant_db-shm" />
+    <exclude domain="sharedpref" path="ai_assistant_prefs.xml" />
 </full-backup-content>

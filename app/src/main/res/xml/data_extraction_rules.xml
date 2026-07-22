@@ -1,19 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+   Reglas de backup para API 31+ (copia en nube y transferencia entre dispositivos).
+   Mismas exclusiones que backup_rules.xml: los modelos de IA pesan GB (la cuota de
+   Auto Backup es de 25 MB) y el historial de chat lleva el contexto privado de la casa.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="file" path="litertlm-models" />
+        <exclude domain="database" path="ai_assistant_db" />
+        <exclude domain="database" path="ai_assistant_db-wal" />
+        <exclude domain="database" path="ai_assistant_db-shm" />
+        <exclude domain="sharedpref" path="ai_assistant_prefs.xml" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="file" path="litertlm-models" />
+        <exclude domain="database" path="ai_assistant_db" />
+        <exclude domain="database" path="ai_assistant_db-wal" />
+        <exclude domain="database" path="ai_assistant_db-shm" />
+        <exclude domain="sharedpref" path="ai_assistant_prefs.xml" />
     </device-transfer>
-    -->
 </data-extraction-rules>
