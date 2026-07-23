@@ -4,6 +4,7 @@ import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeAuthRep
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeHouseholdRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakePantryRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeRoutinesRepository
+import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeSettingsRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeShoppingRepository
 import com.monsteraltech.habitly.feature.household.domain.model.UserProfile
 import com.monsteraltech.habitly.feature.login.domain.model.AuthToken
@@ -29,6 +30,7 @@ class GetAiContextUseCaseTest {
     private val fakeRoutinesRepo = FakeRoutinesRepository()
     private val fakeShoppingRepo = FakeShoppingRepository()
     private val fakePantryRepo = FakePantryRepository()
+    private val fakeSettingsRepo = FakeSettingsRepository()
 
     private lateinit var useCase: GetAiContextUseCase
 
@@ -42,7 +44,8 @@ class GetAiContextUseCaseTest {
             householdRepository = fakeHouseholdRepo,
             routinesRepository = fakeRoutinesRepo,
             shoppingRepository = fakeShoppingRepo,
-            pantryRepository = fakePantryRepo
+            pantryRepository = fakePantryRepo,
+            settingsRepository = fakeSettingsRepo
         )
     }
 
@@ -53,6 +56,7 @@ class GetAiContextUseCaseTest {
         fakeRoutinesRepo.reset()
         fakeShoppingRepo.reset()
         fakePantryRepo.reset()
+        fakeSettingsRepo.reset()
     }
 
     private fun testUser(uid: String = "user1") = AuthUser(

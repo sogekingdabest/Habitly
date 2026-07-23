@@ -5,7 +5,7 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiModelConfig
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiQuickPrompt
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiRoutineSuggestion
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiShoppingSuggestion
-import com.monsteraltech.habitly.feature.aiassistant.domain.model.FollowUpSuggestion
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.FollowUpTarget
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStatus
 
 data class AiAssistantUiState(
@@ -14,7 +14,10 @@ data class AiAssistantUiState(
     val isGenerating: Boolean = false,
     /** El segundo turno (extracción de rutinas o de la compra) está en marcha: muestra "preparando". */
     val isExtractingSuggestions: Boolean = false,
+    /** Mensaje de error dinámico (p. ej. el de una excepción). Para errores fijos, [errorRes]. */
     val error: String? = null,
+    /** Error localizado por id de recurso; la pantalla lo resuelve con `stringResource`. */
+    val errorRes: Int? = null,
     /** Evento de un solo uso: nº de productos recién añadidos a la lista (para el snackbar). */
     val addedToListCount: Int? = null,
     val modelStatus: ModelStatus = ModelStatus.NotDownloaded,
@@ -24,9 +27,9 @@ data class AiAssistantUiState(
     val downloadedModelIds: Set<String> = emptySet(),
     val chatHistory: List<AiChatSession> = emptyList(),
     val quickPrompts: List<AiQuickPrompt> = emptyList(),
-    /** Chip de seguimiento tras una propuesta sin tarjeta ("Sí, créalas" / "Sí, a la lista"),
-     *  con el destino de la extracción decidido al crearlo. */
-    val followUpPrompt: FollowUpSuggestion? = null,
+    /** Destino del chip de seguimiento tras una propuesta sin tarjeta ("Sí, créalas" / "Sí, a la
+     *  lista"), o `null` si no hay chip. La etiqueta/prompt/"voy" los localiza la pantalla. */
+    val followUpTarget: FollowUpTarget? = null,
     /** Métricas de la última generación (solo builds debug): TTFT y velocidad de decode. */
     val lastGenerationStats: String? = null,
     /** Productos que la IA propone añadir a la lista, indexados por id de mensaje. */
@@ -48,5 +51,9 @@ data class AiAssistantUiState(
     /** La compactación (resumen del contexto antiguo) está en marcha. */
     val isCompacting: Boolean = false,
     /** Evento de un solo uso: la conversación se acaba de compactar (para el snackbar). */
-    val contextCompacted: Boolean = false
+    val contextCompacted: Boolean = false,
+    /** Evento de un solo uso: resultado del último reporte de respuesta (true = enviado). */
+    val reportResult: Boolean? = null,
+    /** Ids de mensajes del asistente ya reportados (desactiva su acción de reportar). */
+    val reportedMessageIds: Set<String> = emptySet()
 )

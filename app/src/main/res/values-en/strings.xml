@@ -161,6 +161,9 @@
     <string name="forgot_subtitle">Enter the email associated with your account and we\'ll send you a link to reset your password.</string>
     <string name="forgot_send_link">Send link</string>
     <string name="forgot_back_to_login">Back to sign in</string>
+    <string name="forgot_success">If the email is registered, we\'ve sent you a link to reset your password. Check your inbox and spam folder.</string>
+    <string name="forgot_error_email">Enter a valid email address</string>
+    <string name="forgot_error_generic">Couldn\'t send the email. Please try again.</string>
 
     <!-- Register -->
     <string name="register_title">Create Account</string>
@@ -307,6 +310,12 @@
     <string name="household_delete_confirm_message">Your profile, personal routines and household membership will be permanently deleted. This action cannot be undone.</string>
     <string name="household_delete_confirm_button">Delete account</string>
 
+    <!-- Legal / information -->
+    <string name="legal_section_title">Information</string>
+    <string name="legal_privacy">Privacy policy</string>
+    <string name="legal_terms">Terms and conditions</string>
+    <string name="legal_open_error">Couldn\'t open the link</string>
+
     <!-- AI assistant -->
     <string name="ai_chat_history">Chat History</string>
     <string name="ai_new_conversation">New Conversation</string>
@@ -350,6 +359,13 @@
     <string name="ai_voice_input">Voice input</string>
     <string name="ai_voice_prompt">Speak now…</string>
     <string name="ai_voice_unavailable">Voice input is not available on this device</string>
+    <string name="ai_disclaimer">AI can make mistakes. Check important information.</string>
+    <string name="ai_report">Report response</string>
+    <string name="ai_report_confirm_title">Report this response?</string>
+    <string name="ai_report_confirm_message">You\'ll help us improve the assistant. The text of this response will be sent for review.</string>
+    <string name="ai_report_send">Report</string>
+    <string name="ai_report_success">Thanks, response reported</string>
+    <string name="ai_report_error">Couldn\'t send the report</string>
 
     <!-- AI shopping suggestions -->
     <string name="ai_suggestion_add">Add to list</string>
@@ -384,4 +400,75 @@
     <string name="widget_routines_empty">All done!</string>
     <string name="widget_open_hint">Open Habitly to get started</string>
     <string name="widget_more">+%d</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_account">Account</string>
+    <string name="settings_email">Email</string>
+    <string name="settings_nickname">Nickname</string>
+    <string name="settings_sign_out_confirm">Are you sure you want to sign out?</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System default</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_section_language">Language</string>
+    <string name="settings_language">App language</string>
+    <string name="settings_language_system">System default</string>
+    <string name="settings_language_es">Español</string>
+    <string name="settings_language_gl">Galego</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_reminders">Routine reminders</string>
+    <string name="settings_reminders_desc">Alerts at each routine\'s time</string>
+    <string name="settings_open_system_settings">System notification settings</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_rate">Rate on Google Play</string>
+
+    <!-- AI assistant: suggestion chips -->
+    <string name="ai_qp_weekly_menu">Weekly menu</string>
+    <string name="ai_qp_cook_from_pantry">Cook with what I have</string>
+    <string name="ai_qp_cleaning_plan">Cleaning plan</string>
+    <string name="ai_qp_recipes_from_list">Recipes from my list</string>
+    <string name="ai_qp_weekly_list">Weekly list</string>
+    <string name="ai_qp_organize_day">Organise my day</string>
+    <string name="ai_qp_quick_dinner">Quick dinner</string>
+    <string name="ai_qp_routine_ideas">Routine ideas</string>
+    <string name="ai_qp_cleaning_tips">Cleaning tips</string>
+    <plurals name="ai_people">
+        <item quantity="one">one person</item>
+        <item quantity="other">%d people</item>
+    </plurals>
+    <string name="ai_qp_weekly_menu_prompt">Plan a dinner menu for the whole week (Monday to Sunday). For each day suggest a simple, varied dish. At the end, give me the consolidated shopping list with all the ingredients I need for the menu, in reasonable amounts for %1$s.</string>
+    <string name="ai_qp_cook_from_pantry_prompt">What can I cook today with what I already have at home? Suggest 2 or 3 dishes and tell me only what I\'m missing and need to buy.</string>
+    <string name="ai_qp_cleaning_plan_prompt">Suggest a weekly cleaning plan for the home, split across the days so nothing piles up. Tell me which routines I should have and how often.</string>
+    <string name="ai_qp_recipes_from_list_prompt">Looking at the shopping list I have right now, what dishes can I make this week? Suggest 3 or 4 simple recipes.</string>
+    <string name="ai_qp_weekly_list_prompt">My shopping list is empty. Make me a weekly shopping list for a household, organised by category and with reasonable quantities.</string>
+    <string name="ai_qp_organize_day_prompt">How should I organise my day with the routines I have pending? Give me a sensible order and tips so I don\'t leave them half done.</string>
+    <string name="ai_qp_quick_dinner_prompt">Give me quick and easy dinner ideas for tonight.</string>
+    <string name="ai_qp_routine_ideas_prompt">Suggest useful routines to keep the home tidy without overwhelming me.</string>
+    <string name="ai_qp_cleaning_tips_prompt">Give me cleaning tips that save time day to day.</string>
+
+    <!-- AI assistant: follow-up chip -->
+    <string name="ai_follow_up_ack">On it! Here you go 👇</string>
+    <string name="ai_follow_up_routines_label">Yes, create them</string>
+    <string name="ai_follow_up_routines_prompt">Yes, create the routines you suggested.</string>
+    <string name="ai_follow_up_shopping_label">Yes, add to list</string>
+    <string name="ai_follow_up_shopping_prompt">Yes, add those products to the shopping list.</string>
+    <string name="ai_follow_up_both_label">Yes, go ahead</string>
+    <string name="ai_follow_up_both_prompt">Yes, go ahead with what you suggested.</string>
+
+    <!-- AI assistant: errors -->
+    <string name="ai_error_generate">Couldn\'t generate the response</string>
+    <string name="ai_error_add_to_list">Couldn\'t add to the list</string>
+    <string name="ai_error_create_routines">Couldn\'t create the routines</string>
+    <string name="ai_error_prepare_card">Couldn\'t prepare the card</string>
+    <string name="ai_error_prepare_card_retry">Couldn\'t prepare the card; please try again.</string>
+    <string name="ai_error_download">Couldn\'t download the model</string>
+    <string name="ai_error_compact">Couldn\'t compact the conversation</string>
+
+    <!-- AI assistant: model download notification -->
+    <string name="ai_download_notification_title">Downloading AI model</string>
+    <string name="ai_download_channel_name">AI model downloads</string>
 </resources>

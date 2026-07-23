@@ -1,20 +1,22 @@
 package com.monsteraltech.habitly.feature.aiassistant.presentation
 
+import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeAiReportRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeAuthRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeHouseholdRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakePantryRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeRoutinesRepository
+import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeSettingsRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeShoppingRepository
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.FollowUpTarget
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.AddAiItemsToShoppingListUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.AddAiRoutinesUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.EstimateContextUsageUseCase
-import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GenerateWeeklyMenuUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetAiContextUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetContextualQuickPromptsUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ParseAiRoutinesUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ParseAiShoppingListUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ReportAiMessageUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.RoutineCreationIntentUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ShoppingCreationIntentUseCase
 import com.monsteraltech.habitly.feature.routines.domain.usecase.AddRoutineUseCase
@@ -36,19 +38,22 @@ class AiAssistantViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeRepository: FakeAiAssistantRepository
+    private lateinit var fakeReportRepository: FakeAiReportRepository
     private lateinit var viewModel: AiAssistantViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         fakeRepository = FakeAiAssistantRepository()
+        fakeReportRepository = FakeAiReportRepository()
 
         val getContextUseCase = GetAiContextUseCase(
             FakeAuthRepository(),
             FakeHouseholdRepository(),
             FakeRoutinesRepository(),
             FakeShoppingRepository(),
-            FakePantryRepository()
+            FakePantryRepository(),
+            FakeSettingsRepository()
         )
 
         val addItemsUseCase = AddAiItemsToShoppingListUseCase(
@@ -62,8 +67,7 @@ class AiAssistantViewModelTest {
             FakeHouseholdRepository(),
             FakeRoutinesRepository(),
             FakeShoppingRepository(),
-            FakePantryRepository(),
-            GenerateWeeklyMenuUseCase()
+            FakePantryRepository()
         )
 
         val addRoutinesUseCase = AddAiRoutinesUseCase(
@@ -82,7 +86,8 @@ class AiAssistantViewModelTest {
             addAiRoutinesUseCase = addRoutinesUseCase,
             routineCreationIntentUseCase = RoutineCreationIntentUseCase(),
             shoppingCreationIntentUseCase = ShoppingCreationIntentUseCase(),
-            estimateContextUsageUseCase = EstimateContextUsageUseCase()
+            estimateContextUsageUseCase = EstimateContextUsageUseCase(),
+            reportAiMessageUseCase = ReportAiMessageUseCase(fakeReportRepository)
         )
 
         testDispatcher.scheduler.advanceUntilIdle()
@@ -153,6 +158,43 @@ class AiAssistantViewModelTest {
     }
 
     @Test
+    fun `onReportMessage sends the assistant reply and marks it reported`() {
+        viewModel.onInputChange("Hola")
+        viewModel.onSendMessage()
+        advance()
+
+        val assistantMessage = viewModel.uiState.value.chatSession.messages
+            .first { it.role is com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole.Assistant }
+
+        viewModel.onReportMessage(assistantMessage.id)
+        advance()
+
+        val state = viewModel.uiState.value
+        assertEquals(true, state.reportResult)
+        assertTrue(assistantMessage.id in state.reportedMessageIds)
+        assertEquals(listOf(assistantMessage.content), fakeReportRepository.reportedContents)
+    }
+
+    @Test
+    fun `onReportMessage surfaces a failure without marking as reported`() {
+        fakeReportRepository.shouldFail = true
+
+        viewModel.onInputChange("Hola")
+        viewModel.onSendMessage()
+        advance()
+
+        val assistantMessage = viewModel.uiState.value.chatSession.messages
+            .first { it.role is com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole.Assistant }
+
+        viewModel.onReportMessage(assistantMessage.id)
+        advance()
+
+        val state = viewModel.uiState.value
+        assertEquals(false, state.reportResult)
+        assertFalse(assistantMessage.id in state.reportedMessageIds)
+    }
+
+    @Test
     fun `onDeleteModel delegates to repository`() {
         viewModel.onDeleteModel("gemma-4-e2b")
         advance()
@@ -204,7 +246,7 @@ class AiAssistantViewModelTest {
         advance()
 
         assertNull("error: ${viewModel.uiState.value.error}", viewModel.uiState.value.error)
-        assertEquals("Sí, créalas", viewModel.uiState.value.followUpPrompt?.label)
+        assertEquals(FollowUpTarget.ROUTINES, viewModel.uiState.value.followUpTarget)
     }
 
     @Test
@@ -213,7 +255,7 @@ class AiAssistantViewModelTest {
         viewModel.onSendMessage()
         advance()
 
-        assertNull(viewModel.uiState.value.followUpPrompt)
+        assertNull(viewModel.uiState.value.followUpTarget)
     }
 
     @Test
@@ -227,8 +269,7 @@ class AiAssistantViewModelTest {
         viewModel.onSendMessage()
         advance()
 
-        val chip = viewModel.uiState.value.followUpPrompt
-        assertEquals(FollowUpTarget.SHOPPING, chip?.target)
+        assertEquals(FollowUpTarget.SHOPPING, viewModel.uiState.value.followUpTarget)
         assertEquals("la puerta de compra no debe abrirse aún", 0, fakeRepository.extractShoppingCallCount)
     }
 
@@ -238,10 +279,9 @@ class AiAssistantViewModelTest {
         viewModel.onInputChange("continúa donde lo dejaste")
         viewModel.onSendMessage()
         advance()
-        val chip = viewModel.uiState.value.followUpPrompt
-        assertEquals(FollowUpTarget.SHOPPING, chip?.target)
+        assertEquals(FollowUpTarget.SHOPPING, viewModel.uiState.value.followUpTarget)
 
-        viewModel.onQuickPrompt(chip!!.prompt)
+        viewModel.onFollowUpChipTapped("sí, a la lista", "¡voy!")
         advance()
 
         assertEquals("debe extraer la compra", 1, fakeRepository.extractShoppingCallCount)
@@ -254,10 +294,9 @@ class AiAssistantViewModelTest {
         viewModel.onInputChange("dame ideas para organizarme")
         viewModel.onSendMessage()
         advance()
-        val chip = viewModel.uiState.value.followUpPrompt
-        assertEquals(FollowUpTarget.ROUTINES, chip?.target)
+        assertEquals(FollowUpTarget.ROUTINES, viewModel.uiState.value.followUpTarget)
 
-        viewModel.onQuickPrompt(chip!!.prompt)
+        viewModel.onFollowUpChipTapped("sí, créalas", "¡voy!")
         advance()
 
         assertEquals("debe extraer rutinas", 1, fakeRepository.extractRoutinesCallCount)
@@ -270,12 +309,11 @@ class AiAssistantViewModelTest {
         viewModel.onInputChange("dame ideas para organizarme")
         viewModel.onSendMessage()
         advance()
-        val chip = viewModel.uiState.value.followUpPrompt
-        assertEquals(FollowUpTarget.ROUTINES, chip?.target)
+        assertEquals(FollowUpTarget.ROUTINES, viewModel.uiState.value.followUpTarget)
         val sendCountBefore = fakeRepository.sendMessageCallCount
         val messagesBefore = viewModel.uiState.value.chatSession.messages.size
 
-        viewModel.onQuickPrompt(chip!!.prompt)
+        viewModel.onFollowUpChipTapped("sí, créalas", "¡voy!")
         advance()
 
         val state = viewModel.uiState.value
@@ -295,10 +333,9 @@ class AiAssistantViewModelTest {
         viewModel.onInputChange("continúa donde lo dejaste")
         viewModel.onSendMessage()
         advance()
-        val chip = viewModel.uiState.value.followUpPrompt
-        assertEquals(FollowUpTarget.SHOPPING, chip?.target)
+        assertEquals(FollowUpTarget.SHOPPING, viewModel.uiState.value.followUpTarget)
 
-        viewModel.onQuickPrompt(chip!!.prompt)
+        viewModel.onFollowUpChipTapped("sí, a la lista", "¡voy!")
         advance()
 
         val state = viewModel.uiState.value
@@ -309,7 +346,7 @@ class AiAssistantViewModelTest {
         assertEquals(1, card?.size)
         assertEquals("Pollo", card?.first()?.name)
         // Ya hay tarjeta: el chip no reaparece.
-        assertNull(state.followUpPrompt)
+        assertNull(state.followUpTarget)
     }
 
     @Test
@@ -319,16 +356,15 @@ class AiAssistantViewModelTest {
         viewModel.onInputChange("continúa donde lo dejaste")
         viewModel.onSendMessage()
         advance()
-        val chip = viewModel.uiState.value.followUpPrompt
-        assertEquals(FollowUpTarget.SHOPPING, chip?.target)
+        assertEquals(FollowUpTarget.SHOPPING, viewModel.uiState.value.followUpTarget)
 
-        viewModel.onQuickPrompt(chip!!.prompt)
+        viewModel.onFollowUpChipTapped("sí, a la lista", "¡voy!")
         advance()
 
         val state = viewModel.uiState.value
         // El chip vuelve para poder reintentar, y se avisa del fallo.
-        assertEquals(FollowUpTarget.SHOPPING, state.followUpPrompt?.target)
-        assertTrue("debe avisar del fallo", state.error != null)
+        assertEquals(FollowUpTarget.SHOPPING, state.followUpTarget)
+        assertTrue("debe avisar del fallo", state.errorRes != null)
     }
 
     @Test
@@ -371,7 +407,7 @@ class AiAssistantViewModelTest {
         advance()
 
         val state = viewModel.uiState.value
-        assertTrue("debe avisar del fallo", state.error != null)
+        assertTrue("debe avisar del fallo", state.errorRes != null)
         assertEquals("", state.chatSession.contextSummary)
         assertEquals(0, state.chatSession.summarizedUpTo)
         assertEquals(messagesBefore, state.chatSession.messages.size)

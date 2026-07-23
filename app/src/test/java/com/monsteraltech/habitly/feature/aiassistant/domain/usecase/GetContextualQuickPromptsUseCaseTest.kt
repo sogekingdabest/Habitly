@@ -5,6 +5,7 @@ import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeHouseho
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakePantryRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeRoutinesRepository
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.FakeShoppingRepository
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.QuickPromptId
 import com.monsteraltech.habitly.feature.household.domain.model.UserProfile
 import com.monsteraltech.habitly.feature.login.domain.model.AuthToken
 import com.monsteraltech.habitly.feature.register.domain.model.AuthUser
@@ -42,8 +43,7 @@ class GetContextualQuickPromptsUseCaseTest {
             householdRepository = fakeHouseholdRepo,
             routinesRepository = fakeRoutinesRepo,
             shoppingRepository = fakeShoppingRepo,
-            pantryRepository = fakePantryRepo,
-            generateWeeklyMenuUseCase = GenerateWeeklyMenuUseCase()
+            pantryRepository = fakePantryRepo
         )
     }
 
@@ -70,18 +70,18 @@ class GetContextualQuickPromptsUseCaseTest {
     private fun epochOf(date: LocalDate): Long =
         date.atTime(10, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-    private fun labelsOn(date: LocalDate): List<String> = runBlocking {
-        useCase(today = date).map { it.label }
+    private fun idsOn(date: LocalDate): List<QuickPromptId> = runBlocking {
+        useCase(today = date).map { it.id }
     }
 
     // ---------- Degradación ----------
 
     @Test
     fun `without session still returns the static prompts`() {
-        val labels = labelsOn(wednesday)
+        val ids = idsOn(wednesday)
 
-        assertTrue(labels.isNotEmpty())
-        assertTrue(labels.contains("Cena rápida"))
+        assertTrue(ids.isNotEmpty())
+        assertTrue(ids.contains(QuickPromptId.QUICK_DINNER))
     }
 
     @Test
@@ -94,10 +94,10 @@ class GetContextualQuickPromptsUseCaseTest {
             authToken = AuthToken("fake", "fake")
         )
 
-        val labels = labelsOn(wednesday)
+        val ids = idsOn(wednesday)
 
-        assertTrue(labels.isNotEmpty())
-        assertFalse("sin casa no se puede saber si la lista está vacía", labels.contains("Lista semanal"))
+        assertTrue(ids.isNotEmpty())
+        assertFalse("sin casa no se puede saber si la lista está vacía", ids.contains(QuickPromptId.WEEKLY_LIST))
     }
 
     @Test
@@ -105,18 +105,18 @@ class GetContextualQuickPromptsUseCaseTest {
         givenLoggedInWithHousehold()
         fakeRoutinesRepo.stubRoutines = listOf(Routine(title = "Gimnasio"))
 
-        val labels = labelsOn(monday)
+        val ids = idsOn(monday)
 
-        assertTrue(labels.size <= GetContextualQuickPromptsUseCase.MAX_PROMPTS)
+        assertTrue(ids.size <= GetContextualQuickPromptsUseCase.MAX_PROMPTS)
     }
 
     @Test
-    fun `does not repeat labels`() {
+    fun `does not repeat prompts`() {
         givenLoggedInWithHousehold()
 
-        val labels = labelsOn(monday)
+        val ids = idsOn(monday)
 
-        assertEquals(labels.size, labels.distinct().size)
+        assertEquals(ids.size, ids.distinct().size)
     }
 
     // ---------- Día de la semana ----------
@@ -127,7 +127,7 @@ class GetContextualQuickPromptsUseCaseTest {
         // Lista a medias: no dispara ni "Lista semanal" ni "Recetas con mi lista".
         fakeShoppingRepo.stubItems = listOf(ShoppingItem(name = "Leche"))
 
-        assertEquals("Menú semanal", labelsOn(monday).first())
+        assertEquals(QuickPromptId.WEEKLY_MENU, idsOn(monday).first())
     }
 
     @Test
@@ -135,10 +135,10 @@ class GetContextualQuickPromptsUseCaseTest {
         givenLoggedInWithHousehold()
         fakeShoppingRepo.stubItems = listOf(ShoppingItem(name = "Leche"))
 
-        val labels = labelsOn(wednesday)
+        val ids = idsOn(wednesday)
 
-        assertTrue("sigue disponible", labels.contains("Menú semanal"))
-        assertFalse("pero no destacado", labels.first() == "Menú semanal")
+        assertTrue("sigue disponible", ids.contains(QuickPromptId.WEEKLY_MENU))
+        assertFalse("pero no destacado", ids.first() == QuickPromptId.WEEKLY_MENU)
     }
 
     // ---------- Estado de la lista ----------
@@ -148,10 +148,10 @@ class GetContextualQuickPromptsUseCaseTest {
         givenLoggedInWithHousehold()
         fakeShoppingRepo.stubItems = emptyList()
 
-        val labels = labelsOn(wednesday)
+        val ids = idsOn(wednesday)
 
-        assertTrue(labels.toString(), labels.contains("Lista semanal"))
-        assertFalse(labels.contains("Recetas con mi lista"))
+        assertTrue(ids.toString(), ids.contains(QuickPromptId.WEEKLY_LIST))
+        assertFalse(ids.contains(QuickPromptId.RECIPES_FROM_LIST))
     }
 
     @Test
@@ -160,10 +160,10 @@ class GetContextualQuickPromptsUseCaseTest {
         fakeShoppingRepo.stubItems = (1..GetContextualQuickPromptsUseCase.MANY_ITEMS)
             .map { ShoppingItem(name = "Producto $it") }
 
-        val labels = labelsOn(wednesday)
+        val ids = idsOn(wednesday)
 
-        assertTrue(labels.toString(), labels.contains("Recetas con mi lista"))
-        assertFalse(labels.contains("Lista semanal"))
+        assertTrue(ids.toString(), ids.contains(QuickPromptId.RECIPES_FROM_LIST))
+        assertFalse(ids.contains(QuickPromptId.WEEKLY_LIST))
     }
 
     @Test
@@ -172,10 +172,10 @@ class GetContextualQuickPromptsUseCaseTest {
         fakeShoppingRepo.stubItems = (1..GetContextualQuickPromptsUseCase.MANY_ITEMS)
             .map { ShoppingItem(name = "Producto $it", isChecked = true) }
 
-        val labels = labelsOn(wednesday)
+        val ids = idsOn(wednesday)
 
-        assertFalse(labels.contains("Recetas con mi lista"))
-        assertTrue("todo comprado equivale a lista vacía", labels.contains("Lista semanal"))
+        assertFalse(ids.contains(QuickPromptId.RECIPES_FROM_LIST))
+        assertTrue("todo comprado equivale a lista vacía", ids.contains(QuickPromptId.WEEKLY_LIST))
     }
 
     // ---------- Estado de la despensa ----------
@@ -186,9 +186,9 @@ class GetContextualQuickPromptsUseCaseTest {
         fakePantryRepo.stubItems = (1..GetContextualQuickPromptsUseCase.ENOUGH_PANTRY)
             .map { PantryItem(id = "p$it", name = "Producto $it") }
 
-        val labels = labelsOn(wednesday)
+        val ids = idsOn(wednesday)
 
-        assertTrue(labels.toString(), labels.contains("Cocinar con lo que tengo"))
+        assertTrue(ids.toString(), ids.contains(QuickPromptId.COOK_FROM_PANTRY))
     }
 
     @Test
@@ -196,9 +196,9 @@ class GetContextualQuickPromptsUseCaseTest {
         givenLoggedInWithHousehold()
         fakePantryRepo.stubItems = listOf(PantryItem(id = "p1", name = "Sal"))
 
-        val labels = labelsOn(wednesday)
+        val ids = idsOn(wednesday)
 
-        assertFalse(labels.contains("Cocinar con lo que tengo"))
+        assertFalse(ids.contains(QuickPromptId.COOK_FROM_PANTRY))
     }
 
     // ---------- Estado de las rutinas ----------
@@ -208,9 +208,9 @@ class GetContextualQuickPromptsUseCaseTest {
         givenLoggedInWithHousehold()
         fakeRoutinesRepo.stubRoutines = listOf(Routine(title = "Gimnasio", lastCompletedAt = null))
 
-        val labels = labelsOn(wednesday)
+        val ids = idsOn(wednesday)
 
-        assertTrue(labels.toString(), labels.contains("Organiza mi día"))
+        assertTrue(ids.toString(), ids.contains(QuickPromptId.ORGANIZE_DAY))
     }
 
     @Test
@@ -220,9 +220,9 @@ class GetContextualQuickPromptsUseCaseTest {
             Routine(title = "Gimnasio", lastCompletedAt = epochOf(wednesday))
         )
 
-        val labels = labelsOn(wednesday)
+        val ids = idsOn(wednesday)
 
-        assertFalse(labels.contains("Organiza mi día"))
+        assertFalse(ids.contains(QuickPromptId.ORGANIZE_DAY))
     }
 
     @Test
@@ -232,8 +232,8 @@ class GetContextualQuickPromptsUseCaseTest {
             Routine(title = "Fregar el suelo", lastCompletedAt = null)
         )
 
-        val labels = labelsOn(wednesday)
+        val ids = idsOn(wednesday)
 
-        assertTrue(labels.toString(), labels.contains("Organiza mi día"))
+        assertTrue(ids.toString(), ids.contains(QuickPromptId.ORGANIZE_DAY))
     }
 }

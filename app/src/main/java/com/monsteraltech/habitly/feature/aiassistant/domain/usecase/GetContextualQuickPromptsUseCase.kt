@@ -1,6 +1,7 @@
 package com.monsteraltech.habitly.feature.aiassistant.domain.usecase
 
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiQuickPrompt
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.QuickPromptId
 import com.monsteraltech.habitly.feature.household.domain.repository.HouseholdRepository
 import com.monsteraltech.habitly.feature.login.domain.repository.AuthRepository
 import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepository
@@ -20,16 +21,17 @@ import javax.inject.Inject
  * y el estado real de la casa: el fin de semana se planifica, con la lista llena interesa
  * cocinar con lo que ya hay, y con la lista vacía interesa llenarla.
  *
- * Si no hay sesión, casa o datos, degrada a [staticPrompts] sin fallar nunca: los chips
- * son un extra de la UI, no deben romper la pantalla.
+ * Devuelve solo el [QuickPromptId] de cada chip (más el número de personas para el menú
+ * semanal); la etiqueta y el prompt localizados los pone la capa de presentación. Si no hay
+ * sesión, casa o datos, degrada a [staticPrompts] sin fallar nunca: los chips son un extra de
+ * la UI, no deben romper la pantalla.
  */
 class GetContextualQuickPromptsUseCase @Inject constructor(
     private val authRepository: AuthRepository,
     private val householdRepository: HouseholdRepository,
     private val routinesRepository: RoutinesRepository,
     private val shoppingRepository: ShoppingRepository,
-    private val pantryRepository: PantryRepository,
-    private val generateWeeklyMenuUseCase: GenerateWeeklyMenuUseCase
+    private val pantryRepository: PantryRepository
 ) {
     suspend operator fun invoke(
         timeoutMs: Long = DEFAULT_TIMEOUT_MS,
@@ -97,48 +99,48 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
 
         // Fin de semana y lunes: es cuando se planifica la semana.
         if (today.dayOfWeek in PLANNING_DAYS) {
-            contextual += AiQuickPrompt("Menú semanal", generateWeeklyMenuUseCase(memberCount))
+            contextual += AiQuickPrompt(QuickPromptId.WEEKLY_MENU, memberCount)
         }
 
         if (snapshot != null) {
             // Con la despensa llena, lo más útil que sabe hacer el asistente es cocinar con ella.
             if (snapshot.pantrySize >= ENOUGH_PANTRY) {
-                contextual += AiQuickPrompt("Cocinar con lo que tengo", COOK_FROM_PANTRY)
+                contextual += AiQuickPrompt(QuickPromptId.COOK_FROM_PANTRY)
             }
 
             // Con pocas rutinas, lo útil es ayudar a montarlas: el asistente las crea de una tacada.
             if (snapshot.totalRoutines < FEW_ROUTINES) {
-                contextual += AiQuickPrompt("Plan de limpieza", CLEANING_PLAN)
+                contextual += AiQuickPrompt(QuickPromptId.CLEANING_PLAN)
             }
 
             val pendingItems = snapshot.pendingItems
             when {
                 pendingItems != null && pendingItems >= MANY_ITEMS ->
-                    contextual += AiQuickPrompt("Recetas con mi lista", RECIPES_FROM_LIST)
+                    contextual += AiQuickPrompt(QuickPromptId.RECIPES_FROM_LIST)
                 pendingItems == 0 ->
-                    contextual += AiQuickPrompt("Lista semanal", WEEKLY_LIST)
+                    contextual += AiQuickPrompt(QuickPromptId.WEEKLY_LIST)
             }
 
             if (snapshot.pendingRoutinesToday > 0) {
-                contextual += AiQuickPrompt("Organiza mi día", ORGANIZE_DAY)
+                contextual += AiQuickPrompt(QuickPromptId.ORGANIZE_DAY)
             }
         }
 
-        // Se rellena con los de siempre hasta el tope, sin repetir etiqueta.
-        val byLabel = LinkedHashMap<String, AiQuickPrompt>()
-        (contextual + staticPrompts(memberCount)).forEach { byLabel.putIfAbsent(it.label, it) }
-        return byLabel.values.take(MAX_PROMPTS)
+        // Se rellena con los de siempre hasta el tope, sin repetir chip.
+        val byId = LinkedHashMap<QuickPromptId, AiQuickPrompt>()
+        (contextual + staticPrompts(memberCount)).forEach { byId.putIfAbsent(it.id, it) }
+        return byId.values.take(MAX_PROMPTS)
     }
 
     /**
-     * Relleno de siempre. "Menú semanal" va el último a propósito: sigue estando siempre
-     * disponible, pero solo sube al primer puesto cuando toca planificar ([PLANNING_DAYS]).
+     * Relleno de siempre. [QuickPromptId.WEEKLY_MENU] va el último a propósito: sigue estando
+     * siempre disponible, pero solo sube al primer puesto cuando toca planificar ([PLANNING_DAYS]).
      */
     private fun staticPrompts(memberCount: Int = 1): List<AiQuickPrompt> = listOf(
-        AiQuickPrompt("Cena rápida", QUICK_DINNER),
-        AiQuickPrompt("Ideas de rutinas", ROUTINE_IDEAS),
-        AiQuickPrompt("Trucos de limpieza", CLEANING_TIPS),
-        AiQuickPrompt("Menú semanal", generateWeeklyMenuUseCase(memberCount))
+        AiQuickPrompt(QuickPromptId.QUICK_DINNER),
+        AiQuickPrompt(QuickPromptId.ROUTINE_IDEAS),
+        AiQuickPrompt(QuickPromptId.CLEANING_TIPS),
+        AiQuickPrompt(QuickPromptId.WEEKLY_MENU, memberCount)
     )
 
     companion object {
@@ -157,29 +159,5 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
         const val ENOUGH_PANTRY = 3
 
         private val PLANNING_DAYS = setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY, DayOfWeek.MONDAY)
-
-        private const val RECIPES_FROM_LIST =
-            "Mirando la lista de la compra que tengo ahora mismo, ¿qué platos puedo preparar esta semana? Propón 3 o 4 recetas sencillas."
-
-        private const val WEEKLY_LIST =
-            "Tengo la lista de la compra vacía. Hazme una lista de la compra semanal para una casa, organizada por categorías y con cantidades razonables."
-
-        private const val COOK_FROM_PANTRY =
-            "¿Qué puedo cocinar hoy con lo que ya tengo en casa? Propón 2 o 3 platos y dime solo lo que me falte comprar."
-
-        private const val CLEANING_PLAN =
-            "Proponme un plan de limpieza semanal para casa, repartido por días para que no se acumule todo. Dime qué rutinas debería tener y cada cuánto."
-
-        private const val ORGANIZE_DAY =
-            "¿Cómo me organizo hoy con las rutinas que tengo pendientes? Dame un orden sensato y consejos para no dejarlas a medias."
-
-        private const val QUICK_DINNER =
-            "Dame ideas de cenas rápidas y fáciles para esta noche."
-
-        private const val ROUTINE_IDEAS =
-            "Propón rutinas útiles para mantener la casa ordenada sin agobiarme."
-
-        private const val CLEANING_TIPS =
-            "Dame trucos de limpieza que ahorren tiempo en el día a día."
     }
 }

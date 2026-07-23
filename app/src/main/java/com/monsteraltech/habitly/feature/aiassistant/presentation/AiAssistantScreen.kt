@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -87,12 +88,15 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiModelConfig
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiQuickPrompt
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.FollowUpTarget
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.QuickPromptId
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStatus
 import com.monsteraltech.habitly.feature.aiassistant.domain.util.AiStructuredBlocks
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ChatMessageItem
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ModelDownloadCard
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.PromptInput
+import com.monsteraltech.habitly.feature.aiassistant.presentation.components.QuickPromptChip
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.RoutineSuggestionCard
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ShoppingSuggestionCard
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.SuggestionPreparingCard
@@ -234,6 +238,8 @@ fun AiAssistantScreen(
     var chatToDelete by remember { mutableStateOf<AiChatSession?>(null) }
     var showDownloadDialog by remember { mutableStateOf(false) }
     var modelToDelete by remember { mutableStateOf<AiModelConfig?>(null) }
+    // Id del mensaje del asistente pendiente de confirmar el reporte.
+    var messageToReport by remember { mutableStateOf<String?>(null) }
 
     // Dictado por voz con el reconocedor del sistema: sin permisos propios ni modelos extra.
     // El texto reconocido se deja en el campo para que el usuario lo revise antes de enviar.
@@ -283,9 +289,13 @@ fun AiAssistantScreen(
         }
     }
 
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let { error ->
-            snackbarHostState.showSnackbar(error)
+    // El error puede venir como texto dinámico (uiState.error) o como id de recurso localizado
+    // (uiState.errorRes); se resuelve aquí, en el contexto de la Activity que sí sigue el idioma.
+    val errorResText = uiState.errorRes?.let { stringResource(it) }
+    LaunchedEffect(uiState.error, uiState.errorRes) {
+        val message = uiState.error ?: errorResText
+        if (message != null) {
+            snackbarHostState.showSnackbar(message)
             viewModel.onDismissError()
         }
     }
@@ -313,6 +323,15 @@ fun AiAssistantScreen(
         if (uiState.contextCompacted) {
             snackbarHostState.showSnackbar(contextCompactedMessage)
             viewModel.onContextCompactedShown()
+        }
+    }
+
+    val reportSuccessMessage = stringResource(R.string.ai_report_success)
+    val reportErrorMessage = stringResource(R.string.ai_report_error)
+    LaunchedEffect(uiState.reportResult) {
+        uiState.reportResult?.let { ok ->
+            snackbarHostState.showSnackbar(if (ok) reportSuccessMessage else reportErrorMessage)
+            viewModel.onReportResultShown()
         }
     }
 
@@ -592,7 +611,9 @@ fun AiAssistantScreen(
                                         isStreaming = uiState.isGenerating &&
                                             message.id == uiState.chatSession.messages.lastOrNull()?.id &&
                                             message.role is MessageRole.Assistant,
-                                        onCopy = onCopyMessage
+                                        onCopy = onCopyMessage,
+                                        isReported = message.id in uiState.reportedMessageIds,
+                                        onReport = { messageToReport = message.id }
                                     )
                                     val suggestions = uiState.shoppingSuggestions[message.id]
                                     if (!suggestions.isNullOrEmpty()) {
@@ -672,6 +693,24 @@ fun AiAssistantScreen(
                             )
                         }
 
+                        // Chips ya localizados: el de seguimiento (si lo hay) va delante de los
+                        // fijos. Los textos se resuelven aquí (contexto de la Activity = idioma
+                        // de Ajustes) y cada chip lleva su propia acción.
+                        val followUpAck = stringResource(R.string.ai_follow_up_ack)
+                        val quickPromptChips = listOfNotNull(
+                            uiState.followUpTarget?.let { target ->
+                                val userText = followUpUserText(target)
+                                QuickPromptChip(followUpLabel(target)) {
+                                    viewModel.onFollowUpChipTapped(userText, followUpAck)
+                                }
+                            }
+                        ) + uiState.quickPrompts.map { qp ->
+                            val promptText = quickPromptText(qp)
+                            QuickPromptChip(quickPromptLabel(qp.id)) {
+                                viewModel.onQuickPrompt(promptText)
+                            }
+                        }
+
                         PromptInput(
                             input = uiState.currentInput,
                             onInputChange = { viewModel.onInputChange(it) },
@@ -692,13 +731,19 @@ fun AiAssistantScreen(
                                     scope.launch { snackbarHostState.showSnackbar(voiceUnavailableText) }
                                 }
                             },
-                            // El chip de seguimiento ("Sí, créalas" / "Sí, a la lista") va
-                            // delante de los fijos; aquí solo se pinta, su destino lo enruta
-                            // el ViewModel al reconocer el prompt en onQuickPrompt.
-                            quickPrompts = listOfNotNull(
-                                uiState.followUpPrompt?.let { AiQuickPrompt(it.label, it.prompt) }
-                            ) + uiState.quickPrompts,
-                            onQuickPrompt = { viewModel.onQuickPrompt(it) }
+                            quickPrompts = quickPromptChips
+                        )
+
+                        // Disclaimer de IA: el modelo puede equivocarse. No es obligatorio pero
+                        // es estándar y protege; va bajo el input, discreto.
+                        Text(
+                            text = stringResource(R.string.ai_disclaimer),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
                         )
                     }
                 }
@@ -771,6 +816,28 @@ fun AiAssistantScreen(
         )
     }
 
+    messageToReport?.let { messageId ->
+        AlertDialog(
+            onDismissRequest = { messageToReport = null },
+            icon = { Icon(Icons.Outlined.Flag, contentDescription = null) },
+            title = { Text(stringResource(R.string.ai_report_confirm_title)) },
+            text = { Text(stringResource(R.string.ai_report_confirm_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.onReportMessage(messageId)
+                    messageToReport = null
+                }) {
+                    Text(stringResource(R.string.ai_report_send))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { messageToReport = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
     chatToDelete?.let { session ->
         AlertDialog(
             onDismissRequest = { chatToDelete = null },
@@ -803,3 +870,57 @@ fun AiAssistantScreen(
         )
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Textos localizados de los chips. Se resuelven con stringResource (contexto de la
+// Activity) para que respeten el idioma elegido en Ajustes; el dominio solo aporta el id.
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun quickPromptLabel(id: QuickPromptId): String = stringResource(
+    when (id) {
+        QuickPromptId.WEEKLY_MENU -> R.string.ai_qp_weekly_menu
+        QuickPromptId.COOK_FROM_PANTRY -> R.string.ai_qp_cook_from_pantry
+        QuickPromptId.CLEANING_PLAN -> R.string.ai_qp_cleaning_plan
+        QuickPromptId.RECIPES_FROM_LIST -> R.string.ai_qp_recipes_from_list
+        QuickPromptId.WEEKLY_LIST -> R.string.ai_qp_weekly_list
+        QuickPromptId.ORGANIZE_DAY -> R.string.ai_qp_organize_day
+        QuickPromptId.QUICK_DINNER -> R.string.ai_qp_quick_dinner
+        QuickPromptId.ROUTINE_IDEAS -> R.string.ai_qp_routine_ideas
+        QuickPromptId.CLEANING_TIPS -> R.string.ai_qp_cleaning_tips
+    }
+)
+
+@Composable
+private fun quickPromptText(qp: AiQuickPrompt): String = when (qp.id) {
+    QuickPromptId.WEEKLY_MENU -> stringResource(
+        R.string.ai_qp_weekly_menu_prompt,
+        pluralStringResource(R.plurals.ai_people, qp.memberCount, qp.memberCount)
+    )
+    QuickPromptId.COOK_FROM_PANTRY -> stringResource(R.string.ai_qp_cook_from_pantry_prompt)
+    QuickPromptId.CLEANING_PLAN -> stringResource(R.string.ai_qp_cleaning_plan_prompt)
+    QuickPromptId.RECIPES_FROM_LIST -> stringResource(R.string.ai_qp_recipes_from_list_prompt)
+    QuickPromptId.WEEKLY_LIST -> stringResource(R.string.ai_qp_weekly_list_prompt)
+    QuickPromptId.ORGANIZE_DAY -> stringResource(R.string.ai_qp_organize_day_prompt)
+    QuickPromptId.QUICK_DINNER -> stringResource(R.string.ai_qp_quick_dinner_prompt)
+    QuickPromptId.ROUTINE_IDEAS -> stringResource(R.string.ai_qp_routine_ideas_prompt)
+    QuickPromptId.CLEANING_TIPS -> stringResource(R.string.ai_qp_cleaning_tips_prompt)
+}
+
+@Composable
+private fun followUpLabel(target: FollowUpTarget): String = stringResource(
+    when (target) {
+        FollowUpTarget.ROUTINES -> R.string.ai_follow_up_routines_label
+        FollowUpTarget.SHOPPING -> R.string.ai_follow_up_shopping_label
+        FollowUpTarget.BOTH -> R.string.ai_follow_up_both_label
+    }
+)
+
+@Composable
+private fun followUpUserText(target: FollowUpTarget): String = stringResource(
+    when (target) {
+        FollowUpTarget.ROUTINES -> R.string.ai_follow_up_routines_prompt
+        FollowUpTarget.SHOPPING -> R.string.ai_follow_up_shopping_prompt
+        FollowUpTarget.BOTH -> R.string.ai_follow_up_both_prompt
+    }
+)

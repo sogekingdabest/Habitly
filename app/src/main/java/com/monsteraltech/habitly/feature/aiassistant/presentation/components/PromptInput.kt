@@ -26,7 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.R
-import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiQuickPrompt
+
+/** Chip de sugerencia ya localizado: etiqueta visible + acción al pulsarlo. La pantalla lo
+ *  construye resolviendo los textos con `stringResource`, para respetar el idioma de Ajustes. */
+data class QuickPromptChip(
+    val label: String,
+    val onClick: () -> Unit
+)
 
 @Composable
 fun PromptInput(
@@ -36,8 +42,7 @@ fun PromptInput(
     isGenerating: Boolean = false,
     onStop: () -> Unit = {},
     onVoiceInput: (() -> Unit)? = null,
-    quickPrompts: List<AiQuickPrompt> = emptyList(),
-    onQuickPrompt: (String) -> Unit = {},
+    quickPrompts: List<QuickPromptChip> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -51,10 +56,10 @@ fun PromptInput(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(quickPrompts) { prompt ->
+                items(quickPrompts) { chip ->
                     AssistChip(
-                        onClick = { onQuickPrompt(prompt.prompt) },
-                        label = { Text(prompt.label, maxLines = 1) }
+                        onClick = chip.onClick,
+                        label = { Text(chip.label, maxLines = 1) }
                     )
                 }
             }

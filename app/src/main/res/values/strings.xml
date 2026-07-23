@@ -164,6 +164,9 @@
     <string name="forgot_subtitle">Ingresa el correo electrónico asociado a tu cuenta y te enviaremos un enlace para restablecer tu contraseña.</string>
     <string name="forgot_send_link">Enviar enlace</string>
     <string name="forgot_back_to_login">Volver al inicio de sesión</string>
+    <string name="forgot_success">Si el correo está registrado, te hemos enviado un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada y la carpeta de spam.</string>
+    <string name="forgot_error_email">Introduce un correo electrónico válido</string>
+    <string name="forgot_error_generic">No se pudo enviar el correo. Inténtalo de nuevo.</string>
 
     <!-- Register -->
     <string name="register_title">Crear Cuenta</string>
@@ -310,6 +313,12 @@
     <string name="household_delete_confirm_message">Se eliminarán de forma permanente tu perfil, tus rutinas personales y tu pertenencia a la casa. Esta acción no se puede deshacer.</string>
     <string name="household_delete_confirm_button">Borrar cuenta</string>
 
+    <!-- Legal / información -->
+    <string name="legal_section_title">Información</string>
+    <string name="legal_privacy">Política de privacidad</string>
+    <string name="legal_terms">Términos y condiciones</string>
+    <string name="legal_open_error">No se pudo abrir el enlace</string>
+
     <!-- AI assistant -->
     <string name="ai_chat_history">Historial de Chats</string>
     <string name="ai_new_conversation">Nueva Conversación</string>
@@ -353,6 +362,13 @@
     <string name="ai_voice_input">Dictar por voz</string>
     <string name="ai_voice_prompt">Habla ahora…</string>
     <string name="ai_voice_unavailable">El dictado por voz no está disponible en este dispositivo</string>
+    <string name="ai_disclaimer">La IA puede cometer errores. Revisa la información importante.</string>
+    <string name="ai_report">Reportar respuesta</string>
+    <string name="ai_report_confirm_title">¿Reportar esta respuesta?</string>
+    <string name="ai_report_confirm_message">Nos ayudarás a mejorar el asistente. Se enviará el texto de esta respuesta para su revisión.</string>
+    <string name="ai_report_send">Reportar</string>
+    <string name="ai_report_success">Gracias, respuesta reportada</string>
+    <string name="ai_report_error">No se pudo enviar el reporte</string>
 
     <!-- AI shopping suggestions -->
     <string name="ai_suggestion_add">Añadir a la lista</string>
@@ -387,4 +403,75 @@
     <string name="widget_routines_empty">¡Todo hecho!</string>
     <string name="widget_open_hint">Abre Habitly para empezar</string>
     <string name="widget_more">+%d</string>
+
+    <!-- Ajustes -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_section_account">Cuenta</string>
+    <string name="settings_email">Correo</string>
+    <string name="settings_nickname">Apodo</string>
+    <string name="settings_sign_out_confirm">¿Seguro que quieres cerrar sesión?</string>
+    <string name="settings_section_appearance">Apariencia</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_system">Predeterminado del sistema</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Oscuro</string>
+    <string name="settings_section_language">Idioma</string>
+    <string name="settings_language">Idioma de la app</string>
+    <string name="settings_language_system">Predeterminado del sistema</string>
+    <string name="settings_language_es">Español</string>
+    <string name="settings_language_gl">Galego</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_section_notifications">Notificaciones</string>
+    <string name="settings_reminders">Recordatorios de rutinas</string>
+    <string name="settings_reminders_desc">Avisos a la hora de cada rutina</string>
+    <string name="settings_open_system_settings">Ajustes de notificaciones del sistema</string>
+    <string name="settings_section_about">Acerca de</string>
+    <string name="settings_version">Versión</string>
+    <string name="settings_rate">Valorar en Google Play</string>
+
+    <!-- Asistente IA: chips de sugerencia -->
+    <string name="ai_qp_weekly_menu">Menú semanal</string>
+    <string name="ai_qp_cook_from_pantry">Cocinar con lo que tengo</string>
+    <string name="ai_qp_cleaning_plan">Plan de limpieza</string>
+    <string name="ai_qp_recipes_from_list">Recetas con mi lista</string>
+    <string name="ai_qp_weekly_list">Lista semanal</string>
+    <string name="ai_qp_organize_day">Organiza mi día</string>
+    <string name="ai_qp_quick_dinner">Cena rápida</string>
+    <string name="ai_qp_routine_ideas">Ideas de rutinas</string>
+    <string name="ai_qp_cleaning_tips">Trucos de limpieza</string>
+    <plurals name="ai_people">
+        <item quantity="one">una persona</item>
+        <item quantity="other">%d personas</item>
+    </plurals>
+    <string name="ai_qp_weekly_menu_prompt">Planifica un menú de cenas para toda la semana (de lunes a domingo). Para cada día indica un plato sencillo y variado. Al final, dame la lista de la compra consolidada con todos los ingredientes que necesito para el menú, con cantidades razonables para %1$s.</string>
+    <string name="ai_qp_cook_from_pantry_prompt">¿Qué puedo cocinar hoy con lo que ya tengo en casa? Propón 2 o 3 platos y dime solo lo que me falte comprar.</string>
+    <string name="ai_qp_cleaning_plan_prompt">Proponme un plan de limpieza semanal para casa, repartido por días para que no se acumule todo. Dime qué rutinas debería tener y cada cuánto.</string>
+    <string name="ai_qp_recipes_from_list_prompt">Mirando la lista de la compra que tengo ahora mismo, ¿qué platos puedo preparar esta semana? Propón 3 o 4 recetas sencillas.</string>
+    <string name="ai_qp_weekly_list_prompt">Tengo la lista de la compra vacía. Hazme una lista de la compra semanal para una casa, organizada por categorías y con cantidades razonables.</string>
+    <string name="ai_qp_organize_day_prompt">¿Cómo me organizo hoy con las rutinas que tengo pendientes? Dame un orden sensato y consejos para no dejarlas a medias.</string>
+    <string name="ai_qp_quick_dinner_prompt">Dame ideas de cenas rápidas y fáciles para esta noche.</string>
+    <string name="ai_qp_routine_ideas_prompt">Propón rutinas útiles para mantener la casa ordenada sin agobiarme.</string>
+    <string name="ai_qp_cleaning_tips_prompt">Dame trucos de limpieza que ahorren tiempo en el día a día.</string>
+
+    <!-- Asistente IA: chip de seguimiento -->
+    <string name="ai_follow_up_ack">¡Voy! Aquí lo tienes 👇</string>
+    <string name="ai_follow_up_routines_label">Sí, créalas</string>
+    <string name="ai_follow_up_routines_prompt">Sí, crea las rutinas que me has propuesto.</string>
+    <string name="ai_follow_up_shopping_label">Sí, a la lista</string>
+    <string name="ai_follow_up_shopping_prompt">Sí, añade esos productos a la lista de la compra.</string>
+    <string name="ai_follow_up_both_label">Sí, adelante</string>
+    <string name="ai_follow_up_both_prompt">Sí, adelante con lo que me has propuesto.</string>
+
+    <!-- Asistente IA: errores -->
+    <string name="ai_error_generate">Error al generar la respuesta</string>
+    <string name="ai_error_add_to_list">No se pudo añadir a la lista</string>
+    <string name="ai_error_create_routines">No se pudieron crear las rutinas</string>
+    <string name="ai_error_prepare_card">No pude preparar la tarjeta</string>
+    <string name="ai_error_prepare_card_retry">No pude preparar la tarjeta; inténtalo de nuevo.</string>
+    <string name="ai_error_download">Error al descargar el modelo</string>
+    <string name="ai_error_compact">No se pudo compactar la conversación</string>
+
+    <!-- Asistente IA: notificación de descarga del modelo -->
+    <string name="ai_download_notification_title">Descargando modelo de IA</string>
+    <string name="ai_download_channel_name">Descargas de modelos de IA</string>
 </resources>

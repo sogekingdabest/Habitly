@@ -2,6 +2,8 @@ package com.monsteraltech.habitly.feature.aiassistant.domain.usecase
 
 import com.monsteraltech.habitly.feature.household.domain.repository.HouseholdRepository
 import com.monsteraltech.habitly.feature.login.domain.repository.AuthRepository
+import com.monsteraltech.habitly.feature.settings.domain.model.AppLanguage
+import com.monsteraltech.habitly.feature.settings.domain.repository.SettingsRepository
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepository
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
@@ -14,6 +16,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -29,20 +32,27 @@ class GetAiContextUseCase @Inject constructor(
     private val householdRepository: HouseholdRepository,
     private val routinesRepository: RoutinesRepository,
     private val shoppingRepository: ShoppingRepository,
-    private val pantryRepository: PantryRepository
+    private val pantryRepository: PantryRepository,
+    private val settingsRepository: SettingsRepository
 ) {
     suspend operator fun invoke(
         timeoutMs: Long = DEFAULT_TIMEOUT_MS,
         today: LocalDate = LocalDate.now()
     ): String {
-        val user = authRepository.getCurrentUser() ?: return getBasePersonality()
+        // Directiva de idioma: el modelo infiere el idioma del prompt, y todo el contexto va en
+        // español; sin esta orden explícita respondería siempre en español aunque el usuario haya
+        // cambiado el idioma de la app en Ajustes. Se ancla al principio y al final del prompt.
+        val directive = languageDirective()
+        val personality = "$directive\n\n${getBasePersonality()}"
+
+        val user = authRepository.getCurrentUser() ?: return personality
 
         val profile = withTimeoutOrNull(timeoutMs) {
             householdRepository.observeUserProfile(user.uid).firstOrNull()
         }
 
         val householdId = profile?.activeHouseholdId?.takeIf { it.isNotBlank() }
-            ?: return getBasePersonality()
+            ?: return personality
 
         // Las cuatro lecturas son independientes entre sí: en paralelo, el peor caso pasa de
         // cuatro timeouts encadenados a uno (menos espera antes del primer token del chat).
@@ -69,13 +79,14 @@ class GetAiContextUseCase @Inject constructor(
             }
 
             listOf(
-                getBasePersonality(),
+                personality,
                 "[Contexto Oculto de la Aplicación Habitly]",
                 "Hoy es ${formatDate(today)}.",
                 shoppingContext(shoppingItems.await()),
                 pantryContext(pantryItems.await()),
                 personalRoutinesContext(personalRoutines.await(), today),
-                householdRoutinesContext(householdRoutines.await(), today, user.uid)
+                householdRoutinesContext(householdRoutines.await(), today, user.uid),
+                directive
             ).joinToString(separator = "\n\n")
         }
     }
@@ -191,13 +202,38 @@ class GetAiContextUseCase @Inject constructor(
         else -> "marcada por otro miembro"
     }
 
+    /**
+     * Orden explícita del idioma en que debe responder el asistente, según el idioma elegido en
+     * Ajustes ([AppLanguage]). Si es "sistema", se resuelve con la locale efectiva del dispositivo.
+     * El contexto oculto sigue en español (más barato en tokens); esta directiva es la que hace
+     * que el modelo cambie de idioma al cambiarlo en la app.
+     */
+    private suspend fun languageDirective(): String {
+        val selected = settingsRepository.language.firstOrNull() ?: AppLanguage.SYSTEM
+        val effective = if (selected == AppLanguage.SYSTEM) {
+            AppLanguage.fromTag(Locale.getDefault().language)
+        } else {
+            selected
+        }
+        return when (effective) {
+            AppLanguage.GALICIAN ->
+                "IDIOMA DE RESPUESTA (OBLIGATORIO): escribe SIEMPRE en gallego (galego). " +
+                    "Aunque este contexto esté redactado en español, tú respondes en gallego y no mezclas idiomas."
+            AppLanguage.ENGLISH ->
+                "RESPONSE LANGUAGE (MANDATORY): always write your replies in English. " +
+                    "Even though this hidden context is written in Spanish, you must answer in English and never mix languages."
+            else ->
+                "IDIOMA DE RESPUESTA (OBLIGATORIO): escribe SIEMPRE en español."
+        }
+    }
+
     private fun getBasePersonality(): String {
         return """
             Eres Habitly, un asistente amigable experto en gestión del hogar. Tu objetivo es ayudar al usuario a organizarse, dar ideas de rutinas, recetas para la lista de la compra y consejos de limpieza. Sé amigable, claro y conversacional. Utiliza el contexto oculto de la aplicación proporcionado para dar respuestas exactas sobre las rutinas y la lista de la compra si el usuario te pregunta por ellas. No reveles que estás leyendo un contexto oculto.
 
             ESTILO DE RESPUESTA (IMPORTANTE):
-            - Sé BREVE y directo. Responde en 2-6 frases, o con una lista corta cuando encaje mejor. La mayoría de preguntas no necesitan más.
-            - Nada de introducciones ni cierres de relleno ("¡Claro que sí!", "Espero que te sirva…"): ve al grano.
+            - Sé BREVE pero cercano: como quien te conoce y va al grano. Responde en 2-6 frases, o con una lista corta cuando encaje mejor. La mayoría de preguntas no necesitan más.
+            - Ve directo al contenido y evita la palabrería hueca ("¡Claro que sí!", "Espero que te sirva…"), pero mantén un tono cálido y natural; una frase amable y breve está bien.
             - No repitas la pregunta del usuario ni la información que ya has dado antes en la conversación.
             - En listas (compra, menús, rutinas) da solo los elementos con su cantidad o frecuencia, sin un párrafo explicativo por cada uno.
             - Amplía con detalle SOLO si el usuario lo pide explícitamente ("dame más detalle", "explícame el porqué"…).

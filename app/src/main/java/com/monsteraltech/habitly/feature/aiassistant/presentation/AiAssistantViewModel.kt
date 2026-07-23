@@ -4,9 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.monsteraltech.habitly.BuildConfig
+import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiShoppingSuggestion
-import com.monsteraltech.habitly.feature.aiassistant.domain.model.FollowUpSuggestion
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.FollowUpTarget
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiAssistantRepository
@@ -18,6 +18,7 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetAiContext
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetContextualQuickPromptsUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ParseAiRoutinesUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ParseAiShoppingListUseCase
+import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ReportAiMessageUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.RoutineCreationIntentUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.ShoppingCreationIntentUseCase
 import com.monsteraltech.habitly.feature.aiassistant.domain.util.AiStructuredBlocks
@@ -47,7 +48,8 @@ class AiAssistantViewModel @Inject constructor(
     private val addAiRoutinesUseCase: AddAiRoutinesUseCase,
     private val routineCreationIntentUseCase: RoutineCreationIntentUseCase,
     private val shoppingCreationIntentUseCase: ShoppingCreationIntentUseCase,
-    private val estimateContextUsageUseCase: EstimateContextUsageUseCase
+    private val estimateContextUsageUseCase: EstimateContextUsageUseCase,
+    private val reportAiMessageUseCase: ReportAiMessageUseCase
 ) : ViewModel() {
 
     private val tag = "AiAssistantViewModel"
@@ -154,7 +156,8 @@ class AiAssistantViewModel @Inject constructor(
                     currentInput = "",
                     isGenerating = true,
                     error = null,
-                    followUpPrompt = null,
+                    errorRes = null,
+                    followUpTarget = null,
                     lastGenerationStats = null
                 )
             }
@@ -265,7 +268,7 @@ class AiAssistantViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(error = e.message ?: "Error al generar respuesta")
+                    it.copy(error = e.message, errorRes = R.string.ai_error_generate)
                 }
             } finally {
                 _uiState.update { it.copy(isGenerating = false, isExtractingSuggestions = false) }
@@ -311,18 +314,15 @@ class AiAssistantViewModel @Inject constructor(
         // el chip nunca ofrezca "crear rutinas" tras una lista de la compra; si propone ambas
         // cosas, el chip es genérico y lanza las dos extracciones (la que no aplique
         // devolverá vacío y no sacará tarjeta).
-        val followUp = assistantMessages.lastOrNull()?.let { msg ->
+        val followUpTarget = assistantMessages.lastOrNull()?.let { msg ->
             val needsRoutines = routines[msg.id].isNullOrEmpty() &&
                 routineCreationIntentUseCase.looksLikeRoutineProposal(msg.content)
             val needsShopping = shopping[msg.id].isNullOrEmpty() &&
                 shoppingCreationIntentUseCase.looksLikeShoppingProposal(msg.content)
             when {
-                needsRoutines && needsShopping ->
-                    FollowUpSuggestion(FOLLOW_UP_BOTH_LABEL, FOLLOW_UP_BOTH_PROMPT, FollowUpTarget.BOTH)
-                needsRoutines ->
-                    FollowUpSuggestion(FOLLOW_UP_ROUTINES_LABEL, FOLLOW_UP_ROUTINES_PROMPT, FollowUpTarget.ROUTINES)
-                needsShopping ->
-                    FollowUpSuggestion(FOLLOW_UP_SHOPPING_LABEL, FOLLOW_UP_SHOPPING_PROMPT, FollowUpTarget.SHOPPING)
+                needsRoutines && needsShopping -> FollowUpTarget.BOTH
+                needsRoutines -> FollowUpTarget.ROUTINES
+                needsShopping -> FollowUpTarget.SHOPPING
                 else -> null
             }
         }
@@ -337,7 +337,7 @@ class AiAssistantViewModel @Inject constructor(
             it.copy(
                 shoppingSuggestions = shopping,
                 routineSuggestions = routines,
-                followUpPrompt = followUp
+                followUpTarget = followUpTarget
             )
         }
     }
@@ -431,7 +431,8 @@ class AiAssistantViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             addingSuggestionMessageId = null,
-                            error = e.message ?: "No se pudo añadir a la lista"
+                            error = e.message,
+                            errorRes = R.string.ai_error_add_to_list
                         )
                     }
                 }
@@ -465,7 +466,8 @@ class AiAssistantViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             addingRoutineMessageId = null,
-                            error = e.message ?: "No se pudieron crear las rutinas"
+                            error = e.message,
+                            errorRes = R.string.ai_error_create_routines
                         )
                     }
                 }
@@ -478,14 +480,6 @@ class AiAssistantViewModel @Inject constructor(
     }
 
     fun onQuickPrompt(prompt: String) {
-        // El chip de seguimiento se reconoce por ser EL que está en pantalla. Va por el
-        // camino rápido: confirmación instantánea + extracción, SIN turno conversacional
-        // (la propuesta ya está en el mensaje anterior y la extracción la lee de ahí).
-        val followUp = _uiState.value.followUpPrompt
-        if (followUp != null && prompt == followUp.prompt) {
-            onFollowUpChip(followUp)
-            return
-        }
         _uiState.update { it.copy(currentInput = prompt) }
         onSendMessage()
     }
@@ -495,9 +489,13 @@ class AiAssistantViewModel @Inject constructor(
      * mandar otro turno al modelo (que re-narraría toda la propuesta, decenas de segundos),
      * añade una confirmación breve y lanza directamente el turno 2 de extracción sobre la
      * propuesta que ya vive en los mensajes anteriores. La tarjeta cuelga de la confirmación.
+     *
+     * [userText] (la confirmación visible) y [ackText] (el "voy") llegan ya localizados desde
+     * la pantalla; el destino de la extracción se lee de [AiAssistantUiState.followUpTarget].
      */
-    private fun onFollowUpChip(followUp: FollowUpSuggestion) {
+    fun onFollowUpChipTapped(userText: String, ackText: String) {
         if (_uiState.value.isGenerating) return
+        val target = _uiState.value.followUpTarget ?: return
 
         // Misma fuente que las extracciones de seguimiento de [onSendMessage]: los últimos
         // mensajes del asistente sin bloques, acotados por el final (donde viven los ítems).
@@ -509,26 +507,26 @@ class AiAssistantViewModel @Inject constructor(
             .takeLast(FOLLOW_UP_SOURCE_MAX_CHARS)
 
         launchChatOperation {
-            _uiState.update { it.copy(followUpPrompt = null, error = null) }
+            _uiState.update { it.copy(followUpTarget = null, error = null, errorRes = null) }
 
             // Intercambio visible SIN modelo: la confirmación del usuario y un "voy" corto.
             var session = _uiState.value.chatSession
-                .addUserMessage(followUp.prompt)
-                .addAssistantMessage(FOLLOW_UP_ACK)
+                .addUserMessage(userText)
+                .addAssistantMessage(ackText)
             val ackMessageId = session.messages.last().id
             _uiState.update { it.copy(chatSession = session) }
             repository.setActiveSession(session)
             repository.saveSession(session)
 
             try {
-                if (followUp.target.includesRoutines) {
+                if (target.includesRoutines) {
                     session = extractSuggestionsInto(
                         session,
                         AiStructuredBlocks.ROUTINES_MARKER,
                         extraSource = source
                     ) { repository.extractRoutines(it) }
                 }
-                if (followUp.target.includesShopping) {
+                if (target.includesShopping) {
                     session = extractSuggestionsInto(
                         session,
                         AiStructuredBlocks.SHOPPING_MARKER,
@@ -545,8 +543,8 @@ class AiAssistantViewModel @Inject constructor(
                 if (!produced) {
                     _uiState.update {
                         it.copy(
-                            followUpPrompt = followUp,
-                            error = "No pude preparar la tarjeta; inténtalo de nuevo."
+                            followUpTarget = target,
+                            errorRes = R.string.ai_error_prepare_card_retry
                         )
                     }
                 }
@@ -559,8 +557,9 @@ class AiAssistantViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
-                        followUpPrompt = followUp,
-                        error = e.message ?: "No pude preparar la tarjeta"
+                        followUpTarget = target,
+                        error = e.message,
+                        errorRes = R.string.ai_error_prepare_card
                     )
                 }
             } finally {
@@ -578,7 +577,7 @@ class AiAssistantViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(tag, "Error downloading model", e)
                 _uiState.update {
-                    it.copy(error = "Error descargando modelo: ${e.message}")
+                    it.copy(errorRes = R.string.ai_error_download)
                 }
             }
         }
@@ -633,7 +632,7 @@ class AiAssistantViewModel @Inject constructor(
                 routineSuggestions = emptyMap(),
                 addedRoutineMessageIds = emptySet(),
                 addingRoutineMessageId = null,
-                followUpPrompt = null,
+                followUpTarget = null,
                 lastGenerationStats = null,
                 contextUsage = 0f
             )
@@ -694,7 +693,7 @@ class AiAssistantViewModel @Inject constructor(
     }
 
     fun onDismissError() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, errorRes = null) }
     }
 
     /**
@@ -714,7 +713,7 @@ class AiAssistantViewModel @Inject constructor(
             try {
                 val summary = repository.summarizeConversation(buildCompactionSource(session))
                 if (summary.isBlank()) {
-                    _uiState.update { it.copy(error = "No se pudo compactar la conversación") }
+                    _uiState.update { it.copy(errorRes = R.string.ai_error_compact) }
                     return@launchChatOperation
                 }
                 val compacted = session.copy(
@@ -730,7 +729,7 @@ class AiAssistantViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "No se pudo compactar la conversación") }
+                _uiState.update { it.copy(error = e.message, errorRes = R.string.ai_error_compact) }
             } finally {
                 _uiState.update { it.copy(isCompacting = false) }
             }
@@ -739,6 +738,32 @@ class AiAssistantViewModel @Inject constructor(
 
     fun onContextCompactedShown() {
         _uiState.update { it.copy(contextCompacted = false) }
+    }
+
+    /**
+     * Reporta una respuesta del asistente como ofensiva o inapropiada (requisito de la
+     * política de contenido generado por IA de Google Play). En su propio job: no toca el
+     * engine, así que no debe serializarse con las operaciones de chat.
+     */
+    fun onReportMessage(messageId: String) {
+        val message = _uiState.value.chatSession.messages.find { it.id == messageId } ?: return
+        viewModelScope.launch {
+            val result = reportAiMessageUseCase(message, _uiState.value.chatSession.modelId)
+            _uiState.update { state ->
+                if (result.isSuccess) {
+                    state.copy(
+                        reportResult = true,
+                        reportedMessageIds = state.reportedMessageIds + messageId
+                    )
+                } else {
+                    state.copy(reportResult = false)
+                }
+            }
+        }
+    }
+
+    fun onReportResultShown() {
+        _uiState.update { it.copy(reportResult = null) }
     }
 
     /**
@@ -786,17 +811,5 @@ class AiAssistantViewModel @Inject constructor(
 
         /** Tope de la fuente extra, recortando por el principio (los ítems van al final). */
         const val FOLLOW_UP_SOURCE_MAX_CHARS = 4000
-
-        /** Confirmación instantánea del camino rápido del chip (no la genera el modelo). */
-        const val FOLLOW_UP_ACK = "¡Voy! Aquí lo tienes 👇"
-
-        /** Chips de seguimiento tras una propuesta sin tarjeta, según lo que se propuso.
-         *  El texto es solo conversación: el destino real viaja en [FollowUpSuggestion]. */
-        const val FOLLOW_UP_ROUTINES_LABEL = "Sí, créalas"
-        const val FOLLOW_UP_ROUTINES_PROMPT = "Sí, crea las rutinas que me has propuesto."
-        const val FOLLOW_UP_SHOPPING_LABEL = "Sí, a la lista"
-        const val FOLLOW_UP_SHOPPING_PROMPT = "Sí, añade esos productos a la lista de la compra."
-        const val FOLLOW_UP_BOTH_LABEL = "Sí, adelante"
-        const val FOLLOW_UP_BOTH_PROMPT = "Sí, adelante con lo que me has propuesto."
     }
 }

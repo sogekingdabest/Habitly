@@ -10,9 +10,11 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.aiassistant.data.source.LocalModelManager
 import com.monsteraltech.habitly.feature.aiassistant.data.source.NonRetryableDownloadException
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AvailableAiModels
+import com.monsteraltech.habitly.feature.settings.data.LocaleHelper
 import kotlinx.coroutines.CancellationException
 
 /**
@@ -26,6 +28,10 @@ class ModelDownloadWorker(
 ) : CoroutineWorker(appContext, params) {
 
     private val modelManager = LocalModelManager(appContext)
+
+    // Contexto con el idioma elegido en Ajustes (el applicationContext no lo refleja). `lazy`
+    // para no reconstruirlo en cada refresco de progreso durante la descarga.
+    private val localizedContext by lazy { LocaleHelper.wrap(applicationContext) }
 
     override suspend fun doWork(): Result {
         val modelId = inputData.getString(KEY_MODEL_ID)
@@ -75,7 +81,7 @@ class ModelDownloadWorker(
     private fun createNotification(modelName: String, percent: Int): android.app.Notification {
         ensureChannel()
         return NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setContentTitle("Descargando modelo de IA")
+            .setContentTitle(localizedContext.getString(R.string.ai_download_notification_title))
             .setContentText(modelName)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
@@ -95,7 +101,7 @@ class ModelDownloadWorker(
             if (manager.getNotificationChannel(CHANNEL_ID) == null) {
                 val channel = NotificationChannel(
                     CHANNEL_ID,
-                    "Descargas de modelos de IA",
+                    localizedContext.getString(R.string.ai_download_channel_name),
                     NotificationManager.IMPORTANCE_LOW
                 )
                 manager.createNotificationChannel(channel)

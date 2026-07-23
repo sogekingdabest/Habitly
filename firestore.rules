@@ -90,5 +90,22 @@ service cloud.firestore {
           && request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.members;
       }
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Reportes de respuestas del asistente IA (política de contenido
+    // generado por IA de Google Play): solo crear, y solo en nombre
+    // propio. La lectura queda para la consola del desarrollador.
+    // ─────────────────────────────────────────────────────────────
+    match /ai_reports/{reportId} {
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 8000
+        && request.resource.data.modelId is string
+        && request.resource.data.modelId.size() <= 100
+        && request.resource.data.keys().hasOnly(['userId', 'modelId', 'content', 'createdAt']);
+      allow read, update, delete: if false;
+    }
   }
 }

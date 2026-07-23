@@ -4,15 +4,20 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.room.Room
 import com.monsteraltech.habitly.feature.aiassistant.data.repository.AiAssistantRepositoryImpl
+import com.monsteraltech.habitly.feature.aiassistant.data.repository.AiAccountDataCleaner
+import com.monsteraltech.habitly.feature.aiassistant.data.repository.AiReportRepositoryImpl
 import com.monsteraltech.habitly.feature.aiassistant.data.source.local.AiAssistantDatabase
 import com.monsteraltech.habitly.feature.aiassistant.data.source.local.AiChatDao
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiAssistantRepository
+import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiReportRepository
+import com.monsteraltech.habitly.feature.login.domain.account.AccountDataCleaner
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
 import javax.inject.Singleton
 
 @Module
@@ -23,6 +28,18 @@ abstract class AiAssistantModule {
     abstract fun bindAiAssistantRepository(
         repositoryImpl: AiAssistantRepositoryImpl
     ): AiAssistantRepository
+
+    @Binds
+    abstract fun bindAiReportRepository(
+        repositoryImpl: AiReportRepositoryImpl
+    ): AiReportRepository
+
+    /** Limpieza del historial/prefs del asistente al borrar la cuenta (no en el logout). */
+    @Binds
+    @IntoSet
+    abstract fun bindAiAccountDataCleaner(
+        cleaner: AiAccountDataCleaner
+    ): AccountDataCleaner
 
     companion object {
         @Provides

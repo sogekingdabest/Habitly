@@ -4,6 +4,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -12,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,7 +45,10 @@ fun ChatMessageItem(
     modifier: Modifier = Modifier,
     /** Último mensaje del asistente aún generándose: sin botón de copiar y, si sigue vacío, con puntos. */
     isStreaming: Boolean = false,
-    onCopy: (String) -> Unit = {}
+    onCopy: (String) -> Unit = {},
+    /** Ya reportado: oculta la acción de reportar para no duplicar envíos. */
+    isReported: Boolean = false,
+    onReport: () -> Unit = {}
 ) {
     val isUser = message.role is MessageRole.User
     // Texto que se muestra y se copia: el del usuario tal cual; el del asistente sin el
@@ -133,19 +138,35 @@ fun ChatMessageItem(
             }
         }
 
-        // Botón de copiar bajo la burbuja: el prompt propio (lo pedía el usuario) y las
-        // respuestas ya terminadas. Durante el streaming se oculta (copiar a medias no aporta).
+        // Acciones bajo la burbuja: copiar (prompt propio y respuestas terminadas) y, solo en
+        // respuestas del asistente, reportar (requisito de la política de IA de Google Play).
+        // Durante el streaming se ocultan (copiar/reportar a medias no aporta).
         if (!isStreaming && displayText.isNotBlank()) {
-            IconButton(
-                onClick = { onCopy(displayText) },
-                modifier = Modifier.size(28.dp)
-            ) {
-                Icon(
-                    Icons.Rounded.ContentCopy,
-                    contentDescription = stringResource(R.string.ai_copy),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    modifier = Modifier.size(18.dp)
-                )
+            Row {
+                IconButton(
+                    onClick = { onCopy(displayText) },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.ContentCopy,
+                        contentDescription = stringResource(R.string.ai_copy),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                if (!isUser && !isReported) {
+                    IconButton(
+                        onClick = onReport,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.Flag,
+                            contentDescription = stringResource(R.string.ai_report),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
     }
