@@ -91,6 +91,8 @@ google-services.json
 *.keystore
 *.p12
 *.pfx
+# Firma del release (credenciales del keystore); nunca subir. El .example sí se versiona.
+keystore.properties
 .env
 .env.*
 secrets/
