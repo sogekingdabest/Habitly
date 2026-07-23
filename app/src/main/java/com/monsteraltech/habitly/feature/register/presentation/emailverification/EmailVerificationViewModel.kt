@@ -93,11 +93,15 @@ class EmailVerificationViewModel @Inject constructor(
                 if (_uiState.value.resendCooldownSeconds == 0) {
                    _uiState.update { it.copy(isResendingEmail = true) }
                    viewModelScope.launch {
-                       // TODO: Implement ResendEmailUseCase in Domain layer later. For now simulate.
-                       delay(1000)
+                       val result = authRepository.resendVerificationEmail()
                        _uiState.update { it.copy(isResendingEmail = false) }
-                       _effects.send(EmailVerificationEffect.ShowSnackbar("Email reenviado"))
-                       startCooldown()
+                       result.onSuccess {
+                           _effects.send(EmailVerificationEffect.ShowSnackbar("Correo de verificación reenviado"))
+                           startCooldown()
+                       }.onFailure {
+                           // Sin cooldown en el fallo: que el usuario pueda reintentar de inmediato.
+                           _effects.send(EmailVerificationEffect.ShowSnackbar("No se pudo reenviar el correo"))
+                       }
                    }
                 }
             }

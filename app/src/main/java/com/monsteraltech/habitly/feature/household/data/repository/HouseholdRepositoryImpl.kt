@@ -1,5 +1,6 @@
 package com.monsteraltech.habitly.feature.household.data.repository
 
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.monsteraltech.habitly.feature.household.domain.model.Household
@@ -278,11 +279,20 @@ class HouseholdRepositoryImpl @Inject constructor(
                     .await()
             }
 
-            // 2) Borrar sus rutinas personales (subcolección).
+            // 2) Borrar sus rutinas personales. Firestore NO borra subcolecciones en cascada:
+            //    hay que recoger también los completions de cada rutina o quedarían huérfanos
+            //    (datos personales retenidos tras borrar la cuenta).
             val routines = userRef.collection("routines").get().await()
-            if (!routines.isEmpty) {
+            val refsToDelete = mutableListOf<DocumentReference>()
+            for (routine in routines.documents) {
+                val completions = routine.reference.collection("completions").get().await()
+                completions.documents.forEach { refsToDelete.add(it.reference) }
+                refsToDelete.add(routine.reference)
+            }
+            // Un batch admite 500 operaciones como máximo; se trocea con margen.
+            refsToDelete.chunked(MAX_BATCH_OPS).forEach { chunk ->
                 val batch = firestore.batch()
-                routines.documents.forEach { batch.delete(it.reference) }
+                chunk.forEach { batch.delete(it) }
                 batch.commit().await()
             }
 
@@ -300,5 +310,8 @@ class HouseholdRepositoryImpl @Inject constructor(
         private const val CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
         private const val CODE_LENGTH = 6
         private const val MAX_CODE_ATTEMPTS = 5
+
+        // Límite real de Firestore: 500 operaciones por batch; margen por si acaso.
+        private const val MAX_BATCH_OPS = 450
     }
 }

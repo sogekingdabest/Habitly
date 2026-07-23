@@ -1,10 +1,8 @@
 package com.monsteraltech.habitly.feature.login.data.repository
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.GoogleAuthProvider
@@ -12,6 +10,7 @@ import com.google.firebase.auth.UserProfileChangeRequest
 import com.monsteraltech.habitly.feature.login.domain.model.AuthToken
 import com.monsteraltech.habitly.feature.login.domain.model.LoginCredentials
 import com.monsteraltech.habitly.feature.login.domain.model.ReauthenticationRequiredException
+import com.monsteraltech.habitly.feature.login.domain.account.AccountDataCleaner
 import com.monsteraltech.habitly.feature.login.domain.repository.AuthRepository
 import com.monsteraltech.habitly.feature.register.domain.model.AuthUser
 import com.monsteraltech.habitly.feature.register.domain.model.RegisterCredentials
@@ -23,13 +22,8 @@ import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
-    private val dataStore: DataStore<Preferences>
+    private val accountDataCleaners: Set<@JvmSuppressWildcards AccountDataCleaner>
 ) : AuthRepository {
-
-    companion object {
-        val ACCESS_TOKEN_KEY = stringPreferencesKey("access_token")
-        val REFRESH_TOKEN_KEY = stringPreferencesKey("refresh_token")
-    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Existente: Login con email/contraseña
@@ -47,7 +41,6 @@ class AuthRepositoryImpl @Inject constructor(
             val accessToken = tokenResult.token ?: ""
             val authToken = AuthToken(accessToken = accessToken, refreshToken = "")
 
-            persistToken(accessToken, "")
             Result.success(authToken)
         } catch (e: Exception) {
             Result.failure(e)
@@ -79,8 +72,6 @@ class AuthRepositoryImpl @Inject constructor(
             val tokenResult = user.getIdToken(false).await()
             val accessToken = tokenResult.token ?: ""
             val authToken = AuthToken(accessToken = accessToken, refreshToken = "")
-
-            persistToken(accessToken, "")
 
             Result.success(
                 AuthUser(
@@ -116,8 +107,6 @@ class AuthRepositoryImpl @Inject constructor(
             val tokenResult = user.getIdToken(false).await()
             val accessToken = tokenResult.token ?: ""
             val authToken = AuthToken(accessToken = accessToken, refreshToken = "")
-
-            persistToken(accessToken, "")
 
             Result.success(
                 AuthUser(
@@ -172,10 +161,41 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun signOut() {
+        // Solo cierra la sesión de Firebase. NO se borran datos locales: un logout (voluntario
+        // o por caducidad de sesión) no debe llevarse el historial de chat; el usuario volvería
+        // a entrar y lo encontraría vacío. La limpieza vive en deleteAccount().
         firebaseAuth.signOut()
-        dataStore.edit { preferences ->
-            preferences.remove(ACCESS_TOKEN_KEY)
-            preferences.remove(REFRESH_TOKEN_KEY)
+    }
+
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+        return try {
+            firebaseAuth.sendPasswordResetEmail(email).await()
+            Result.success(Unit)
+        } catch (e: FirebaseAuthInvalidUserException) {
+            // El correo no está registrado. No lo revelamos (evita enumeración de cuentas):
+            // se responde igual que un envío correcto.
+            Result.success(Unit)
+        } catch (e: UnknownHostException) {
+            Result.failure(RegisterError.NetworkError)
+        } catch (e: IOException) {
+            Result.failure(RegisterError.NetworkError)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun resendVerificationEmail(): Result<Unit> {
+        return try {
+            val user = firebaseAuth.currentUser
+                ?: return Result.failure(Exception("No hay usuario activo"))
+            user.sendEmailVerification().await()
+            Result.success(Unit)
+        } catch (e: UnknownHostException) {
+            Result.failure(RegisterError.NetworkError)
+        } catch (e: IOException) {
+            Result.failure(RegisterError.NetworkError)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -184,10 +204,7 @@ class AuthRepositoryImpl @Inject constructor(
             val user = firebaseAuth.currentUser
                 ?: return Result.failure(Exception("No hay usuario activo"))
             user.delete().await()
-            dataStore.edit { preferences ->
-                preferences.remove(ACCESS_TOKEN_KEY)
-                preferences.remove(REFRESH_TOKEN_KEY)
-            }
+            clearLocalAccountData()
             Result.success(Unit)
         } catch (e: FirebaseAuthRecentLoginRequiredException) {
             Result.failure(ReauthenticationRequiredException())
@@ -200,10 +217,17 @@ class AuthRepositoryImpl @Inject constructor(
     // Helpers privados
     // ─────────────────────────────────────────────────────────────────────────
 
-    private suspend fun persistToken(accessToken: String, refreshToken: String) {
-        dataStore.edit { preferences ->
-            preferences[ACCESS_TOKEN_KEY] = accessToken
-            preferences[REFRESH_TOKEN_KEY] = refreshToken
+    /**
+     * Ejecuta todos los [AccountDataCleaner] registrados al borrar la cuenta. Cada uno aislado:
+     * que una limpieza falle no debe impedir el borrado ni frenar al resto.
+     */
+    private suspend fun clearLocalAccountData() {
+        accountDataCleaners.forEach { cleaner ->
+            try {
+                cleaner.clearAccountData()
+            } catch (e: Exception) {
+                Log.w("AuthRepository", "Fallo limpiando datos locales de la cuenta", e)
+            }
         }
     }
 }

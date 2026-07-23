@@ -85,6 +85,25 @@ class FakeAuthRepository : AuthRepository {
         stubCurrentUser = null
     }
 
+    var passwordResetCallCount = 0
+        private set
+    var lastPasswordResetEmail: String? = null
+        private set
+
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+        passwordResetCallCount++
+        lastPasswordResetEmail = email
+        return if (willFail) Result.failure(Exception(errorMessage)) else Result.success(Unit)
+    }
+
+    var resendVerificationCallCount = 0
+        private set
+
+    override suspend fun resendVerificationEmail(): Result<Unit> {
+        resendVerificationCallCount++
+        return if (willFail) Result.failure(Exception(errorMessage)) else Result.success(Unit)
+    }
+
     override suspend fun deleteAccount(): Result<Unit> {
         return if (willFail) {
             Result.failure(Exception(errorMessage))
@@ -102,5 +121,8 @@ class FakeAuthRepository : AuthRepository {
         _loginCallCount = 0
         _registerCallCount = 0
         _googleSignInCallCount = 0
+        passwordResetCallCount = 0
+        lastPasswordResetEmail = null
+        resendVerificationCallCount = 0
     }
 }

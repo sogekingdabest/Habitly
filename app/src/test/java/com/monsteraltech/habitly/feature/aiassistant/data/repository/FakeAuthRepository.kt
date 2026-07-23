@@ -24,6 +24,10 @@ class FakeAuthRepository : AuthRepository {
         stubCurrentUser = null
     }
 
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> = Result.success(Unit)
+
+    override suspend fun resendVerificationEmail(): Result<Unit> = Result.success(Unit)
+
     override suspend fun deleteAccount(): Result<Unit> {
         stubCurrentUser = null
         return Result.success(Unit)

@@ -15,6 +15,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
 import com.monsteraltech.habitly.ui.components.HabitlyPrimaryButton
@@ -26,9 +28,10 @@ import com.monsteraltech.habitly.ui.theme.habitly
 
 @Composable
 fun ForgotPasswordScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: ForgotPasswordViewModel = hiltViewModel()
 ) {
-    var email by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     HabitlyBackground(arrangement = MeshArrangement.Auth) {
         Column(
@@ -73,8 +76,8 @@ fun ForgotPasswordScreen(
                 )
 
                 HabitlyTextField(
-                    value = email,
-                    onValueChange = { email = it },
+                    value = uiState.email,
+                    onValueChange = viewModel::onEmailChange,
                     label = stringResource(R.string.common_email),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
@@ -82,6 +85,32 @@ fun ForgotPasswordScreen(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Mensajes de estado bajo el campo: éxito (privacy-friendly), error de formato
+                // o error genérico/red.
+                when {
+                    uiState.isSent -> Text(
+                        text = stringResource(R.string.forgot_success),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                    uiState.emailInvalid -> Text(
+                        text = stringResource(R.string.forgot_error_email),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                    uiState.error -> Text(
+                        text = stringResource(R.string.forgot_error_generic),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
             }
 
             // --- Parte inferior fija ---
@@ -91,7 +120,9 @@ fun ForgotPasswordScreen(
             ) {
                 HabitlyPrimaryButton(
                     text = stringResource(R.string.forgot_send_link),
-                    onClick = { /* TODO: Enviar correo de recuperación */ },
+                    onClick = viewModel::onSendClick,
+                    enabled = !uiState.isSent,
+                    loading = uiState.isLoading,
                     modifier = Modifier.fillMaxWidth()
                 )
 
