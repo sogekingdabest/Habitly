@@ -8,13 +8,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.ui.res.stringResource
 import com.monsteraltech.habitly.R
@@ -41,7 +40,7 @@ import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
 
 @Composable
 fun HouseholdScreen(
-    onSignOut: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     viewModel: HouseholdViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -52,7 +51,6 @@ fun HouseholdScreen(
     var editNameInput by remember { mutableStateOf("") }
     var showEditNicknameDialog by remember { mutableStateOf(false) }
     var editNicknameInput by remember { mutableStateOf("") }
-    var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showLeaveDialog by remember { mutableStateOf(false) }
     var showRegenerateDialog by remember { mutableStateOf(false) }
     var memberToRemove by remember { mutableStateOf<UserProfile?>(null) }
@@ -72,13 +70,6 @@ fun HouseholdScreen(
         uiState.joinError?.let { error ->
             snackbarHostState.showSnackbar(error)
             viewModel.resetJoinState()
-        }
-    }
-
-    LaunchedEffect(uiState.deleteAccountError) {
-        uiState.deleteAccountError?.let { error ->
-            snackbarHostState.showSnackbar(error)
-            viewModel.onDeleteAccountErrorShown()
         }
     }
 
@@ -112,8 +103,8 @@ fun HouseholdScreen(
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
-                IconButton(onClick = { viewModel.onSignOut(onSignOut) }) {
-                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = stringResource(R.string.household_sign_out))
+                IconButton(onClick = onNavigateToSettings) {
+                    Icon(Icons.Filled.Tune, contentDescription = stringResource(R.string.settings_title))
                 }
             }
 
@@ -365,41 +356,7 @@ fun HouseholdScreen(
                     Text(stringResource(R.string.household_leave))
                 }
 
-                Spacer(modifier = Modifier.height(40.dp))
-
-                // === SECCIÓN: Zona de peligro ===
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = stringResource(R.string.household_danger_zone),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.household_delete_account_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = { showDeleteAccountDialog = true },
-                    enabled = !uiState.isDeletingAccount,
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    if (uiState.isDeletingAccount) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.error)
-                    } else {
-                        Icon(Icons.Filled.DeleteForever, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.household_delete_account))
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
@@ -478,34 +435,6 @@ fun HouseholdScreen(
         )
     }
 
-    // Dialog de confirmación de borrado de cuenta
-    if (showDeleteAccountDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteAccountDialog = false },
-            icon = { Icon(Icons.Filled.DeleteForever, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.household_delete_confirm_title)) },
-            text = {
-                Text(stringResource(R.string.household_delete_confirm_message))
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteAccountDialog = false
-                        viewModel.onDeleteAccount(onSignOut)
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text(stringResource(R.string.household_delete_confirm_button))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteAccountDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
-        )
-    }
-    
     // Dialog para editar nombre de la casa
     if (showEditNameDialog) {
         AlertDialog(

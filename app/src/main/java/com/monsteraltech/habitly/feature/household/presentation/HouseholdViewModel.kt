@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.monsteraltech.habitly.feature.household.domain.model.Household
 import com.monsteraltech.habitly.feature.household.domain.model.UserProfile
-import com.monsteraltech.habitly.feature.household.domain.usecase.DeleteAccountUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.EditHouseholdNameUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.GetMemberProfilesUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.JoinHouseholdUseCase
@@ -15,8 +14,6 @@ import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserPro
 import com.monsteraltech.habitly.feature.household.domain.usecase.RegenerateInviteCodeUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.RemoveMemberUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.UpdateNicknameUseCase
-import com.monsteraltech.habitly.feature.login.domain.model.ReauthenticationRequiredException
-import com.monsteraltech.habitly.feature.login.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,8 +33,6 @@ data class HouseholdUiState(
     val isJoining: Boolean = false,
     val joinError: String? = null,
     val joinSuccess: Boolean = false,
-    val isDeletingAccount: Boolean = false,
-    val deleteAccountError: String? = null,
     val infoMessage: String? = null
 )
 
@@ -52,8 +47,6 @@ class HouseholdViewModel @Inject constructor(
     private val leaveHouseholdUseCase: LeaveHouseholdUseCase,
     private val removeMemberUseCase: RemoveMemberUseCase,
     private val regenerateInviteCodeUseCase: RegenerateInviteCodeUseCase,
-    private val deleteAccountUseCase: DeleteAccountUseCase,
-    private val authRepository: AuthRepository,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -147,37 +140,6 @@ class HouseholdViewModel @Inject constructor(
                 _uiState.update { it.copy(error = result.exceptionOrNull()?.message) }
             }
         }
-    }
-
-    fun onSignOut(onComplete: () -> Unit) {
-        viewModelScope.launch {
-            authRepository.signOut()
-            onComplete()
-        }
-    }
-
-    fun onDeleteAccount(onComplete: () -> Unit) {
-        if (_uiState.value.isDeletingAccount) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isDeletingAccount = true, deleteAccountError = null) }
-            val result = deleteAccountUseCase()
-            if (result.isSuccess) {
-                _uiState.update { it.copy(isDeletingAccount = false) }
-                onComplete()
-            } else {
-                val error = result.exceptionOrNull()
-                val message = if (error is ReauthenticationRequiredException) {
-                    "Por seguridad, vuelve a iniciar sesión y reinténtalo para completar el borrado."
-                } else {
-                    error?.message ?: "No se pudo borrar la cuenta"
-                }
-                _uiState.update { it.copy(isDeletingAccount = false, deleteAccountError = message) }
-            }
-        }
-    }
-
-    fun onDeleteAccountErrorShown() {
-        _uiState.update { it.copy(deleteAccountError = null) }
     }
 
     fun onLeaveHousehold() {

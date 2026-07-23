@@ -53,6 +53,7 @@ import com.monsteraltech.habitly.feature.routines.presentation.add.AddRoutineVie
 import com.monsteraltech.habitly.feature.shopping.presentation.ShoppingScreen
 import com.monsteraltech.habitly.feature.shopping.presentation.add.AddProductScreen
 import com.monsteraltech.habitly.feature.shopping.presentation.history.HistoryScreen
+import com.monsteraltech.habitly.feature.settings.presentation.SettingsScreen
 import com.monsteraltech.habitly.feature.aiassistant.presentation.AiAssistantScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.monsteraltech.habitly.R
@@ -69,6 +70,7 @@ object HiddenRoutes {
     const val ShoppingHistory = "shopping_history"
     const val ShoppingAddProduct = "shopping_add_product"
     const val RoutinesAdd = "routines_add"
+    const val Settings = "settings"
 }
 
 @Composable
@@ -196,7 +198,15 @@ private fun MainContent(
                 )
             }
             composable(BottomNavRoute.Household.route) {
-                HouseholdScreen(onSignOut = onSignOut)
+                HouseholdScreen(
+                    onNavigateToSettings = { navController.navigate(HiddenRoutes.Settings) }
+                )
+            }
+            composable(HiddenRoutes.Settings) {
+                SettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSignOut = onSignOut
+                )
             }
             composable(HiddenRoutes.ShoppingHistory) {
                 HistoryScreen(

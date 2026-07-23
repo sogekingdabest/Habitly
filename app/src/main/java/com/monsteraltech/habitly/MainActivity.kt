@@ -1,6 +1,7 @@
 package com.monsteraltech.habitly
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -11,10 +12,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import androidx.glance.appwidget.updateAll
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.monsteraltech.habitly.feature.settings.data.LocaleHelper
+import com.monsteraltech.habitly.feature.settings.domain.model.ThemeMode
+import com.monsteraltech.habitly.feature.settings.domain.repository.SettingsRepository
 import com.monsteraltech.habitly.feature.widget.HabitlyWidget
 import com.monsteraltech.habitly.ui.theme.HabitlyTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -29,8 +35,18 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var firebaseAuth: FirebaseAuth
 
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+
     // Señal de deep link: true cuando se abre la app tocando una notificación de rutina.
     private val routinesDeepLink = mutableStateOf(false)
+
+    // Aplica el idioma persistido antes de crear la Activity (antes de la inyección de Hilt),
+    // por eso LocaleHelper lee la preferencia de forma síncrona. Un cambio de idioma en Ajustes
+    // llama a recreate(), lo que vuelve a ejecutar este envoltorio con la nueva locale.
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* resultado ignorado */ }
@@ -49,7 +65,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            HabitlyTheme {
+            val themeMode by settingsRepository.themeMode.collectAsStateWithLifecycle(ThemeMode.SYSTEM)
+            HabitlyTheme(darkTheme = themeMode.toDarkOverride()) {
                 Surface(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
                     com.monsteraltech.habitly.navigation.RootNavGraph(
                         startDestination = startDestination,
