@@ -11,6 +11,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
+import com.monsteraltech.habitly.feature.settings.data.LocaleHelper
+import com.monsteraltech.habitly.feature.settings.data.SettingsRepositoryImpl
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
 import dagger.hilt.android.EntryPointAccessors
 import java.time.LocalDate
@@ -30,6 +32,9 @@ class RoutineReminderWorker(
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
+        // Interruptor maestro de recordatorios (Ajustes). Si está apagado, no molestamos.
+        if (!SettingsRepositoryImpl.readRemindersEnabled(applicationContext)) return Result.success()
+
         val routineId = inputData.getString(KEY_ROUTINE_ID) ?: return Result.failure()
         val fallbackTitle = inputData.getString(KEY_ROUTINE_TITLE) ?: return Result.failure()
         val userId = inputData.getString(KEY_USER_ID).orEmpty()
@@ -70,14 +75,17 @@ class RoutineReminderWorker(
     private fun showNotification(title: String, routineId: String) {
         val channelId = "routines_reminders"
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        // Contexto con el idioma elegido en Ajustes: el applicationContext no lo refleja (solo
+        // el de la Activity), así que sin esto los textos salían en el idioma del sistema.
+        val ctx = LocaleHelper.wrap(applicationContext)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                applicationContext.getString(R.string.routines_notification_channel_name),
+                ctx.getString(R.string.routines_notification_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = applicationContext.getString(R.string.routines_notification_channel_desc)
+                description = ctx.getString(R.string.routines_notification_channel_desc)
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -95,11 +103,11 @@ class RoutineReminderWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notificationText = applicationContext.getString(R.string.routines_notification_text, title)
+        val notificationText = ctx.getString(R.string.routines_notification_text, title)
 
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(applicationContext.getString(R.string.routines_notification_title))
+            .setContentTitle(ctx.getString(R.string.routines_notification_title))
             .setContentText(notificationText)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
