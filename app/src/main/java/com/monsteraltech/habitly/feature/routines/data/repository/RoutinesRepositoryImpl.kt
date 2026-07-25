@@ -8,6 +8,7 @@ import com.monsteraltech.habitly.feature.routines.domain.model.RoutineCompletion
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepository
 import com.monsteraltech.habitly.feature.routines.domain.util.StreakCalculator
+import com.monsteraltech.habitly.feature.widget.domain.WidgetRefresher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -18,7 +19,10 @@ import java.time.ZoneId
 import javax.inject.Inject
 
 class RoutinesRepositoryImpl @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    // El widget lista las rutinas pendientes de hoy: cualquier escritura que las cambie
+    // tiene que repintarlo, o se queda enseñando algo que ya no es verdad.
+    private val widgetRefresher: WidgetRefresher
 ) : RoutinesRepository {
 
     override fun observePersonalRoutines(userId: String): Flow<List<Routine>> = callbackFlow {
@@ -67,6 +71,7 @@ class RoutinesRepositoryImpl @Inject constructor(
         return try {
             val collection = collectionFor(routine.type, userId, householdId)
             collection.document(routine.id).set(routine).await()
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -141,6 +146,7 @@ class RoutinesRepositoryImpl @Inject constructor(
                 )
             ).await()
 
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -202,6 +208,7 @@ class RoutinesRepositoryImpl @Inject constructor(
     ): Result<Unit> {
         return try {
             documentFor(type, userId, householdId, routineId).delete().await()
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -228,6 +235,7 @@ class RoutinesRepositoryImpl @Inject constructor(
                         "rotationEnabled" to routine.rotationEnabled
                     )
                 ).await()
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

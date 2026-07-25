@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Atajos del icono del launcher (mantener pulsado). Son estáticos: no hay que registrarlos en
+  tiempo de ejecución y están disponibles desde la instalación.
+
+  Los intents son explícitos (targetPackage + targetClass) con una acción propia; MainActivity
+  las traduce a un destino con `ExternalDestination.fromAction`, el mismo canal que usa la
+  notificación de recordatorio para llegar a la pestaña de rutinas.
+
+  Las etiquetas salen de strings.xml, así que siguen el idioma de Ajustes: el launcher las
+  vuelve a resolver cuando cambia la configuración.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="add_shopping"
+        android:enabled="true"
+        android:icon="@mipmap/ic_shortcut_shopping"
+        android:shortcutShortLabel="@string/shortcut_add_shopping_short"
+        android:shortcutLongLabel="@string/shortcut_add_shopping_long">
+        <intent
+            android:action="com.monsteraltech.habitly.action.ADD_SHOPPING"
+            android:targetPackage="com.monsteraltech.habitly"
+            android:targetClass="com.monsteraltech.habitly.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="today_routines"
+        android:enabled="true"
+        android:icon="@mipmap/ic_shortcut_routines"
+        android:shortcutShortLabel="@string/shortcut_today_routines_short"
+        android:shortcutLongLabel="@string/shortcut_today_routines_long">
+        <intent
+            android:action="com.monsteraltech.habitly.action.VIEW_ROUTINES"
+            android:targetPackage="com.monsteraltech.habitly"
+            android:targetClass="com.monsteraltech.habitly.MainActivity" />
+    </shortcut>
+
+</shortcuts>

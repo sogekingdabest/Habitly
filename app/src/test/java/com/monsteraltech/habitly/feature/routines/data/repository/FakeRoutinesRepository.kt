@@ -76,6 +76,9 @@ class FakeRoutinesRepository : RoutinesRepository {
     /** Completados por id de rutina; la clave vacía sirve de comodín para cualquiera. */
     var stubCompletions: Map<String, List<RoutineCompletion>> = emptyMap()
 
+    /** Consultas de historial hechas: sirve para afirmar que no se lee más de lo necesario. */
+    var getCompletionsCalls = 0
+
     override suspend fun getCompletions(
         userId: String,
         householdId: String,
@@ -85,6 +88,7 @@ class FakeRoutinesRepository : RoutinesRepository {
         to: LocalDate
     ): Result<List<RoutineCompletion>> {
         if (shouldFail) return Result.failure(Exception(errorMessage))
+        getCompletionsCalls++
         val forRoutine = stubCompletions[routineId] ?: stubCompletions[""] ?: emptyList()
         return Result.success(forRoutine.filter { !it.date.isBefore(from) && !it.date.isAfter(to) })
     }
@@ -179,6 +183,7 @@ class FakeRoutinesRepository : RoutinesRepository {
         personalRoutines.value = emptyList()
         householdRoutines.value = emptyList()
         stubCompletions = emptyMap()
+        getCompletionsCalls = 0
         assignments = mutableMapOf()
         shouldFail = false
         errorMessage = "Fake error"

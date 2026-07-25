@@ -4,6 +4,14 @@ import com.monsteraltech.habitly.feature.household.domain.model.Household
 import com.monsteraltech.habitly.feature.household.domain.model.UserProfile
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * El código no sirve: no existe, ya ha caducado o apunta a una casa que no está. Los tres
+ * casos se funden en uno a propósito, para no revelar qué códigos existen a quien los vaya
+ * probando.
+ */
+class InvalidInviteCodeException :
+    Exception("El código de invitación no es válido o ha caducado")
+
 interface HouseholdRepository {
     /**
      * Crea el perfil del usuario si no existe, SIN casa asociada
@@ -14,7 +22,8 @@ interface HouseholdRepository {
     /**
      * Crea una nueva casa para el usuario y la marca como activa.
      */
-    suspend fun createHousehold(userId: String, displayName: String, householdName: String): Result<Unit>
+    /** Crea la casa, la marca como activa del usuario y devuelve **su id**. */
+    suspend fun createHousehold(userId: String, displayName: String, householdName: String): Result<String>
 
     /**
      * Observa el perfil del usuario para obtener su activeHouseholdId
@@ -37,14 +46,30 @@ interface HouseholdRepository {
     suspend fun updateHouseholdName(householdId: String, newName: String): Result<Unit>
 
     /**
-     * Actualiza el nickname del usuario
+     * Actualiza el nickname del usuario y lo propaga a la copia pública que vive en el
+     * documento de su casa. [householdId] en blanco (usuario aún sin casa) omite la
+     * propagación.
      */
-    suspend fun updateNickname(userId: String, newNickname: String): Result<Unit>
+    suspend fun updateNickname(userId: String, householdId: String, newNickname: String): Result<Unit>
 
     /**
-     * Obtiene los perfiles de una lista de miembros
+     * Escribe la entrada de [userId] en el `memberProfiles` de la casa. Idempotente y
+     * pensada para llamarse en cada arranque: rellena las casas creadas antes de que
+     * existiera el campo sin necesidad de un script de migración.
      */
-    suspend fun getMemberProfiles(memberIds: List<String>): Result<List<UserProfile>>
+    suspend fun syncOwnMemberProfile(
+        householdId: String,
+        userId: String,
+        displayName: String,
+        nickname: String
+    ): Result<Unit>
+
+    /**
+     * Fija [userId] como propietario de la casa. Solo tiene efecto en casas creadas antes
+     * de que existiera el campo (las reglas únicamente admiten rellenarlo si está vacío y
+     * si quien lo reclama es el primer miembro, es decir, quien la creó).
+     */
+    suspend fun claimHouseholdOwnership(householdId: String, userId: String): Result<Unit>
 
     /**
      * El usuario sale de su casa actual (se elimina de members y su

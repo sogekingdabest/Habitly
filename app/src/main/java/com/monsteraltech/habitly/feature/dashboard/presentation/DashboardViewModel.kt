@@ -3,10 +3,13 @@ package com.monsteraltech.habitly.feature.dashboard.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.monsteraltech.habitly.feature.dashboard.data.ConnectivityObserver
 import com.monsteraltech.habitly.feature.household.domain.model.Household
+import com.monsteraltech.habitly.feature.household.domain.usecase.GetMemberProfilesUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveHouseholdUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.usecase.ObserveRoutinesUseCase
 import com.monsteraltech.habitly.feature.routines.domain.usecase.ToggleRoutineUseCase
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
@@ -28,15 +31,33 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
 
+/**
+ * Cuántas rutinas de casa lleva hechas hoy un miembro. [name] llega vacío si su perfil aún
+ * no está en `Household.memberProfiles` (casa anterior al campo, o compañero que todavía no
+ * ha abierto la app); la UI pone entonces el texto de reserva.
+ */
+data class MemberTally(val memberId: String, val name: String, val count: Int)
+
 data class DashboardUiState(
     val isLoading: Boolean = true,
     val household: Household? = null,
     val pendingShoppingItems: List<ShoppingItem> = emptyList(),
     val pendingRoutines: List<Routine> = emptyList(),
+    /** Rutinas que cuentan para hoy: las que tocaban más las que se han hecho. */
+    val todayRoutinesTotal: Int = 0,
+    val todayRoutinesDone: Int = 0,
+    /** Reparto del día entre miembros, de más a menos. */
+    val todayByMember: List<MemberTally> = emptyList(),
     /** Uid actual, para marcar con "Te toca" las rutinas de casa asignadas a este usuario. */
     val currentUserId: String = "",
+    /** Sin red: lo que se marque queda guardado en el móvil y subirá al volver la conexión. */
+    val isOffline: Boolean = false,
     val error: String? = null
-)
+) {
+    val todayProgress: Float
+        get() = if (todayRoutinesTotal == 0) 0f
+        else todayRoutinesDone.toFloat() / todayRoutinesTotal.toFloat()
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -46,6 +67,8 @@ class DashboardViewModel @Inject constructor(
     private val observeShoppingListUseCase: ObserveShoppingListUseCase,
     private val observeRoutinesUseCase: ObserveRoutinesUseCase,
     private val toggleRoutineUseCase: ToggleRoutineUseCase,
+    private val getMemberProfilesUseCase: GetMemberProfilesUseCase,
+    private val connectivityObserver: ConnectivityObserver,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -65,18 +88,34 @@ class DashboardViewModel @Inject constructor(
             val shoppingFlow = observeShoppingListUseCase(householdId)
             val routinesFlow = observeRoutinesUseCase(currentUserId, householdId)
 
-            combine(householdFlow, shoppingFlow, routinesFlow) { household, shoppingList, routines ->
+            combine(
+                householdFlow,
+                shoppingFlow,
+                routinesFlow,
+                connectivityObserver.isOnline
+            ) { household, shoppingList, routines, isOnline ->
                 val today = LocalDate.now()
                 val pendingShopping = shoppingList.filter { !it.isChecked }
+
+                // Todo el reparto del día sale de RoutineSchedule, el mismo que usan la
+                // pestaña de rutinas y el widget: si aquí se copiara el filtro, los números
+                // acabarían discrepando en cuanto una regla cambiase.
                 // Solo lo que toca hoy: antes se colaban rutinas de otros días de la semana.
                 val pendingRoutines = routines.filter { RoutineSchedule.isPendingOn(it, today) }
+                val completedToday = routines.filter { RoutineSchedule.isCompletedOn(it, today) }
 
                 DashboardUiState(
                     isLoading = false,
                     household = household,
                     pendingShoppingItems = pendingShopping,
                     pendingRoutines = pendingRoutines,
-                    currentUserId = currentUserId
+                    // Las de intervalo dejan de "tocar" en cuanto se hacen, así que el total
+                    // se arma sumando pendientes y hechas en vez de contar las programadas.
+                    todayRoutinesTotal = pendingRoutines.size + completedToday.size,
+                    todayRoutinesDone = completedToday.size,
+                    todayByMember = tallyByMember(completedToday, household),
+                    currentUserId = currentUserId,
+                    isOffline = !isOnline
                 )
             }.catch { e ->
                 emit(DashboardUiState(isLoading = false, error = e.message))
@@ -87,6 +126,33 @@ class DashboardViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = DashboardUiState()
         )
+
+    /**
+     * Quién ha hecho qué hoy, solo con rutinas **de casa**: las personales de los demás ni
+     * siquiera se leen, así que contarlas daría un marcador con un único jugador.
+     *
+     * Los nombres salen de `Household.memberProfiles`, que ya viene en el documento cargado:
+     * ni una lectura extra de Firestore.
+     */
+    private fun tallyByMember(completedToday: List<Routine>, household: Household?): List<MemberTally> {
+        if (household == null) return emptyList()
+
+        val counts = completedToday
+            .filter { it.type == RoutineType.HOUSEHOLD }
+            .mapNotNull { it.lastCompletedBy?.takeIf(String::isNotBlank) }
+            .groupingBy { it }
+            .eachCount()
+
+        if (counts.isEmpty()) return emptyList()
+
+        val names = getMemberProfilesUseCase(household).associate { profile ->
+            profile.id to profile.nickname.ifBlank { profile.displayName }
+        }
+
+        return counts.entries
+            .map { (memberId, count) -> MemberTally(memberId, names[memberId].orEmpty(), count) }
+            .sortedByDescending { it.count }
+    }
 
     fun onToggleRoutine(routine: Routine) {
         val state = uiState.value

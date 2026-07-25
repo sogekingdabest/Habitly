@@ -19,6 +19,18 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+// Al publicar solo se toca esto: el versionCode se deriva del versionName, así que no hay forma
+// de olvidarse de subirlo (Play rechaza reutilizar un versionCode) ni de que los dos se
+// desincronicen. MAJOR.MINOR.PATCH -> MAJOR*10000 + MINOR*100 + PATCH, monótono si el semver lo es.
+val habitlyVersionName = "1.0.0"
+val habitlyVersionCode = habitlyVersionName.split(".").let { parts ->
+    val numbers = parts.mapNotNull(String::toIntOrNull)
+    require(numbers.size == 3 && numbers.all { it in 0..99 }) {
+        "versionName debe ser MAJOR.MINOR.PATCH con partes de 0 a 99; es '$habitlyVersionName'"
+    }
+    numbers[0] * 10_000 + numbers[1] * 100 + numbers[2]
+}
+
 android {
     namespace = "com.monsteraltech.habitly"
     compileSdk {
@@ -31,8 +43,8 @@ android {
         applicationId = "com.monsteraltech.habitly"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = habitlyVersionCode
+        versionName = habitlyVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -50,7 +62,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8: encoge y ofusca. Las reglas -keep de proguard-rules.pro son por paquete a
+            // propósito; lee la cabecera de ese fichero antes de tocar nada aquí.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -124,6 +139,11 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    // App Check: cada variante trae SOLO su proveedor, porque el de depuración acepta un
+    // secreto fijo y no debe viajar nunca en el APK publicado. La instalación vive en
+    // AppCheckInstaller.kt, duplicado en src/release/java y src/debug/java.
+    releaseImplementation(libs.firebase.appcheck.playintegrity)
+    debugImplementation(libs.firebase.appcheck.debug)
     implementation(libs.coroutines.play.services)
     implementation(libs.datastore.preferences)
 

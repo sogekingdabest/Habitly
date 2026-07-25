@@ -52,7 +52,10 @@ abstract class AiAssistantModule {
                 AiAssistantDatabase::class.java,
                 "ai_assistant_db"
             )
-                .addMigrations(AiAssistantDatabase.MIGRATION_1_2)
+                .addMigrations(
+                    AiAssistantDatabase.MIGRATION_1_2,
+                    AiAssistantDatabase.MIGRATION_2_3
+                )
                 .build()
         }
 

@@ -1,13 +1,22 @@
 package com.monsteraltech.habitly.feature.aiassistant.data.source.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiMessage
 
-@Entity(tableName = "ai_chat_sessions")
+@Entity(
+    tableName = "ai_chat_sessions",
+    // El historial vive en una BD local compartida por todas las cuentas del dispositivo:
+    // sin dueño, cada cuenta veía las conversaciones de las demás. Se indexa para que las
+    // consultas acotadas por usuario no barran toda la tabla.
+    indices = [Index("userId")]
+)
 data class AiChatSessionEntity(
     @PrimaryKey val id: String,
+    /** UID de Firebase del dueño de la sesión. Aísla el historial entre cuentas locales. */
+    val userId: String,
     val title: String,
     val systemPrompt: String,
     val modelId: String,
@@ -33,9 +42,10 @@ data class AiChatSessionEntity(
     }
 
     companion object {
-        fun fromDomain(session: AiChatSession): AiChatSessionEntity {
+        fun fromDomain(session: AiChatSession, userId: String): AiChatSessionEntity {
             return AiChatSessionEntity(
                 id = session.id,
+                userId = userId,
                 title = session.title,
                 systemPrompt = session.systemPrompt,
                 modelId = session.modelId,

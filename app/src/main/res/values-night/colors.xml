@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget (Verde niebla — modo oscuro nocturno). El widget sigue el modo oscuro
+         del sistema mediante estos cualificadores -night; los textos y acentos usan
+         ColorProvider(day, night) en Kotlin. -->
+    <color name="widget_card_bg">#20302A</color>
+    <color name="widget_pill_bg">#2A3B33</color>
+</resources>

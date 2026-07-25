@@ -16,8 +16,10 @@ sealed class RootRoute(val route: String) {
 fun RootNavGraph(
     navController: NavHostController = rememberNavController(),
     startDestination: String = RootRoute.Auth.route,
-    navigateToRoutines: Boolean = false,
-    onRoutinesDeepLinkConsumed: () -> Unit = {}
+    externalDestination: ExternalDestination? = null,
+    onExternalDestinationConsumed: () -> Unit = {},
+    sharedText: String? = null,
+    onSharedTextConsumed: () -> Unit = {}
 ) {
     NavHost(
         navController = navController,
@@ -40,8 +42,10 @@ fun RootNavGraph(
                         popUpTo(RootRoute.Main.route) { inclusive = true }
                     }
                 },
-                navigateToRoutines = navigateToRoutines,
-                onRoutinesDeepLinkConsumed = onRoutinesDeepLinkConsumed
+                externalDestination = externalDestination,
+                onExternalDestinationConsumed = onExternalDestinationConsumed,
+                sharedText = sharedText,
+                onSharedTextConsumed = onSharedTextConsumed
             )
         }
     }

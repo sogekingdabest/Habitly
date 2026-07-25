@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.shopping.presentation.components.ItemQuantityLabel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -256,13 +257,7 @@ fun HistoryCard(
                                     color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.weight(1f)
                                 )
-                                if (item.quantity > 1 || item.unit != "unidad") {
-                                    Text(
-                                        text = "${item.quantity} ${item.unit}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    )
-                                }
+                                ItemQuantityLabel(quantity = item.quantity, unit = item.unit)
                             }
                         }
                     }

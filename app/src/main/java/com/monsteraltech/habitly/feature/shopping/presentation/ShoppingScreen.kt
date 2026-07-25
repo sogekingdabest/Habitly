@@ -3,6 +3,7 @@ package com.monsteraltech.habitly.feature.shopping.presentation
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -29,32 +30,87 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.shopping.presentation.add.QuickAddSheet
+import com.monsteraltech.habitly.feature.shopping.presentation.components.ItemQuantityLabel
 import com.monsteraltech.habitly.feature.shopping.presentation.components.PantryContent
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
 import com.monsteraltech.habitly.ui.components.HabitlyCard
+import com.monsteraltech.habitly.ui.components.HabitlySwipeRow
+import com.monsteraltech.habitly.ui.components.HabitlyTextField
 import com.monsteraltech.habitly.ui.components.MeshArrangement
+import com.monsteraltech.habitly.ui.components.VoiceInputButton
+import com.monsteraltech.habitly.ui.components.swipeRowSemantics
 import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
+import com.monsteraltech.habitly.ui.theme.habitly
 
+/**
+ * [openQuickAdd] llega a `true` cuando se entra desde el atajo "Añadir a la compra" del icono
+ * del launcher: la pestaña se abre ya con la hoja de alta rápida desplegada.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShoppingScreen(
     onNavigateToHistory: () -> Unit = {},
-    onNavigateToAddProduct: () -> Unit = {},
+    openQuickAdd: Boolean = false,
+    onQuickAddHandled: () -> Unit = {},
     viewModel: ShoppingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
+    LaunchedEffect(openQuickAdd) {
+        if (openQuickAdd) {
+            viewModel.onOpenQuickAdd()
+            onQuickAddHandled()
+        }
+    }
+
     var showAddStoreDialog by remember { mutableStateOf(false) }
     var newStoreName by remember { mutableStateOf("") }
     var showArchiveDialog by remember { mutableStateOf(false) }
     var showClearDialog by remember { mutableStateOf(false) }
 
+    // skipPartiallyExpanded: la hoja abre entera y con el teclado; un estado intermedio solo
+    // taparía el campo que hay que escribir.
+    val quickAddSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    if (uiState.quickAdd.isOpen) {
+        QuickAddSheet(
+            state = uiState.quickAdd,
+            availableStores = uiState.availableStores,
+            pantryQuantity = uiState.quickAddPantryMatch?.quantity,
+            pantryUnit = uiState.quickAddPantryMatch?.unit,
+            duplicate = uiState.quickAddDuplicate,
+            sheetState = quickAddSheetState,
+            onNameChange = viewModel::onQuickAddNameChange,
+            onQuantityChange = viewModel::onQuickAddQuantityChange,
+            onUnitChange = viewModel::onQuickAddUnitChange,
+            onStoreChange = viewModel::onQuickAddStoreChange,
+            onCategoryChange = viewModel::onQuickAddCategoryChange,
+            onNotesChange = viewModel::onQuickAddNotesChange,
+            onToggleOptions = viewModel::onToggleQuickAddOptions,
+            onSave = viewModel::onQuickAddSave,
+            onVoiceInput = viewModel::onQuickAddVoice,
+            onDismiss = viewModel::onDismissQuickAdd
+        )
+    }
+
     LaunchedEffect(uiState.errorRes) {
         uiState.errorRes?.let { res ->
             snackbarHostState.showSnackbar(context.getString(res))
             viewModel.onErrorShown()
+        }
+    }
+
+    // Confirmación del dictado: al añadir varios de golpe sin abrir ninguna hoja, el recuento
+    // es la única señal de que se ha entendido bien.
+    val voiceAdded = uiState.voiceAddedCount
+    if (voiceAdded != null) {
+        val voiceAddedMessage = pluralStringResource(R.plurals.addproduct_added_count, voiceAdded, voiceAdded)
+        LaunchedEffect(voiceAdded) {
+            snackbarHostState.showSnackbar(voiceAddedMessage)
+            viewModel.onVoiceAddedShown()
         }
     }
 
@@ -69,6 +125,21 @@ fun ShoppingScreen(
                 viewModel.onUndoDelete()
             } else {
                 viewModel.onUndoSnackbarShown()
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.recentlyDeletedPantryName) {
+        uiState.recentlyDeletedPantryName?.let { name ->
+            val result = snackbarHostState.showSnackbar(
+                message = context.getString(R.string.pantry_item_removed, name),
+                actionLabel = context.getString(R.string.common_undo),
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.onUndoDeletePantry()
+            } else {
+                viewModel.onUndoPantrySnackbarShown()
             }
         }
     }
@@ -171,7 +242,7 @@ fun ShoppingScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onNavigateToAddProduct,
+                onClick = viewModel::onOpenQuickAdd,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
@@ -191,7 +262,9 @@ fun ShoppingScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                // weight: con el micro la cabecera tiene tres iconos; sin esto, en pantallas
+                // estrechas o con fuente grande el título los empujaría fuera en vez de partirse.
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         stringResource(R.string.shopping_title),
                         style = MaterialTheme.typography.headlineMedium,
@@ -206,6 +279,10 @@ fun ShoppingScreen(
                     }
                 }
                 Row {
+                    // Micro en la cabecera: con las manos ocupadas en la cocina, dictar
+                    // "leche, huevos y pan" es el camino más corto a la lista. El botón no
+                    // aparece si el dispositivo no tiene reconocedor de voz.
+                    VoiceInputButton(onSpokenText = viewModel::onVoiceProducts)
                     IconButton(onClick = onNavigateToHistory) {
                         Icon(Icons.Filled.History, contentDescription = stringResource(R.string.shopping_view_history))
                     }
@@ -241,6 +318,14 @@ fun ShoppingScreen(
                 return@Column
             }
 
+            SearchField(
+                query = uiState.searchQuery,
+                onQueryChange = viewModel::onSearchQueryChange,
+                onClear = viewModel::onClearSearch
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             if (uiState.totalItems > 0) {
                 LinearProgressIndicator(
                     progress = { uiState.progress },
@@ -251,29 +336,8 @@ fun ShoppingScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items(uiState.availableStores, key = { it }) { store ->
-                    FilterChip(
-                        selected = uiState.selectedStore == store,
-                        onClick = { viewModel.onSelectStore(store) },
-                        label = { Text(store) }
-                    )
-                }
-                item {
-                    AssistChip(
-                        onClick = { showAddStoreDialog = true },
-                        label = { Text(stringResource(R.string.shopping_new_store)) },
-                        leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
+            // Los frecuentes van por encima del filtro de tiendas: son lo que más se pulsa
+            // de toda la pantalla y estaban enterrados debajo.
             if (uiState.frequentItems.isNotEmpty()) {
                 Text(
                     stringResource(R.string.shopping_quick_add),
@@ -298,7 +362,31 @@ fun ShoppingScreen(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(uiState.availableStores, key = { it }) { store ->
+                    FilterChip(
+                        selected = uiState.selectedStore == store,
+                        // Buscando, el filtro de tienda no pinta nada: la búsqueda barre
+                        // toda la lista a propósito.
+                        enabled = !uiState.isSearching,
+                        onClick = { viewModel.onSelectStore(store) },
+                        label = { Text(store) }
+                    )
+                }
+                item {
+                    AssistChip(
+                        onClick = { showAddStoreDialog = true },
+                        label = { Text(stringResource(R.string.shopping_new_store)) },
+                        leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -332,6 +420,29 @@ fun ShoppingScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
+            } else if (uiState.isSearching &&
+                uiState.filteredPendingItems.isEmpty() &&
+                uiState.filteredCompletedItems.isEmpty()
+            ) {
+                // Que la búsqueda no encuentre nada es la respuesta útil: significa que el
+                // producto no está apuntado y se puede añadir sin miedo a duplicarlo.
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        stringResource(R.string.shopping_search_empty, uiState.searchQuery),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.shopping_search_empty_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -352,7 +463,7 @@ fun ShoppingScreen(
                         item(key = "completed-section") {
                             CompletedSectionCard(
                                 completedItemsByStore = uiState.completedItemsByStore,
-                                showCompletedSection = uiState.showCompletedSection,
+                                showCompletedSection = uiState.isCompletedSectionExpanded,
                                 onToggleSection = { viewModel.onToggleCompletedSection() },
                                 onToggle = { itemId -> viewModel.onToggleItem(itemId, false) },
                                 onDelete = { itemId -> viewModel.onDeleteItem(itemId) }
@@ -399,6 +510,37 @@ fun ShoppingScreen(
     }
 }
 
+/**
+ * Buscador de la lista. Filtra sobre pendientes **y** completados: apuntar dos veces el
+ * arroz pasa justamente porque lo ya comprado está plegado y no se ve.
+ */
+@Composable
+private fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClear: () -> Unit
+) {
+    HabitlyTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        label = stringResource(R.string.shopping_search),
+        modifier = Modifier.fillMaxWidth(),
+        leadingIcon = {
+            Icon(Icons.Filled.Search, contentDescription = null)
+        },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = onClear) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.shopping_search_clear)
+                    )
+                }
+            }
+        }
+    )
+}
+
 @Composable
 fun StoreSectionCard(
     store: String,
@@ -434,12 +576,18 @@ fun StoreSectionCard(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             )
+            val rowColor = MaterialTheme.habitly.card
             items.forEach { item ->
-                ShoppingItemRow(
-                    item = item,
-                    onToggle = { onToggle(item.id) },
-                    onDelete = { onDelete(item.id) }
-                )
+                // key por id: sin él, el estado del gesto se reutilizaría entre filas al
+                // reordenarse la lista y una fila recién llegada aparecería ya deslizada.
+                key(item.id) {
+                    ShoppingItemRow(
+                        item = item,
+                        onToggle = { onToggle(item.id) },
+                        onDelete = { onDelete(item.id) },
+                        containerColor = rowColor
+                    )
+                }
             }
         }
     }
@@ -453,10 +601,14 @@ fun CompletedSectionCard(
     onToggle: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
+    // Opaco a propósito: las filas de dentro pintan este mismo color para tapar el fondo del
+    // gesto, y con una tarjeta translúcida el color no coincidiría.
+    val cardColor = MaterialTheme.colorScheme.surfaceVariant
+
     HabitlyCard(
         modifier = Modifier.fillMaxWidth(),
         shape = LeafCornerMedium,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        color = cardColor,
         elevation = 6.dp,
         contentPadding = PaddingValues(0.dp)
     ) {
@@ -512,12 +664,14 @@ fun CompletedSectionCard(
                             modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
                         )
                         items.forEach { item ->
-                            ShoppingItemRow(
-                                item = item,
-                                onToggle = { onToggle(item.id) },
-                                onDelete = { onDelete(item.id) },
-                                isCompleted = true
-                            )
+                            key(item.id) {
+                                ShoppingItemRow(
+                                    item = item,
+                                    onToggle = { onToggle(item.id) },
+                                    onDelete = { onDelete(item.id) },
+                                    containerColor = cardColor
+                                )
+                            }
                         }
                     }
                 }
@@ -526,114 +680,76 @@ fun CompletedSectionCard(
     }
 }
 
+/**
+ * Fila de producto. Se tacha deslizando a la derecha y se borra deslizando a la izquierda
+ * (con el snackbar de deshacer): en el súper, con una mano en el carro, el gesto acierta más
+ * que un icono pequeño. El botón de borrar desapareció de la fila justamente por eso —era
+ * una diana destructiva pegada al gesto que más se repite.
+ *
+ * [containerColor] tiene que ser el color opaco de la tarjeta que la contiene: si la fila
+ * fuese transparente, el fondo de color del gesto se vería siempre.
+ */
 @Composable
 fun ShoppingItemRow(
     item: com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem,
     onToggle: () -> Unit,
     onDelete: () -> Unit,
-    isCompleted: Boolean = false
+    containerColor: Color
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(8.dp))
-                .toggleable(
-                    value = item.isChecked,
-                    onValueChange = { onToggle() },
-                    role = Role.Checkbox
-                )
-                .padding(vertical = 6.dp, horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = item.isChecked,
-                onCheckedChange = null
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
-                    color = if (item.isChecked)
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    else
-                        MaterialTheme.colorScheme.onSurface
-                )
-                if (item.quantity > 1 || item.unit != "unidad") {
-                    Text(
-                        text = "${item.quantity} ${item.unit}${if (item.quantity > 1 && item.unit != "unidad") "s" else ""}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        }
-        IconButton(onClick = onDelete, modifier = Modifier.size(48.dp)) {
-            Icon(
-                Icons.Filled.Delete,
-                contentDescription = stringResource(R.string.cd_delete),
-                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
+    val toggleLabel = stringResource(
+        if (item.isChecked) R.string.shopping_a11y_uncheck else R.string.shopping_a11y_check
+    )
+    val deleteLabel = stringResource(R.string.cd_delete)
 
-@Composable
-fun ShoppingItemCard(
-    item: com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem,
-    onToggle: () -> Unit,
-    onDelete: () -> Unit,
-    isCompleted: Boolean = false
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isCompleted)
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            else
-                MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(if (isCompleted) 0.dp else 1.dp)
+    HabitlySwipeRow(
+        onPrimaryAction = onToggle,
+        onDelete = onDelete,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .background(containerColor)
+                .padding(horizontal = 8.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(
-                checked = item.isChecked,
-                onCheckedChange = { onToggle() }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
-                    color = if (item.isChecked)
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    else
-                        MaterialTheme.colorScheme.onSurface
-                )
-                if (item.quantity > 1 || item.unit != "unidad") {
-                    Text(
-                        text = "${item.quantity} ${item.unit}${if (item.quantity > 1 && item.unit != "unidad") "s" else ""}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .toggleable(
+                        value = item.isChecked,
+                        onValueChange = { onToggle() },
+                        role = Role.Checkbox
                     )
+                    .swipeRowSemantics(
+                        primaryLabel = toggleLabel,
+                        onPrimaryAction = onToggle,
+                        deleteLabel = deleteLabel,
+                        onDelete = onDelete
+                    )
+                    // 48 dp de alto mínimo: el gesto no puede robarle tamaño a la diana.
+                    .heightIn(min = 48.dp)
+                    .padding(vertical = 6.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = item.isChecked,
+                    onCheckedChange = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = item.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
+                        color = if (item.isChecked)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.onSurface
+                    )
+                    ItemQuantityLabel(quantity = item.quantity, unit = item.unit)
                 }
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.cd_delete), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
             }
         }
     }

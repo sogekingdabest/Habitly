@@ -9,6 +9,7 @@ import com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingHistory
 import com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem
 import com.monsteraltech.habitly.feature.shopping.domain.repository.ShoppingRepository
 import com.monsteraltech.habitly.feature.shopping.domain.util.PantryMerge
+import com.monsteraltech.habitly.feature.widget.domain.WidgetRefresher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -17,7 +18,10 @@ import java.util.UUID
 import javax.inject.Inject
 
 class ShoppingRepositoryImpl @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    // El widget lista los productos pendientes: si se tacha uno desde la app, tiene que
+    // enterarse. Se avisa aquí, donde se confirma la escritura, y no desde cada pantalla.
+    private val widgetRefresher: WidgetRefresher
 ) : ShoppingRepository {
 
     override fun observeShoppingList(householdId: String): Flow<List<ShoppingItem>> = callbackFlow {
@@ -67,6 +71,7 @@ class ShoppingRepositoryImpl @Inject constructor(
                 .document(item.id)
                 .set(item)
                 .await()
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -90,6 +95,7 @@ class ShoppingRepositoryImpl @Inject constructor(
                 batch.set(collection.document(id), item)
             }
             batch.commit().await()
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -104,6 +110,7 @@ class ShoppingRepositoryImpl @Inject constructor(
                 .document(itemId)
                 .update("isChecked", isChecked)
                 .await()
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -118,6 +125,7 @@ class ShoppingRepositoryImpl @Inject constructor(
                 .document(itemId)
                 .delete()
                 .await()
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -190,6 +198,7 @@ class ShoppingRepositoryImpl @Inject constructor(
             // 4. Ejecutamos todo de forma 100% atómica
             batch.commit().await()
 
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -259,6 +268,7 @@ class ShoppingRepositoryImpl @Inject constructor(
                 batch.update(docRef, "isChecked", isChecked)
             }
             batch.commit().await()
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -281,6 +291,7 @@ class ShoppingRepositoryImpl @Inject constructor(
                 batch.delete(doc.reference)
             }
             batch.commit().await()
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -317,6 +328,7 @@ class ShoppingRepositoryImpl @Inject constructor(
             
             batch.delete(historyDoc.reference)
             batch.commit().await()
+            widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

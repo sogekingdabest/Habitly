@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carrito en crema (#F9FBF6) sobre el fondo salvia del atajo. Mismo lenguaje line-art que
+     el brote del icono de la app: trazo redondeado y contenido en la zona segura (~66dp). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Asa -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M28,34 L36,34 L40,44"
+        android:strokeColor="#FFF9FBF6"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Cesta -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M38,44 L80,44 L72,68 L46,68 Z"
+        android:strokeColor="#FFF9FBF6"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Ruedas -->
+    <path
+        android:fillColor="#FFF9FBF6"
+        android:pathData="M50,76 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+    <path
+        android:fillColor="#FFF9FBF6"
+        android:pathData="M70,76 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+</vector>

@@ -15,6 +15,8 @@
     <string name="routines_completed_by">Completed by %s</string>
     <string name="routines_completed_by_unknown">a member</string>
     <string name="routines_delete_routine">Delete routine</string>
+    <string name="routines_a11y_complete">Mark as done</string>
+    <string name="routines_a11y_uncomplete">Mark as not done</string>
     <string name="routines_edit_routine">Edit routine</string>
     <string name="routines_move_up">Move up</string>
     <string name="routines_move_down">Move down</string>
@@ -119,6 +121,27 @@
     <string name="onboarding_join_desc">Already have an invite code? Join that household.</string>
     <string name="onboarding_join_button">Join household</string>
 
+    <!-- Onboarding: routine templates -->
+    <string name="templates_title">Which routines shall we start with?</string>
+    <string name="templates_subtitle">These are the usual ones at home. Uncheck what doesn\'t fit; you can edit or delete them later.</string>
+    <string name="templates_skip">I\'d rather start from scratch</string>
+    <plurals name="templates_create_with">
+        <item quantity="one">Create house with %d routine</item>
+        <item quantity="other">Create house with %d routines</item>
+    </plurals>
+    <plurals name="templates_frequency_interval">
+        <item quantity="one">Every %d day</item>
+        <item quantity="other">Every %d days</item>
+    </plurals>
+    <string name="template_trash">Take out the trash</string>
+    <string name="template_dishes">Do the dishes</string>
+    <string name="template_laundry">Do the laundry</string>
+    <string name="template_bathroom">Clean the bathroom</string>
+    <string name="template_floor">Mop the floor</string>
+    <string name="template_dust">Dust the house</string>
+    <string name="template_groceries">Weekly groceries</string>
+    <string name="template_sheets">Change the sheets</string>
+
     <!-- Household management -->
     <string name="household_invite_code_label">6-character code</string>
     <string name="household_regenerate_code">Regenerate code</string>
@@ -136,6 +159,7 @@
     <string name="common_password">Password</string>
     <string name="common_cancel">Cancel</string>
     <string name="common_undo">Undo</string>
+    <string name="common_done">Done</string>
     <string name="common_or">or</string>
     <string name="cd_back">Back</string>
     <string name="cd_delete">Delete</string>
@@ -214,6 +238,15 @@
         <item quantity="other">You have %d pending products</item>
     </plurals>
     <string name="dashboard_and_more">…and %d more</string>
+    <plurals name="dashboard_today_progress">
+        <item quantity="one">%1$d of %2$d done</item>
+        <item quantity="other">%1$d of %2$d done</item>
+    </plurals>
+    <string name="dashboard_today_nothing">No routines due today</string>
+    <string name="dashboard_today_by_member">Today: %s</string>
+    <string name="dashboard_offline">Offline · will sync</string>
+    <string name="dashboard_routine_state_done">Done</string>
+    <string name="dashboard_routine_state_pending">Pending</string>
 
     <!-- Shopping -->
     <string name="shopping_title">Shopping List</string>
@@ -241,6 +274,10 @@
     <string name="shopping_clear_confirm_message">All checked products will be removed from the list. This can\'t be undone.</string>
     <string name="shopping_completed">Completed</string>
     <string name="shopping_progress">%1$d/%2$d products</string>
+    <string name="shopping_search">Search the list</string>
+    <string name="shopping_search_clear">Clear the search</string>
+    <string name="shopping_search_empty">Nothing matches «%s»</string>
+    <string name="shopping_search_empty_subtitle">You can add it without duplicating anything.</string>
     <!-- Pantry -->
     <string name="shopping_tab_list">List</string>
     <string name="shopping_tab_pantry">Pantry</string>
@@ -251,6 +288,40 @@
     <string name="pantry_decrease">Remove one %1$s</string>
     <string name="pantry_remove">Take %1$s out of the pantry</string>
     <string name="pantry_already_have">You already have %1$d %2$s at home</string>
+    <string name="pantry_item_removed">«%s» taken out of the pantry</string>
+    <!-- Gestures: the equivalent actions TalkBack offers without swiping -->
+    <string name="shopping_a11y_check">Mark as bought</string>
+    <string name="shopping_a11y_uncheck">Mark as still needed</string>
+    <!-- Quantity and unit. Unknown unit (made up by the user): shown as typed -->
+    <string name="shopping_quantity_generic">%1$d %2$s</string>
+    <plurals name="unit_unit">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+    <plurals name="unit_kg">
+        <item quantity="one">%d kg</item>
+        <item quantity="other">%d kg</item>
+    </plurals>
+    <plurals name="unit_g">
+        <item quantity="one">%d g</item>
+        <item quantity="other">%d g</item>
+    </plurals>
+    <plurals name="unit_liter">
+        <item quantity="one">%d L</item>
+        <item quantity="other">%d L</item>
+    </plurals>
+    <plurals name="unit_ml">
+        <item quantity="one">%d ml</item>
+        <item quantity="other">%d ml</item>
+    </plurals>
+    <plurals name="unit_dozen">
+        <item quantity="one">%d dozen</item>
+        <item quantity="other">%d dozens</item>
+    </plurals>
+    <plurals name="unit_pack">
+        <item quantity="one">%d pack</item>
+        <item quantity="other">%d packs</item>
+    </plurals>
     <plurals name="shopping_products_count">
         <item quantity="one">%d product</item>
         <item quantity="other">%d products</item>
@@ -273,6 +344,14 @@
     <string name="addproduct_notes_title">Additional notes</string>
     <string name="addproduct_notes">Notes (optional)</string>
     <string name="addproduct_save">Save product</string>
+    <string name="addproduct_save_and_continue">Save and keep going</string>
+    <string name="addproduct_more_options">More options</string>
+    <string name="addproduct_duplicate_pending">Already on the list: «%s»</string>
+    <string name="addproduct_duplicate_checked">You already ticked it as bought: «%s»</string>
+    <plurals name="addproduct_added_count">
+        <item quantity="one">%d product added</item>
+        <item quantity="other">%d products added</item>
+    </plurals>
 
     <!-- History -->
     <string name="history_title">Shopping History</string>
@@ -294,6 +373,17 @@
     <string name="household_copy">Copy</string>
     <string name="household_members">Members (%d)</string>
     <string name="household_you">%s (you)</string>
+    <string name="household_owner_badge">Created the household</string>
+    <string name="household_member_unknown">Member</string>
+    <string name="household_invite_code_expired">This code no longer works. Generate a new one to invite.</string>
+    <plurals name="household_invite_code_expires_days">
+        <item quantity="one">Expires in %d day</item>
+        <item quantity="other">Expires in %d days</item>
+    </plurals>
+    <plurals name="household_invite_code_expires_hours">
+        <item quantity="one">Expires in %d hour</item>
+        <item quantity="other">Expires in %d hours</item>
+    </plurals>
     <string name="household_join_question">Have an invite code?</string>
     <string name="household_join_desc">Join someone else\'s household. Careful! If you join another household, you\'ll stop seeing the current one.</string>
     <string name="household_join_button">Join Household</string>
@@ -471,4 +561,53 @@
     <!-- AI assistant: model download notification -->
     <string name="ai_download_notification_title">Downloading AI model</string>
     <string name="ai_download_channel_name">AI model downloads</string>
+
+    <!-- Household share panel. Tone: celebrate the household total, never single anyone out;
+         no rankings, no standings. Changing this is a product decision. -->
+    <string name="household_share_title">How the house is sharing</string>
+    <plurals name="household_share_total">
+        <item quantity="one">Together you completed %d household routine this week 🎉</item>
+        <item quantity="other">Together you completed %d household routines this week 🎉</item>
+    </plurals>
+    <plurals name="household_share_total_solo">
+        <item quantity="one">You completed %d household routine this week 🎉</item>
+        <item quantity="other">You completed %d household routines this week 🎉</item>
+    </plurals>
+    <string name="household_share_empty">Nothing done at home this week yet.</string>
+    <plurals name="household_share_streak">
+        <item quantity="one">🔥 %d day in a row with everything done</item>
+        <item quantity="other">🔥 %d days in a row with everything done</item>
+    </plurals>
+    <string name="household_share_last_week">Last week: %s</string>
+    <string name="household_share_last_week_entry">%1$s %2$d</string>
+    <string name="household_share_last_week_total">Last week: %d</string>
+
+    <!-- Share with Habitly -->
+    <string name="share_title">Add from shared text</string>
+    <string name="share_subtitle_ai">Read by the AI on your phone. Check it before saving.</string>
+    <string name="share_subtitle_plain">Check what we found before saving.</string>
+    <string name="share_analyzing">Reading the text on your phone…</string>
+    <string name="share_analyzing_hint">The first time can take a minute: the model loads on your device and nothing leaves it.</string>
+    <string name="share_nothing_found">Nothing to add here</string>
+    <string name="share_nothing_found_hint">This text doesn\'t seem to have products or chores, so nothing was saved.</string>
+    <string name="share_analyze_with_ai">Read it with the on-device AI</string>
+    <string name="share_model_offer">With the local model, Habitly understands whole recipes.</string>
+    <string name="share_model_download">Download</string>
+    <string name="share_error_analyze">Couldn\'t read it with the AI. This is what we got from the text.</string>
+    <string name="share_error_save">Couldn\'t save everything. Please try again.</string>
+    <string name="share_quantity_less">Remove one %1$s</string>
+    <string name="share_quantity_more">Add one %1$s</string>
+    <plurals name="share_add_selected">
+        <item quantity="one">Add 1 selected</item>
+        <item quantity="other">Add %d selected</item>
+    </plurals>
+
+    <!-- Add by voice -->
+    <string name="shopping_voice_not_understood">I didn\'t catch any product. Please try again.</string>
+
+    <!-- App shortcuts -->
+    <string name="shortcut_add_shopping_short">Add</string>
+    <string name="shortcut_add_shopping_long">Add to shopping list</string>
+    <string name="shortcut_today_routines_short">Routines</string>
+    <string name="shortcut_today_routines_long">Today\'s routines</string>
 </resources>

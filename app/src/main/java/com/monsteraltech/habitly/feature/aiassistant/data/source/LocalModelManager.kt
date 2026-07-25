@@ -228,18 +228,14 @@ class LocalModelManager @Inject constructor(
     }
 
     /**
-     * Compara el SHA-256 calculado durante la escritura con el fijado en el catálogo. Sin pin
-     * ([AiModelConfig.sha256] nulo) solo se loguea el calculado: cópialo al catálogo tras una
-     * descarga buena para activar la verificación (Hugging Face lo publica en los metadatos LFS).
+     * Compara el SHA-256 calculado durante la escritura con el fijado en el catálogo. Un fallo
+     * aquí no es recuperable reintentando: o el artefacto remoto ha cambiado, o alguien está
+     * sirviendo otro fichero. En ambos casos se descarta la descarga y NO se ejecuta.
      */
     private fun verifyChecksum(config: AiModelConfig, digest: MessageDigest) {
         val computed = digest.digest().joinToString("") { "%02x".format(it) }
-        val expected = config.sha256?.lowercase()
-        if (expected == null) {
-            Log.i(tag, "SHA-256 de ${config.filename}: $computed (sin pin en el catálogo)")
-            return
-        }
-        if (computed != expected) {
+        if (computed != config.sha256.lowercase()) {
+            Log.e(tag, "SHA-256 de ${config.filename}: esperado ${config.sha256}, calculado $computed")
             throw NonRetryableDownloadException("El modelo descargado no supera la verificación de integridad")
         }
     }

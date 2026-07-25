@@ -9,7 +9,9 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.shopping.domain.model.PantryItem
 import com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem
 import com.monsteraltech.habitly.feature.shopping.domain.usecase.*
+import com.monsteraltech.habitly.feature.shopping.domain.util.PlainListParser
 import com.monsteraltech.habitly.feature.shopping.domain.util.ProductNameNormalizer
+import com.monsteraltech.habitly.feature.shopping.presentation.components.DEFAULT_UNIT
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -27,54 +29,124 @@ import javax.inject.Inject
 /** Pestañas de la pantalla: la lista de la compra y lo que ya hay en casa. */
 enum class ShoppingTab { LIST, PANTRY }
 
+/** Tienda comodín: no filtra, y es el valor por defecto de un producto nuevo. */
+const val ANY_STORE = "Cualquiera"
+
+/** Supermercados que trae la app de fábrica, antes de los que añada cada casa. */
+val DEFAULT_STORES = listOf("Mercadona", "Lidl", "Carrefour", ANY_STORE)
+
+/**
+ * Estado de la hoja de alta rápida.
+ *
+ * Un producto solo necesita nombre; el resto de campos viven plegados tras "Más opciones"
+ * con los mismos valores por defecto que tenía la pantalla completa.
+ */
+data class QuickAddState(
+    val isOpen: Boolean = false,
+    val name: String = "",
+    val quantity: Int = 1,
+    val unit: String = DEFAULT_UNIT,
+    val store: String = ANY_STORE,
+    val category: String = "",
+    val notes: String = "",
+    val showMoreOptions: Boolean = false,
+    val isSaving: Boolean = false,
+    /** Cuántos se llevan añadidos sin cerrar la hoja. */
+    val savedCount: Int = 0
+) {
+    val canSave: Boolean
+        get() = name.isNotBlank() && !isSaving
+}
+
 data class ShoppingUiState(
     val allItems: List<ShoppingItem> = emptyList(),
     val selectedTab: ShoppingTab = ShoppingTab.LIST,
     val pantryItems: List<PantryItem> = emptyList(),
-    val availableStores: List<String> = listOf("Mercadona", "Lidl", "Carrefour", "Cualquiera"),
-    val selectedStore: String = "Cualquiera",
+    val availableStores: List<String> = DEFAULT_STORES,
+    val selectedStore: String = ANY_STORE,
+    val searchQuery: String = "",
     val isLoading: Boolean = true,
     val error: String? = null,
     @StringRes val errorRes: Int? = null,
     val recentlyDeletedName: String? = null,
+    /** Producto recién sacado de la despensa, para ofrecer "Deshacer" tras el gesto. */
+    val recentlyDeletedPantryName: String? = null,
     val showCompletedSection: Boolean = false,
     val frequentItems: List<String> = emptyList(),
-    val isLoadingFrequent: Boolean = false
+    val isLoadingFrequent: Boolean = false,
+    val quickAdd: QuickAddState = QuickAddState(),
+    /** Productos añadidos por voz en la última tanda, para confirmarlo con un snackbar. */
+    val voiceAddedCount: Int? = null
 ) {
     val pendingItems: List<ShoppingItem>
         get() = allItems.filter { !it.isChecked }
-    
+
     val completedItems: List<ShoppingItem>
         get() = allItems.filter { it.isChecked }
-    
+
+    val isSearching: Boolean
+        get() = searchQuery.isNotBlank()
+
     val filteredPendingItems: List<ShoppingItem>
-        get() = if (selectedStore == "Cualquiera") pendingItems else pendingItems.filter { it.store == selectedStore }
-    
+        get() = pendingItems.applyFilters()
+
     val filteredCompletedItems: List<ShoppingItem>
-        get() = if (selectedStore == "Cualquiera") completedItems else completedItems.filter { it.store == selectedStore }
-    
+        get() = completedItems.applyFilters()
+
     val pendingItemsByStore: Map<String, List<ShoppingItem>>
         get() = filteredPendingItems.groupBy { it.store }.toSortedMap()
-    
+
     val completedItemsByStore: Map<String, List<ShoppingItem>>
         get() = filteredCompletedItems.groupBy { it.store }.toSortedMap()
-    
+
+    /**
+     * Con una búsqueda activa lo completado se despliega solo: tenerlo escondido es
+     * precisamente lo que hace que se dupliquen productos ya comprados.
+     */
+    val isCompletedSectionExpanded: Boolean
+        get() = showCompletedSection || isSearching
+
     val totalItems: Int
         get() = allItems.size
-    
+
     val checkedCount: Int
         get() = completedItems.size
-    
+
     val progress: Float
         get() = if (totalItems == 0) 0f else checkedCount.toFloat() / totalItems.toFloat()
 
     val pantryByCategory: Map<String, List<PantryItem>>
         get() = pantryItems.groupBy { it.category.ifBlank { OTHER_CATEGORY } }.toSortedMap()
 
+    /** Lo que ya hay en casa de lo que se está escribiendo en el alta rápida. */
+    val quickAddPantryMatch: PantryItem?
+        get() {
+            val id = ProductNameNormalizer.toDocumentId(quickAdd.name) ?: return null
+            return pantryItems.find { it.id == id }
+        }
+
+    /** Producto que ya está apuntado con ese mismo nombre, pendiente o comprado. */
+    val quickAddDuplicate: ShoppingItem?
+        get() = allItems.find { ProductNameNormalizer.isSameProduct(it.name, quickAdd.name) }
+
     /** Cuánto hay en casa de un producto, buscándolo por nombre normalizado. */
     fun pantryQuantityOf(name: String): Int? {
         val id = ProductNameNormalizer.toDocumentId(name) ?: return null
         return pantryItems.find { it.id == id }?.quantity
+    }
+
+    /**
+     * Tienda y búsqueda. Buscar manda sobre el filtro de tienda a propósito: si preguntas
+     * "¿está el arroz?" quieres saberlo esté donde esté, no solo en la tienda seleccionada.
+     */
+    private fun List<ShoppingItem>.applyFilters(): List<ShoppingItem> = when {
+        isSearching -> {
+            val needle = ProductNameNormalizer.normalize(searchQuery)
+            filter { ProductNameNormalizer.normalize(it.name).contains(needle) }
+        }
+
+        selectedStore == ANY_STORE -> this
+        else -> filter { it.store == selectedStore }
     }
 
     private companion object {
@@ -86,6 +158,7 @@ data class ShoppingUiState(
 class ShoppingViewModel @Inject constructor(
     private val observeShoppingListUseCase: ObserveShoppingListUseCase,
     private val addShoppingItemUseCase: AddShoppingItemUseCase,
+    private val addShoppingItemsUseCase: AddShoppingItemsUseCase,
     private val toggleShoppingItemUseCase: ToggleShoppingItemUseCase,
     private val deleteShoppingItemUseCase: DeleteShoppingItemUseCase,
     private val archiveShoppingListUseCase: ArchiveShoppingListUseCase,
@@ -98,6 +171,7 @@ class ShoppingViewModel @Inject constructor(
     private val observePantryUseCase: ObservePantryUseCase,
     private val adjustPantryQuantityUseCase: AdjustPantryQuantityUseCase,
     private val deletePantryItemUseCase: DeletePantryItemUseCase,
+    private val restorePantryItemUseCase: RestorePantryItemUseCase,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -114,6 +188,9 @@ class ShoppingViewModel @Inject constructor(
 
     // Último producto borrado, guardado en memoria para poder deshacer (re-añadir).
     private var lastDeletedItem: ShoppingItem? = null
+
+    // Lo mismo para la despensa: el gesto de sacar un producto también se puede deshacer.
+    private var lastDeletedPantryItem: PantryItem? = null
 
     init {
         viewModelScope.launch {
@@ -143,8 +220,7 @@ class ShoppingViewModel @Inject constructor(
             observeCustomStoresUseCase(householdId)
                 .catch { /* ignorar errores silenciosos aquí por ahora */ }
                 .collect { customStores ->
-                    val defaultStores = listOf("Mercadona", "Lidl", "Carrefour", "Cualquiera")
-                    val combined = (defaultStores + customStores).distinct()
+                    val combined = (DEFAULT_STORES + customStores).distinct()
                     _uiState.update { it.copy(availableStores = combined) }
                 }
         }
@@ -190,7 +266,15 @@ class ShoppingViewModel @Inject constructor(
         }
     }
 
-    fun onAddItem(name: String, quantity: Int = 1, unit: String = "unidad", category: String = "", notes: String = "") {
+    fun onSearchQueryChange(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
+
+    fun onClearSearch() {
+        _uiState.update { it.copy(searchQuery = "") }
+    }
+
+    fun onAddItem(name: String, quantity: Int = 1, unit: String = DEFAULT_UNIT, category: String = "", notes: String = "") {
         val householdId = currentHouseholdId ?: return
         viewModelScope.launch {
             addShoppingItemUseCase(householdId, name, _uiState.value.selectedStore, currentUserId, quantity, unit, category, notes)
@@ -256,10 +340,33 @@ class ShoppingViewModel @Inject constructor(
 
     fun onDeletePantryItem(itemId: String) {
         val householdId = currentHouseholdId ?: return
+        val item = _uiState.value.pantryItems.find { it.id == itemId }
         viewModelScope.launch {
             deletePantryItemUseCase(householdId, itemId)
+                .onSuccess {
+                    if (item != null) {
+                        lastDeletedPantryItem = item
+                        _uiState.update { it.copy(recentlyDeletedPantryName = item.name) }
+                    }
+                }
                 .onFailure { _uiState.update { it.copy(errorRes = R.string.shopping_error_delete) } }
         }
+    }
+
+    fun onUndoDeletePantry() {
+        val householdId = currentHouseholdId ?: return
+        val item = lastDeletedPantryItem ?: return
+        lastDeletedPantryItem = null
+        _uiState.update { it.copy(recentlyDeletedPantryName = null) }
+        viewModelScope.launch {
+            restorePantryItemUseCase(householdId, item)
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.shopping_error_update) } }
+        }
+    }
+
+    fun onUndoPantrySnackbarShown() {
+        lastDeletedPantryItem = null
+        _uiState.update { it.copy(recentlyDeletedPantryName = null) }
     }
 
     fun onArchiveList(stockPantry: Boolean = true) {
@@ -306,5 +413,132 @@ class ShoppingViewModel @Inject constructor(
 
     fun onQuickAdd(itemName: String) {
         onAddItem(itemName)
+    }
+
+    // ---------- Añadir por voz ----------
+
+    /**
+     * Alta desde el dictado de la cabecera: "leche, huevos y pan" son tres productos.
+     *
+     * El texto se lee con [PlainListParser], que resuelve cantidad y unidad ("dos litros de
+     * leche" → 2 L) al instante. **No pasa por el modelo local a propósito**: cargar un modelo
+     * de gigabytes y esperar una inferencia para tres palabras dichas en la cocina es
+     * exactamente el problema que esta función viene a resolver.
+     */
+    fun onVoiceProducts(spokenText: String) {
+        val householdId = currentHouseholdId ?: return
+        val products = PlainListParser.fromSpeech(spokenText)
+        if (products.isEmpty()) {
+            _uiState.update { it.copy(errorRes = R.string.shopping_voice_not_understood) }
+            return
+        }
+
+        viewModelScope.launch {
+            addShoppingItemsUseCase(
+                householdId = householdId,
+                store = _uiState.value.selectedStore,
+                authorId = currentUserId,
+                products = products.map { product ->
+                    ShoppingItem(
+                        name = product.name,
+                        quantity = product.quantity,
+                        unit = product.unit
+                    )
+                }
+            )
+                .onSuccess { added -> _uiState.update { it.copy(voiceAddedCount = added) } }
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.shopping_error_add) } }
+        }
+    }
+
+    fun onVoiceAddedShown() {
+        _uiState.update { it.copy(voiceAddedCount = null) }
+    }
+
+    /**
+     * Dictado dentro de la hoja de alta rápida: rellena el formulario con lo dicho en vez de
+     * guardar. Aquí el usuario está delante del formulario, así que lo natural es que vea la
+     * cantidad y la unidad reconocidas y pulse él el botón.
+     */
+    fun onQuickAddVoice(spokenText: String) {
+        val product = PlainListParser.fromSpeech(spokenText, limit = 1).firstOrNull()
+        if (product == null) {
+            _uiState.update { it.copy(errorRes = R.string.shopping_voice_not_understood) }
+            return
+        }
+        updateQuickAdd {
+            it.copy(name = product.name, quantity = product.quantity, unit = product.unit)
+        }
+    }
+
+    // ---------- Alta rápida (hoja inferior) ----------
+
+    /** Abre la hoja heredando la tienda que esté filtrada, que es casi siempre la buena. */
+    fun onOpenQuickAdd() {
+        val store = _uiState.value.selectedStore
+        _uiState.update { it.copy(quickAdd = QuickAddState(isOpen = true, store = store)) }
+    }
+
+    fun onDismissQuickAdd() {
+        _uiState.update { it.copy(quickAdd = QuickAddState()) }
+    }
+
+    fun onQuickAddNameChange(name: String) = updateQuickAdd { it.copy(name = name) }
+
+    fun onQuickAddQuantityChange(quantity: Int) =
+        updateQuickAdd { it.copy(quantity = quantity.coerceAtLeast(1)) }
+
+    fun onQuickAddUnitChange(unit: String) = updateQuickAdd { it.copy(unit = unit) }
+
+    fun onQuickAddStoreChange(store: String) = updateQuickAdd { it.copy(store = store) }
+
+    fun onQuickAddCategoryChange(category: String) = updateQuickAdd { it.copy(category = category) }
+
+    fun onQuickAddNotesChange(notes: String) = updateQuickAdd { it.copy(notes = notes) }
+
+    fun onToggleQuickAddOptions() = updateQuickAdd { it.copy(showMoreOptions = !it.showMoreOptions) }
+
+    /**
+     * Guarda y **deja la hoja abierta**: vacía el nombre y conserva el resto de opciones.
+     * Apuntar diez cosas seguidas era antes diez viajes de ida y vuelta a una pantalla
+     * completa, con el teclado abriéndose y cerrándose en cada una.
+     */
+    fun onQuickAddSave() {
+        val householdId = currentHouseholdId ?: return
+        val state = _uiState.value.quickAdd
+        if (!state.canSave) return
+
+        updateQuickAdd { it.copy(isSaving = true) }
+        viewModelScope.launch {
+            addShoppingItemUseCase(
+                householdId = householdId,
+                name = state.name.trim(),
+                store = state.store,
+                authorId = currentUserId,
+                quantity = state.quantity,
+                unit = state.unit,
+                category = state.category,
+                notes = state.notes
+            )
+                .onSuccess {
+                    updateQuickAdd {
+                        it.copy(
+                            name = "",
+                            quantity = 1,
+                            notes = "",
+                            isSaving = false,
+                            savedCount = it.savedCount + 1
+                        )
+                    }
+                }
+                .onFailure {
+                    updateQuickAdd { current -> current.copy(isSaving = false) }
+                    _uiState.update { current -> current.copy(errorRes = R.string.shopping_error_add) }
+                }
+        }
+    }
+
+    private inline fun updateQuickAdd(transform: (QuickAddState) -> QuickAddState) {
+        _uiState.update { it.copy(quickAdd = transform(it.quickAdd)) }
     }
 }

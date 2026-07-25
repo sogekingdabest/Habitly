@@ -16,6 +16,7 @@ import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.tool
+import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import androidx.work.BackoffPolicy
@@ -53,6 +54,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -71,10 +73,14 @@ class AiAssistantRepositoryImpl @Inject constructor(
     private val localModelManager: LocalModelManager,
     private val aiChatDao: AiChatDao,
     private val sharedPreferences: SharedPreferences,
+    private val firebaseAuth: FirebaseAuth,
     @ApplicationContext private val context: Context
 ) : AiAssistantRepository {
 
     private val tag = "AiAssistantRepository"
+
+    /** UID de la cuenta activa. Acota el historial local para que no se filtre entre cuentas. */
+    private fun currentUserId(): String? = firebaseAuth.currentUser?.uid
 
     private val _selectedModel = MutableStateFlow(getSavedModel())
     private val _modelStatus = MutableStateFlow<ModelStatus>(ModelStatus.NotDownloaded)
@@ -379,6 +385,9 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
     override suspend fun extractRoutines(sourceText: String): String =
         withContext(Dispatchers.Default) {
+            // La extracción puede pedirse sin haber pasado por el chat (texto compartido desde
+            // otra app), y ahí el engine todavía no está cargado.
+            if (engine == null) loadModel(_activeSession.value)
             // Preferimos function-calling con constrained decoding (estructura garantizada por el
             // motor); si el modelo no lo soporta o falla en runtime, caemos al extractor por JSON.
             if (_selectedModel.value.supportsToolCalling) {
@@ -402,6 +411,8 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
     override suspend fun extractShopping(sourceText: String): String =
         withContext(Dispatchers.Default) {
+            // Igual que en extractRoutines: el texto compartido llega sin chat previo.
+            if (engine == null) loadModel(_activeSession.value)
             // La lista de la compra tiene 4 campos por ítem; el tool-calling con 4 args es poco
             // fiable en E2B (field report), así que aquí usamos siempre el extractor por JSON.
             jsonExtraction(sourceText, SHOPPING_JSON_INSTRUCTION)
@@ -745,27 +756,45 @@ class AiAssistantRepositoryImpl @Inject constructor(
     }
 
     // Chat History
-    override fun observeChatHistory(): Flow<List<AiChatSession>> {
-        return aiChatDao.observeAllSessions().map { list ->
-            list.map { it.toDomain() }
+    // El UID se lee al empezar cada colección/operación (no se captura una vez), de modo que
+    // tras un cambio de cuenta una nueva suscripción ya observa el historial correcto.
+    override fun observeChatHistory(): Flow<List<AiChatSession>> = flow {
+        val userId = currentUserId()
+        if (userId == null) {
+            emit(emptyList())
+        } else {
+            emitAll(
+                aiChatDao.observeSessionsForUser(userId).map { list ->
+                    list.map { it.toDomain() }
+                }
+            )
         }
     }
 
     override suspend fun saveSession(session: AiChatSession) {
+        val userId = currentUserId()
+        if (userId == null) {
+            // Sin cuenta activa no se puede atribuir la sesión; no se persiste (sería historial
+            // huérfano invisible). No debería ocurrir desde la pantalla del asistente.
+            Log.w(tag, "saveSession sin usuario activo; la sesión no se guarda")
+            return
+        }
         withContext(Dispatchers.IO) {
-            aiChatDao.insertSession(AiChatSessionEntity.fromDomain(session))
+            aiChatDao.insertSession(AiChatSessionEntity.fromDomain(session, userId))
         }
     }
 
     override suspend fun getSession(sessionId: String): AiChatSession? {
         return withContext(Dispatchers.IO) {
-            aiChatDao.getSessionById(sessionId)?.toDomain()
+            val userId = currentUserId() ?: return@withContext null
+            aiChatDao.getSessionByIdForUser(sessionId, userId)?.toDomain()
         }
     }
 
     override suspend fun deleteSession(sessionId: String) {
         withContext(Dispatchers.IO) {
-            aiChatDao.deleteSession(sessionId)
+            val userId = currentUserId() ?: return@withContext
+            aiChatDao.deleteSessionForUser(sessionId, userId)
         }
     }
 

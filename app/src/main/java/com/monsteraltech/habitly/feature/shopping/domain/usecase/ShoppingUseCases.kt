@@ -23,6 +23,29 @@ class AddShoppingItemUseCase @Inject constructor(
     }
 }
 
+/**
+ * Alta de varios productos de golpe (dictado por voz), en un único batch: tres escrituras
+ * sueltas serían tres repintados de la lista y tres refrescos del widget.
+ *
+ * @return cuántos se han dado de alta.
+ */
+class AddShoppingItemsUseCase @Inject constructor(
+    private val repository: ShoppingRepository
+) {
+    suspend operator fun invoke(
+        householdId: String,
+        store: String,
+        authorId: String,
+        products: List<ShoppingItem>
+    ): Result<Int> {
+        val valid = products.filter { it.name.isNotBlank() }
+        if (valid.isEmpty()) return Result.success(0)
+
+        val items = valid.map { it.copy(store = store, authorId = authorId) }
+        return repository.addShoppingItems(householdId, items).map { valid.size }
+    }
+}
+
 class ToggleShoppingItemUseCase @Inject constructor(
     private val repository: ShoppingRepository
 ) {

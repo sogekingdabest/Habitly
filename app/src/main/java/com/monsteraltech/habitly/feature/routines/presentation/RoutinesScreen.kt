@@ -42,9 +42,11 @@ import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
 import com.monsteraltech.habitly.feature.routines.presentation.components.HouseholdBalanceCard
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
+import com.monsteraltech.habitly.ui.components.HabitlySwipeRow
 import com.monsteraltech.habitly.ui.components.HabitlyToggleCard
 import com.monsteraltech.habitly.ui.components.MeshArrangement
 import com.monsteraltech.habitly.ui.components.RitualToggle
+import com.monsteraltech.habitly.ui.components.swipeRowSemantics
 import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
 import androidx.compose.ui.graphics.Color
 import java.time.LocalDate
@@ -502,9 +504,30 @@ fun RoutineCard(
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
+    val toggleLabel = stringResource(
+        if (isCompleted) R.string.routines_a11y_uncomplete else R.string.routines_a11y_complete
+    )
+    val deleteLabel = stringResource(R.string.routines_delete_routine)
+
+    // Deslizar a la derecha marca/desmarca; a la izquierda abre la confirmación de borrado
+    // (por eso `dismissOnDelete = false`: la tarjeta sigue ahí hasta que el usuario confirme).
+    HabitlySwipeRow(
+        onPrimaryAction = onToggle,
+        onDelete = { showDeleteDialog = true },
+        dismissOnDelete = false,
+        modifier = Modifier.fillMaxWidth()
+    ) {
     HabitlyToggleCard(
         checked = isCompleted,
         onCheckedChange = { onToggle() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .swipeRowSemantics(
+                primaryLabel = toggleLabel,
+                onPrimaryAction = onToggle,
+                deleteLabel = deleteLabel,
+                onDelete = { showDeleteDialog = true }
+            ),
         shape = LeafCornerMedium,
         contentPadding = PaddingValues(0.dp)
     ) {
@@ -647,6 +670,7 @@ fun RoutineCard(
                 )
             }
         }
+    }
     }
 
     if (showDeleteDialog) {

@@ -18,8 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material3.*
@@ -29,9 +29,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.monsteraltech.habitly.navigation.ExternalDestination
+import com.monsteraltech.habitly.feature.share.presentation.ImportSharedTextSheet
 import com.monsteraltech.habitly.ui.theme.habitly
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -51,7 +54,6 @@ import com.monsteraltech.habitly.feature.routines.presentation.RoutinesScreen
 import com.monsteraltech.habitly.feature.routines.presentation.add.AddRoutineScreen
 import com.monsteraltech.habitly.feature.routines.presentation.add.AddRoutineViewModel
 import com.monsteraltech.habitly.feature.shopping.presentation.ShoppingScreen
-import com.monsteraltech.habitly.feature.shopping.presentation.add.AddProductScreen
 import com.monsteraltech.habitly.feature.shopping.presentation.history.HistoryScreen
 import com.monsteraltech.habitly.feature.settings.presentation.SettingsScreen
 import com.monsteraltech.habitly.feature.aiassistant.presentation.AiAssistantScreen
@@ -63,12 +65,14 @@ sealed class BottomNavRoute(val route: String, val icon: androidx.compose.ui.gra
     object Shopping : BottomNavRoute("shopping", Icons.Rounded.ShoppingCart, R.string.nav_shopping)
     object AiAssistant : BottomNavRoute("ai_assistant", Icons.Rounded.SmartToy, R.string.nav_assistant)
     object Routines : BottomNavRoute("routines", Icons.Rounded.Checklist, R.string.nav_routines)
-    object Household : BottomNavRoute("household", Icons.Rounded.Settings, R.string.nav_household)
+    // Groups y no Settings: los Ajustes de verdad cuelgan de dentro de esta pestaña, y dos
+    // cosas distintas con el mismo icono se leen como la misma.
+    object Household : BottomNavRoute("household", Icons.Rounded.Groups, R.string.nav_household)
 }
 
 object HiddenRoutes {
     const val ShoppingHistory = "shopping_history"
-    const val ShoppingAddProduct = "shopping_add_product"
+    // El alta de producto ya no navega: es una hoja inferior dentro de ShoppingScreen.
     const val RoutinesAdd = "routines_add"
     const val Settings = "settings"
 }
@@ -76,8 +80,10 @@ object HiddenRoutes {
 @Composable
 fun MainScreen(
     onSignOut: () -> Unit,
-    navigateToRoutines: Boolean = false,
-    onRoutinesDeepLinkConsumed: () -> Unit = {},
+    externalDestination: ExternalDestination? = null,
+    onExternalDestinationConsumed: () -> Unit = {},
+    sharedText: String? = null,
+    onSharedTextConsumed: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -89,38 +95,94 @@ fun MainScreen(
             }
         }
         !uiState.hasHousehold -> {
-            OnboardingScreen()
+            // El texto compartido y el destino pedido se conservan en MainActivity: si el
+            // usuario aún no tiene casa, se atenderán en cuanto la cree o se una a una.
+            OnboardingScreen(onSignOut = onSignOut)
         }
         else -> {
             MainContent(
                 onSignOut = onSignOut,
-                navigateToRoutines = navigateToRoutines,
-                onRoutinesDeepLinkConsumed = onRoutinesDeepLinkConsumed
+                externalDestination = externalDestination,
+                onExternalDestinationConsumed = onExternalDestinationConsumed,
+                sharedText = sharedText,
+                onSharedTextConsumed = onSharedTextConsumed
             )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainContent(
     onSignOut: () -> Unit,
-    navigateToRoutines: Boolean,
-    onRoutinesDeepLinkConsumed: () -> Unit
+    externalDestination: ExternalDestination?,
+    onExternalDestinationConsumed: () -> Unit,
+    sharedText: String?,
+    onSharedTextConsumed: () -> Unit
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // Deep link desde la notificación de rutina.
-    LaunchedEffect(navigateToRoutines) {
-        if (navigateToRoutines) {
-            navController.navigate(BottomNavRoute.Routines.route) {
-                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                launchSingleTop = true
-                restoreState = true
-            }
-            onRoutinesDeepLinkConsumed()
+    // El atajo "Añadir a la compra" no solo cambia de pestaña: abre la hoja de alta rápida.
+    var pendingQuickAdd by remember { mutableStateOf(false) }
+
+    // Resumen de lo importado desde un texto compartido, para el snackbar de confirmación.
+    var importedMessage by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(importedMessage) {
+        importedMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            importedMessage = null
         }
+    }
+
+    // Destino pedido desde fuera: notificación de recordatorio o atajo del launcher.
+    LaunchedEffect(externalDestination) {
+        val target = when (externalDestination) {
+            ExternalDestination.ROUTINES -> BottomNavRoute.Routines.route
+            ExternalDestination.SHOPPING_QUICK_ADD -> BottomNavRoute.Shopping.route
+            null -> null
+        } ?: return@LaunchedEffect
+
+        if (externalDestination == ExternalDestination.SHOPPING_QUICK_ADD) pendingQuickAdd = true
+        navController.navigate(target) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+        onExternalDestinationConsumed()
+    }
+
+    // "Compartir con Habitly": la revisión va por encima de la pestaña que hubiera abierta.
+    val importSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    if (sharedText != null) {
+        val context = LocalContext.current
+        ImportSharedTextSheet(
+            sharedText = sharedText,
+            sheetState = importSheetState,
+            onDismiss = onSharedTextConsumed,
+            onImported = { products, routines ->
+                val message = buildString {
+                    if (products > 0) {
+                        append(
+                            context.resources.getQuantityString(
+                                R.plurals.ai_added_to_list, products, products
+                            )
+                        )
+                    }
+                    if (routines > 0) {
+                        if (isNotEmpty()) append(" · ")
+                        append(
+                            context.resources.getQuantityString(
+                                R.plurals.ai_routines_created, routines, routines
+                            )
+                        )
+                    }
+                }
+                if (message.isNotEmpty()) importedMessage = message
+            }
+        )
     }
 
     val items = listOf(
@@ -132,6 +194,7 @@ private fun MainContent(
     )
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             HabitlyBottomBar(
                 items = items,
@@ -184,7 +247,8 @@ private fun MainContent(
             composable(BottomNavRoute.Shopping.route) {
                 ShoppingScreen(
                     onNavigateToHistory = { navController.navigate(HiddenRoutes.ShoppingHistory) },
-                    onNavigateToAddProduct = { navController.navigate(HiddenRoutes.ShoppingAddProduct) }
+                    openQuickAdd = pendingQuickAdd,
+                    onQuickAddHandled = { pendingQuickAdd = false }
                 )
             }
             composable(BottomNavRoute.AiAssistant.route) {
@@ -210,11 +274,6 @@ private fun MainContent(
             }
             composable(HiddenRoutes.ShoppingHistory) {
                 HistoryScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(HiddenRoutes.ShoppingAddProduct) {
-                AddProductScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

@@ -25,6 +25,7 @@ import com.monsteraltech.habitly.feature.widget.HabitlyWidget
 import com.monsteraltech.habitly.ui.theme.HabitlyTheme
 import dagger.hilt.android.AndroidEntryPoint
 import com.google.firebase.auth.FirebaseAuth
+import com.monsteraltech.habitly.navigation.ExternalDestination
 import com.monsteraltech.habitly.navigation.RootRoute
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -38,8 +39,11 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
-    // Señal de deep link: true cuando se abre la app tocando una notificación de rutina.
-    private val routinesDeepLink = mutableStateOf(false)
+    // Pantalla pedida desde fuera: notificación de recordatorio o atajo del launcher.
+    private val externalDestination = mutableStateOf<ExternalDestination?>(null)
+
+    // Texto recibido de otra app por "Compartir con Habitly" (ACTION_SEND).
+    private val sharedText = mutableStateOf<String?>(null)
 
     // Aplica el idioma persistido antes de crear la Activity (antes de la inyección de Hilt),
     // por eso LocaleHelper lee la preferencia de forma síncrona. Un cambio de idioma en Ajustes
@@ -56,7 +60,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         requestNotificationPermissionIfNeeded()
-        handleDeepLink(intent)
+        handleIntent(intent)
 
         val startDestination = if (firebaseAuth.currentUser != null) {
             RootRoute.Main.route
@@ -70,8 +74,10 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
                     com.monsteraltech.habitly.navigation.RootNavGraph(
                         startDestination = startDestination,
-                        navigateToRoutines = routinesDeepLink.value,
-                        onRoutinesDeepLinkConsumed = { routinesDeepLink.value = false }
+                        externalDestination = externalDestination.value,
+                        onExternalDestinationConsumed = { externalDestination.value = null },
+                        sharedText = sharedText.value,
+                        onSharedTextConsumed = { sharedText.value = null }
                     )
                 }
             }
@@ -81,7 +87,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleDeepLink(intent)
+        handleIntent(intent)
     }
 
     override fun onResume() {
@@ -92,10 +98,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Si la notificación de rutina trae un routine_id, pedimos ir a la pestaña de Rutinas. */
-    private fun handleDeepLink(intent: Intent?) {
-        if (intent?.getStringExtra(EXTRA_ROUTINE_ID) != null) {
-            routinesDeepLink.value = true
+    /**
+     * Traduce el intent de entrada a lo que la UI tiene que hacer: ir a una pestaña concreta
+     * (notificación de rutina o atajo del launcher) o abrir la revisión del texto compartido.
+     *
+     * El texto de `ACTION_SEND` **no se procesa aquí**: se guarda tal cual y lo recoge la hoja de
+     * revisión, que es quien lo sanea y lo trata como datos no fiables.
+     */
+    private fun handleIntent(intent: Intent?) {
+        if (intent == null) return
+
+        if (intent.getStringExtra(EXTRA_ROUTINE_ID) != null) {
+            externalDestination.value = ExternalDestination.ROUTINES
+        }
+        ExternalDestination.fromAction(intent.action)?.let { externalDestination.value = it }
+
+        if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
+            val received = intent.getStringExtra(Intent.EXTRA_TEXT)
+            if (!received.isNullOrBlank()) sharedText.value = received
+            // Un ACTION_SEND ya consumido volvería a abrir la hoja al rotar o al volver a la app.
+            intent.removeExtra(Intent.EXTRA_TEXT)
         }
     }
 

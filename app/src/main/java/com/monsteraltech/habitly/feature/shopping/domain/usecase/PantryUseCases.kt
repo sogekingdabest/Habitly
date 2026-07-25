@@ -25,3 +25,16 @@ class DeletePantryItemUseCase @Inject constructor(
     suspend operator fun invoke(householdId: String, itemId: String): Result<Unit> =
         repository.deleteItem(householdId, itemId)
 }
+
+/**
+ * Devuelve a la despensa un producto que se acaba de sacar (el "deshacer" del gesto).
+ *
+ * `upsertItems` suma a lo que hubiera, y tras el borrado no hay nada, así que el producto
+ * vuelve con la misma cantidad que tenía.
+ */
+class RestorePantryItemUseCase @Inject constructor(
+    private val repository: PantryRepository
+) {
+    suspend operator fun invoke(householdId: String, item: PantryItem): Result<Unit> =
+        repository.upsertItems(householdId, listOf(item))
+}

@@ -7,6 +7,19 @@
     <!-- Descarga de modelos de IA en segundo plano -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Aviso de "sin conexión" en el panel (la trae Firebase, pero mejor declararla) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Visibilidad de paquetes (Android 11+): sin esto, queryIntentActivities no ve el
+         reconocedor de voz y el botón de dictado se esconde en dispositivos que SÍ lo tienen. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 
     <application
         android:name=".HabitlyApp"
@@ -26,10 +39,14 @@
         <!-- adjustResize: sin él, el sistema panea la ventana entera al abrir el teclado
              (la cabecera se va tras la barra de estado) en vez de dejar que Compose
              gestione el hueco con los insets del IME. -->
+        <!-- singleTask: la app es de una sola Activity, y con "Compartir con Habitly" hace
+             falta que un ACTION_SEND entre por onNewIntent en la instancia que ya existe en
+             vez de apilar una segunda copia con su propio estado. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.Habitly"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="uiMode">
@@ -38,6 +55,21 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Compartir con Habitly: texto desde el navegador, notas, WhatsApp… El texto se
+                 procesa EN EL DISPOSITIVO con el modelo local; nunca sale del teléfono. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
+            <!-- Atajos del icono del launcher (mantener pulsado). -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <!-- Con targetSdk >= 34 el tipo de foreground service debe ir declarado en el

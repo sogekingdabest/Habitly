@@ -56,9 +56,14 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             observeUserProfileUseCase(currentUserId).collectLatest { profile ->
                 _uiState.update { it.copy(nickname = profile?.nickname.orEmpty()) }
+                // Se guarda aparte del estado de UI: el nickname se duplica dentro del
+                // documento de la casa y hace falta saber a cuál escribir.
+                activeHouseholdId = profile?.activeHouseholdId.orEmpty()
             }
         }
     }
+
+    private var activeHouseholdId: String = ""
 
     fun onThemeModeSelected(mode: ThemeMode) = settingsRepository.setThemeMode(mode)
 
@@ -70,7 +75,7 @@ class SettingsViewModel @Inject constructor(
     fun onUpdateNickname(newNickname: String) {
         if (currentUserId == "unknown_user" || newNickname.isBlank()) return
         viewModelScope.launch {
-            val result = updateNicknameUseCase(currentUserId, newNickname)
+            val result = updateNicknameUseCase(currentUserId, activeHouseholdId, newNickname)
             if (result.isFailure) {
                 _uiState.update { it.copy(error = result.exceptionOrNull()?.message) }
             }

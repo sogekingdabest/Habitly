@@ -41,12 +41,14 @@ class BuildWidgetSnapshotUseCase @Inject constructor(
             routinesRepository.observeHouseholdRoutines(householdId).firstOrNull()
         }.orEmpty()
 
-        val pendingItems = shopping.filter { !it.isChecked }.map { it.name }
+        val pendingItems = shopping
+            .filter { !it.isChecked }
+            .map { WidgetLine(id = it.id, label = it.name) }
 
         val today = LocalDate.now()
         val pendingRoutines = (personal + household)
             .filter { RoutineSchedule.isPendingOn(it, today) }
-            .map { it.title }
+            .map { WidgetLine(id = it.id, label = it.title) }
 
         return WidgetSnapshot(
             state = WidgetState.READY,

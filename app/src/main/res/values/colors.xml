@@ -2,4 +2,10 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Widget (Verde niebla — modo claro). El fondo de tarjeta y las pastillas de
+         recuento se pintan con drawables <shape>, así que necesitan color de recurso
+         (no valen las constantes Kotlin). La variante nocturna está en values-night. -->
+    <color name="widget_card_bg">#F9FBF6</color>
+    <color name="widget_pill_bg">#DBE8E2</color>
 </resources>

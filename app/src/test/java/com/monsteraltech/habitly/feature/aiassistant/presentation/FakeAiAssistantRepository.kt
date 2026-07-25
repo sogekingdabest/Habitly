@@ -43,6 +43,10 @@ class FakeAiAssistantRepository : AiAssistantRepository {
     var extractShoppingCallCount = 0
     var routinesResult = ""
     var shoppingResult = ""
+
+    /** Texto que recibió la última extracción (para comprobar cómo se le pasa al modelo). */
+    var lastRoutinesSource: String? = null
+    var lastShoppingSource: String? = null
     var summaryResult = ""
     var summarizeCallCount = 0
 
@@ -101,11 +105,13 @@ class FakeAiAssistantRepository : AiAssistantRepository {
 
     override suspend fun extractRoutines(sourceText: String): String {
         extractRoutinesCallCount++
+        lastRoutinesSource = sourceText
         return routinesResult
     }
 
     override suspend fun extractShopping(sourceText: String): String {
         extractShoppingCallCount++
+        lastShoppingSource = sourceText
         return shoppingResult
     }
 
@@ -156,6 +162,8 @@ class FakeAiAssistantRepository : AiAssistantRepository {
         extractShoppingCallCount = 0
         routinesResult = ""
         shoppingResult = ""
+        lastRoutinesSource = null
+        lastShoppingSource = null
         summaryResult = ""
         summarizeCallCount = 0
         _activeSession.value = null

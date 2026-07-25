@@ -15,9 +15,11 @@ import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.household.domain.model.UserProfile
+import com.monsteraltech.habitly.feature.household.presentation.components.HouseholdSharePanel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +39,8 @@ import com.monsteraltech.habitly.ui.components.HabitlyCard
 import com.monsteraltech.habitly.ui.components.MeshArrangement
 import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
 import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
+import com.monsteraltech.habitly.ui.theme.habitly
+import java.util.concurrent.TimeUnit
 
 @Composable
 fun HouseholdScreen(
@@ -227,6 +231,9 @@ fun HouseholdScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(8.dp))
+                        InviteCodeExpiryHint(expiresAt = uiState.household!!.inviteCodeExpiresAt)
+
                         TextButton(onClick = { showRegenerateDialog = true }) {
                             Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
@@ -247,12 +254,15 @@ fun HouseholdScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 uiState.memberProfiles.forEach { member ->
-                    val memberInitial = member.nickname.firstOrNull()?.uppercase() 
-                        ?: member.displayName.firstOrNull()?.uppercase() 
-                        ?: "?"
+                    // Un miembro que todavía no ha abierto la app desde la actualización no
+                    // tiene su perfil copiado en la casa: se muestra como desconocido en vez
+                    // de como una fila en blanco.
                     val memberName = member.nickname.ifBlank { member.displayName }
-                    val isYou = member.id == uiState.userProfile?.id
-                    
+                        .ifBlank { stringResource(R.string.household_member_unknown) }
+                    val memberInitial = memberName.firstOrNull()?.uppercase() ?: "?"
+                    val isYou = member.id == uiState.currentUserId
+                    val isMemberOwner = uiState.household?.isOwner(member.id) == true
+
                     HabitlyCard(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -282,13 +292,23 @@ fun HouseholdScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = if (isYou) stringResource(R.string.household_you, memberName) else memberName,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (isYou) FontWeight.Bold else FontWeight.Normal,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (!isYou) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (isYou) stringResource(R.string.household_you, memberName) else memberName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (isYou) FontWeight.Bold else FontWeight.Normal
+                                )
+                                if (isMemberOwner) {
+                                    Text(
+                                        text = stringResource(R.string.household_owner_badge),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.habitly.accentText
+                                    )
+                                }
+                            }
+                            // Expulsar es cosa del propietario. Antes lo veía cualquier
+                            // miembro, y la regla de Firestore tampoco lo impedía.
+                            if (!isYou && uiState.isOwner) {
                                 IconButton(onClick = { memberToRemove = member }) {
                                     Icon(
                                         Icons.Filled.PersonRemove,
@@ -301,8 +321,20 @@ fun HouseholdScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // === SECCIÓN: Reparto de la casa ===
+                // Va justo debajo de los miembros porque habla de ellos, y por encima de
+                // "unirse a otra casa", que es una acción de salida.
+                HouseholdSharePanel(
+                    summary = uiState.share,
+                    memberIds = uiState.household?.members.orEmpty(),
+                    memberNames = uiState.memberNames,
+                    currentUserId = uiState.currentUserId
+                )
+
                 Spacer(modifier = Modifier.height(32.dp))
-                
+
                 // === SECCIÓN: Unirse a otra casa ===
                 Text(
                     text = stringResource(R.string.household_join_question),
@@ -500,4 +532,34 @@ fun HouseholdScreen(
             }
         )
     }
+}
+
+/**
+ * Aviso de caducidad del código de invitación. Los códigos emitidos antes de que
+ * existiera la caducidad llegan con `expiresAt = 0`: ya no se resuelven, así que el aviso
+ * es de regenerar, no de "caduca en N días".
+ */
+@Composable
+private fun InviteCodeExpiryHint(expiresAt: Long) {
+    val remainingMs = expiresAt - System.currentTimeMillis()
+    val expired = expiresAt <= 0L || remainingMs <= 0L
+
+    val text = if (expired) {
+        stringResource(R.string.household_invite_code_expired)
+    } else {
+        val days = TimeUnit.MILLISECONDS.toDays(remainingMs).toInt()
+        if (days >= 1) {
+            pluralStringResource(R.plurals.household_invite_code_expires_days, days, days)
+        } else {
+            val hours = TimeUnit.MILLISECONDS.toHours(remainingMs).toInt().coerceAtLeast(1)
+            pluralStringResource(R.plurals.household_invite_code_expires_hours, hours, hours)
+        }
+    }
+
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        textAlign = TextAlign.Center,
+        color = if (expired) MaterialTheme.colorScheme.error else MaterialTheme.habitly.textSecondary
+    )
 }

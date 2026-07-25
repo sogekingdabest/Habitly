@@ -94,13 +94,13 @@ class AddRoutineViewModel @Inject constructor(
     private suspend fun observeMembers(householdId: String) {
         observeHouseholdUseCase(householdId).collectLatest { household ->
             if (household == null) return@collectLatest
-            _uiState.update { it.copy(householdMembers = household.members) }
-            val result = getMemberProfilesUseCase(household.members)
-            if (result.isSuccess) {
-                val nicknames = result.getOrDefault(emptyList()).associate {
-                    it.id to it.nickname.ifBlank { it.displayName }
-                }
-                _uiState.update { it.copy(memberNicknames = nicknames) }
+            // Los nombres viajan dentro del documento de la casa; no hace falta leer
+            // /users de cada miembro (que además ya no es legible por terceros).
+            val nicknames = getMemberProfilesUseCase(household)
+                .filter { it.nickname.isNotBlank() || it.displayName.isNotBlank() }
+                .associate { it.id to it.nickname.ifBlank { it.displayName } }
+            _uiState.update {
+                it.copy(householdMembers = household.members, memberNicknames = nicknames)
             }
         }
     }

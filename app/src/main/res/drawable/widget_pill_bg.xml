@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pastilla de recuento (verde salvia suave) junto a cada cabecera de sección.
+     Drawable para mantener las esquinas redondeadas en todas las versiones. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/widget_pill_bg" />
+    <corners android:radius="40dp" />
+</shape>
