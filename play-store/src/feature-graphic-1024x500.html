@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Nunito:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;width:1024px;height:500px;overflow:hidden}
+  /* Mesh gradient de la app: base MeshBase con manchas Mesh1/Mesh2/Mesh3 */
+  .canvas{
+    position:relative;width:1024px;height:500px;background:#EAF1EC;
+    background-image:
+      radial-gradient(620px 520px at 12% 18%, #CFE6DC 0%, rgba(207,230,220,0) 62%),
+      radial-gradient(560px 460px at 88% 82%, #CBE3D8 0%, rgba(203,227,216,0) 60%),
+      radial-gradient(420px 380px at 78% 12%, #E9DDCA 0%, rgba(233,221,202,0) 58%);
+    display:flex;align-items:center;gap:56px;padding:0 88px;box-sizing:border-box;
+  }
+  .mark{
+    width:196px;height:196px;flex:none;border-radius:46px;background:#5F8F82;
+    box-shadow:0 18px 44px rgba(60,110,95,.40);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .copy{display:flex;flex-direction:column;gap:14px}
+  h1{
+    margin:0;font-family:"Baloo 2","Segoe UI Variable Display","Trebuchet MS",sans-serif;
+    font-weight:700;font-size:104px;line-height:1;color:#2F3D38;letter-spacing:-.5px;
+  }
+  p{
+    margin:0;font-family:"Nunito","Segoe UI",sans-serif;font-weight:600;
+    font-size:35px;line-height:1.3;color:#3F7263;max-width:620px;
+  }
+  .pills{display:flex;gap:12px;margin-top:8px}
+  .pill{
+    font-family:"Nunito","Segoe UI",sans-serif;font-weight:600;font-size:23px;color:#3F7263;
+    background:#DBE8E2;border-radius:999px;padding:9px 22px;
+  }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="mark">
+    <svg width="150" height="150" viewBox="20 20 68 68" xmlns="http://www.w3.org/2000/svg">
+      <path d="M54,84 L54,60" fill="none" stroke="#F9FBF6" stroke-width="6" stroke-linecap="round"/>
+      <path d="M55,64 C59,47 69,41 79,38 C72,50 65,57 55,64 Z" fill="#F9FBF6"/>
+      <path d="M53,64 C49,47 39,41 29,38 C36,50 43,57 53,64 Z" fill="#F9FBF6"/>
+    </svg>
+  </div>
+  <div class="copy">
+    <h1>Habitly</h1>
+    <p>Rutinas, listas de la compra y despensa para toda la casa</p>
+    <div class="pills">
+      <span class="pill">Hogar compartido</span>
+      <span class="pill">Asistente IA sin conexión</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>
