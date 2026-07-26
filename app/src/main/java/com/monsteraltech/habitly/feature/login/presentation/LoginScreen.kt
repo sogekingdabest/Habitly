@@ -8,8 +8,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Eco
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -66,12 +64,18 @@ fun LoginScreen(
             ) {
                 Spacer(modifier = Modifier.height(28.dp))
 
-                IconHalo(size = 82.dp, cornerRadius = 26.dp) {
+                // Marca: mismo recurso que el icono del launcher, sobre el verde de
+                // acento para que despegue del fondo (el halo neutro se fundía con él).
+                IconHalo(
+                    size = 82.dp,
+                    cornerRadius = 26.dp,
+                    background = MaterialTheme.habitly.accent
+                ) {
                     Icon(
-                        imageVector = Icons.Rounded.Eco,
+                        painter = painterResource(id = R.drawable.ic_habitly_mark),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(18.dp).fillMaxSize()
+                        tint = MaterialTheme.habitly.onAccent,
+                        modifier = Modifier.padding(16.dp).fillMaxSize()
                     )
                 }
 
