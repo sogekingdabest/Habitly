@@ -293,26 +293,50 @@ propia app.
 |---|---|---|
 | Icono | 512 × 512 px, PNG de 32 bits, **sin transparencia**, máx. 1 MB | ✅ `play-store/icon-512.png` |
 | Gráfico destacado | 1024 × 500 px, PNG o JPEG, sin transparencia | ✅ `play-store/feature-graphic-1024x500.png` |
-| Capturas de teléfono | Mín. **2** (sube 4-8), lado entre 320 y 3840 px, ratio 16:9 o 9:16 | ⬜ **Te toca** |
-| Capturas de tablet | Opcional, pero evita el aviso de "no optimizada para tablets" | ⬜ Opcional |
+| Capturas de teléfono | Mín. **2** (sube 4-8), lado entre 320 y 3840 px, ratio 16:9 o 9:16 | ✅ `play-store/screenshots/phone/` (6, 1080 × 1920) |
+| Capturas de tablet 7" | Mín. **2**, lado entre 320 y 3840 px, ratio 16:9 o 9:16 | ✅ `play-store/screenshots/tablet-7/` (5, 1080 × 1920) |
+| Capturas de tablet 10" | Mín. **2**, lado entre **1080** y 7680 px, ratio 16:9 o 9:16 | ✅ `play-store/screenshots/tablet-10/` (5, 1440 × 2560) |
 
 Ambos gráficos están generados con la paleta real de la app (Sage `#5F8F82`, Cream
 `#F9FBF6`, mesh gradient del fondo) y con el mismo brote del icono del launcher. Las
 fuentes de marca son Baloo 2 y Nunito, las mismas que usa la app. Si quieres retocarlos,
 las fuentes están en `play-store/src/*.html`; se regeneran con el comando que hay al final.
 
-**Capturas recomendadas** (4, en este orden):
+**Capturas ya montadas** (`play-store/screenshots/`, mismo orden en los tres formatos):
 
-1. Mi Casa con rutinas del día y la racha
-2. Lista de la compra con varios productos
-3. Chat con el asistente de IA proponiendo una rutina
-4. Despensa o el widget en la pantalla de inicio
+1. Inicio — «Toda la casa, en orden»
+2. Lista de la compra — «La compra, siempre al día»
+3. Asistente IA — «Un asistente que no sale del móvil»
+4. Rutinas de la casa con el reparto semanal — «Reparto justo de las tareas»
+5. Mi Casa con el código de invitación — «Invita a los tuyos»
+6. Plantillas al crear la casa — «Listo en 30 segundos» (solo teléfono)
 
-Para capturarlas del móvil conectado por USB:
+Ninguna pantalla real cumple el 9:16 exacto que pide Play, así que cada captura va montada
+sobre un lienzo de marca con titular; eso fija la proporción y de paso vende. El montaje lo
+hace `play-store/src/build-screenshots.py` (ver más abajo).
+
+Para volver a capturar las crudas con el móvil conectado por USB (PowerShell rompe el
+binario si se redirige la salida, así que se guarda en el móvil y se descarga):
 
 ```bash
-adb exec-out screencap -p > play-store/captura-1.png
+adb shell screencap -p /sdcard/x.png && adb pull /sdcard/x.png play-store/src/screenshots-raw/phone-inicio.png
 ```
+
+Las de tablet **no necesitan tablet**: se simula el tamaño en el propio móvil y se restaura
+al terminar. Con 1600 × 2560 a 320 dpi la app se ve como en una tablet de 10" en vertical:
+
+```bash
+adb shell wm size 1600x2560 && adb shell wm density 320
+```
+
+```bash
+adb shell wm size reset && adb shell wm density reset
+```
+
+> Ojo con dos cosas al capturar: las builds **debug** pintan las métricas del chat (TTFT,
+> chunks/s) bajo la respuesta de la IA — se van reiniciando la app, porque son estado
+> transitorio —, y la pantalla de Mi Casa enseña el **código de invitación real**: regenéralo
+> desde la propia pantalla después de capturar.
 
 ### Traducciones de la ficha
 
@@ -325,8 +349,29 @@ gallego.
 
 ## Regenerar los gráficos
 
+El icono sale de `play-store/src/mark-source.png` (el render original de la marca). El
+script le recorta el dibujo a una máscara con transparencia y escupe **todo**: el
+`foreground` del launcher en las cinco densidades, la marca tintable del login,
+`icon-512.png` y `mark-cream.png` (que usa el gráfico destacado). Si cambia la marca,
+se sustituye ese PNG y se vuelve a lanzar:
+
+```bash
+python3 play-store/src/build-mark.py
+```
+
+El gráfico destacado sigue siendo una captura de su HTML, y hay que lanzarlo **después**
+del script porque consume `mark-cream.png`:
+
 ```bash
 "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --headless=new --disable-gpu --force-device-scale-factor=1 --hide-scrollbars --virtual-time-budget=6000 --screenshot="play-store/feature-graphic-1024x500.png" --window-size=1024,500 "file:///C:/Users/Dani/Documents/Proyectos/Android%20Studio/play-store/src/feature-graphic-1024x500.html"
+```
+
+Las capturas de la ficha se montan con su propio script, que ya llama a Edge por dentro: lee
+las crudas de `play-store/src/screenshots-raw/`, les quita las barras del sistema y escupe los
+tres formatos. Los titulares se cambian en la lista `SHOTS` de ese fichero:
+
+```bash
+python3 play-store/src/build-screenshots.py
 ```
 
 ---
@@ -379,7 +424,7 @@ nadie con una versión antigua instalada. Entonces sí: *Aplicar* en Firestore y
 
 - [ ] Commit y push de `habitly-legal` con el cambio de 14 → 18 años
 - [ ] Crear la cuenta de prueba en Firebase Auth y cargarle datos
-- [ ] Capturar 4 screenshots del móvil
+- [x] Capturar las screenshots (teléfono + tablet 7" y 10", en `play-store/screenshots/`)
 - [ ] Rellenar las 11 tareas con las respuestas de este documento
 - [ ] Subir el `.aab` firmado (ver `GUIA_FIRMA_Y_SHA1.md`)
 - [ ] Añadir el SHA-1 de la clave de firma de Play en Firebase (si no, Google Sign-In falla en producción)
