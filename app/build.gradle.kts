@@ -22,7 +22,7 @@ val keystoreProperties = Properties().apply {
 // Al publicar solo se toca esto: el versionCode se deriva del versionName, así que no hay forma
 // de olvidarse de subirlo (Play rechaza reutilizar un versionCode) ni de que los dos se
 // desincronicen. MAJOR.MINOR.PATCH -> MAJOR*10000 + MINOR*100 + PATCH, monótono si el semver lo es.
-val habitlyVersionName = "1.0.0"
+val habitlyVersionName = "1.0.1"
 val habitlyVersionCode = habitlyVersionName.split(".").let { parts ->
     val numbers = parts.mapNotNull(String::toIntOrNull)
     require(numbers.size == 3 && numbers.all { it in 0..99 }) {
@@ -47,6 +47,14 @@ android {
         versionName = habitlyVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Sin esto, AGP sube los .so nativos (LiteRT-LM, el motor del asistente) con los
+        // símbolos eliminados, y un crash dentro del modelo llega a Play Console como
+        // direcciones de memoria en vez de nombres de función. Los símbolos viajan en el
+        // .aab pero NO se distribuyen a los usuarios: no engordan la descarga.
+        ndk {
+            debugSymbolLevel = "SYMBOL_TABLE"
+        }
     }
 
     signingConfigs {
