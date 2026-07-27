@@ -18,9 +18,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * Esquema claro — Verde niebla. El verde de marca es primario; las superficies son
- * papel crema; los contenedores usan las nieblas suaves. Los badges cálidos (racha,
- * mostaza) viven en `tertiary` y en [HabitlyColors].
+ * Light color scheme - Sage green brand palette.
  */
 private val LightColorScheme = lightColorScheme(
     primary = Sage,
@@ -67,7 +65,7 @@ private val LightColorScheme = lightColorScheme(
     scrim = Color.Black
 )
 
-/** Esquema oscuro — Verde niebla nocturno (a partir de `Habitly App Oscuro.dc.html`). */
+/** Dark color scheme - Night sage green palette. */
 private val DarkColorScheme = darkColorScheme(
     primary = SageDarkPrimary,          // #74a596
     onPrimary = SageDarkOnPrimary,      // #f9fbf6
@@ -77,10 +75,10 @@ private val DarkColorScheme = darkColorScheme(
 
     secondary = SageDarkAccent,         // #88ceba — acento luminoso
     onSecondary = InkDarkBg,
-    secondaryContainer = SageDarkNavActive, // #31473d — pastilla de pestaña activa
-    onSecondaryContainer = InkDarkOnSurface, // #eaf2ed
+    secondaryContainer = SageDarkNavActive,
+    onSecondaryContainer = InkDarkOnSurface,
 
-    tertiary = StreakFgDark,            // #e0ac4c — mostaza cálido
+    tertiary = StreakFgDark,
     onTertiary = Color(0xFF3F2E08),
     tertiaryContainer = StreakBgDark,   // #3e3417
     onTertiaryContainer = StreakFgDark,
@@ -116,8 +114,7 @@ private val DarkColorScheme = darkColorScheme(
 @Composable
 fun HabitlyTheme(
     darkTheme: Boolean? = null,
-    // El color dinámico rompe la identidad de marca (Verde niebla), así que por
-    // defecto está apagado. Se deja el parámetro por si se quiere ofrecer como opción.
+    // Dynamic color is disabled by default to preserve brand identity.
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
@@ -135,7 +132,7 @@ fun HabitlyTheme(
 
     val habitlyColors = if (isDark) DarkHabitlyColors else LightHabitlyColors
 
-    // Barras de sistema transparentes con iconos que contrastan con el fondo.
+    // Transparent system bars with contrasting icons.
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {

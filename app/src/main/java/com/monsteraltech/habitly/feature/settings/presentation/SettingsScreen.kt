@@ -55,7 +55,6 @@ import com.monsteraltech.habitly.feature.settings.domain.model.ThemeMode
 import com.monsteraltech.habitly.ui.components.HabitlyCard
 import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
 
-// URLs de las páginas legales (GitHub Pages). Deben coincidir con la ficha de Google Play.
 private const val URL_PRIVACY = "https://sogekingdabest.github.io/habitly-legal/privacidad.html"
 private const val URL_TERMS = "https://sogekingdabest.github.io/habitly-legal/terminos.html"
 
@@ -292,7 +291,6 @@ fun SettingsScreen(
         }
     }
 
-    // Diálogo editar apodo
     if (showNicknameDialog) {
         AlertDialog(
             onDismissRequest = { showNicknameDialog = false },
@@ -322,7 +320,6 @@ fun SettingsScreen(
         )
     }
 
-    // Diálogo cerrar sesión
     if (showSignOutDialog) {
         AlertDialog(
             onDismissRequest = { showSignOutDialog = false },
@@ -343,7 +340,6 @@ fun SettingsScreen(
         )
     }
 
-    // Diálogo borrar cuenta
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },

@@ -18,9 +18,7 @@ import com.monsteraltech.habitly.feature.settings.data.LocaleHelper
 import kotlinx.coroutines.CancellationException
 
 /**
- * Descarga un modelo de IA en segundo plano. Al ejecutarse dentro de WorkManager
- * como trabajo de larga duración con notificación foreground, la descarga
- * sobrevive a la navegación entre pestañas e incluso a que el proceso se reinicie.
+ * Background WorkManager worker for downloading AI models.
  */
 class ModelDownloadWorker(
     appContext: Context,
@@ -29,15 +27,13 @@ class ModelDownloadWorker(
 
     private val modelManager = LocalModelManager(appContext)
 
-    // Contexto con el idioma elegido en Ajustes (el applicationContext no lo refleja). `lazy`
-    // para no reconstruirlo en cada refresco de progreso durante la descarga.
     private val localizedContext by lazy { LocaleHelper.wrap(applicationContext) }
 
     override suspend fun doWork(): Result {
         val modelId = inputData.getString(KEY_MODEL_ID)
-            ?: return Result.failure(workDataOf(KEY_ERROR to "Falta el identificador del modelo"))
+            ?: return Result.failure(workDataOf(KEY_ERROR to "Missing model ID"))
         val config = AvailableAiModels.models.find { it.id == modelId }
-            ?: return Result.failure(workDataOf(KEY_ERROR to "Modelo desconocido"))
+            ?: return Result.failure(workDataOf(KEY_ERROR to "Unknown model"))
 
         return try {
             setForeground(createForegroundInfo(config.name, 0))
@@ -45,7 +41,6 @@ class ModelDownloadWorker(
             var lastPercent = -1
             modelManager.downloadModel(config) { progress ->
                 val percent = (progress * 100).toInt().coerceIn(0, 100)
-                // Throttle: solo notificamos cuando cambia el porcentaje entero.
                 if (percent != lastPercent) {
                     lastPercent = percent
                     setProgressAsync(workDataOf(KEY_MODEL_ID to modelId, KEY_PROGRESS to progress))
@@ -56,15 +51,12 @@ class ModelDownloadWorker(
         } catch (e: CancellationException) {
             throw e
         } catch (e: NonRetryableDownloadException) {
-            // 4xx, integridad, espacio…: reintentar no lo arregla; se muestra el error.
-            Result.failure(workDataOf(KEY_ERROR to (e.message ?: "Error de descarga")))
+            Result.failure(workDataOf(KEY_ERROR to (e.message ?: "Download error")))
         } catch (e: Exception) {
-            // Error transitorio (red): reintento con backoff. El .tmp se conserva, así que
-            // el siguiente intento reanuda con Range donde se quedó.
             if (runAttemptCount < MAX_ATTEMPTS - 1) {
                 Result.retry()
             } else {
-                Result.failure(workDataOf(KEY_ERROR to (e.message ?: "Error de descarga")))
+                Result.failure(workDataOf(KEY_ERROR to (e.message ?: "Download error")))
             }
         }
     }

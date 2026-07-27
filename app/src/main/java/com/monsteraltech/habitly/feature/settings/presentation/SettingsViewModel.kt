@@ -56,8 +56,6 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             observeUserProfileUseCase(currentUserId).collectLatest { profile ->
                 _uiState.update { it.copy(nickname = profile?.nickname.orEmpty()) }
-                // Se guarda aparte del estado de UI: el nickname se duplica dentro del
-                // documento de la casa y hace falta saber a cuál escribir.
                 activeHouseholdId = profile?.activeHouseholdId.orEmpty()
             }
         }

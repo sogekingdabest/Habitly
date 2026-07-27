@@ -44,7 +44,6 @@ object RoutineSchedule {
             RoutineFrequency.WEEKLY -> routine.scheduledDays.contains(dayOfWeek)
             RoutineFrequency.CUSTOM ->
                 routine.scheduledDays.isEmpty() || routine.scheduledDays.contains(dayOfWeek)
-            // El día de la semana no restringe a las rutinas por intervalo.
             RoutineFrequency.EVERY_N_DAYS -> true
         }
     }

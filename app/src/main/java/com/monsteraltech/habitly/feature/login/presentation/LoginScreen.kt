@@ -64,8 +64,6 @@ fun LoginScreen(
             ) {
                 Spacer(modifier = Modifier.height(28.dp))
 
-                // Marca: mismo recurso que el icono del launcher, sobre el verde de
-                // acento para que despegue del fondo (el halo neutro se fundía con él).
                 IconHalo(
                     size = 82.dp,
                     cornerRadius = 26.dp,

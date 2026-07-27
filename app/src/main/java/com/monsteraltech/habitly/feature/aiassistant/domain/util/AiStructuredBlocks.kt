@@ -27,19 +27,17 @@ object AiStructuredBlocks {
      * Devuelve el texto que se muestra al usuario, sin los bloques estructurados.
      * Tolera respuestas en streaming (marcador o fence a medio escribir).
      */
+    /** Strips structured markers and hidden JSON blocks from chat message display text. */
     fun stripFromDisplay(content: String): String {
         var text = content
 
-        // 1. Todo lo que venga a partir del primer marcador es metadato, no se muestra.
         val markerIdx = MARKERS.mapNotNull { marker ->
             text.indexOf(marker).takeIf { it != -1 }
         }.minOrNull()
         if (markerIdx != null) text = text.substring(0, markerIdx)
 
-        // 2. Si el modelo usó un bloque ```json en vez del marcador, se elimina.
         text = FENCED_BLOCK.replace(text, "")
 
-        // 3. Durante el streaming puede aparecer un fence sin cerrar: lo ocultamos.
         val openFence = text.indexOf("```")
         if (openFence != -1 && text.indexOf("```", openFence + 3) == -1) {
             val afterFence = text.substring(openFence)
@@ -55,48 +53,30 @@ object AiStructuredBlocks {
         return text.trimEnd()
     }
 
-    /**
-     * Indica si el contenido (aún en streaming) ha empezado a escribir un bloque
-     * estructurado. La UI lo usa para avisar de que "viene algo más": tras el texto
-     * visible, el modelo puede pasar decenas de segundos generando el JSON oculto y
-     * sin este aviso parece que se ha quedado colgado.
-     *
-     * Basta con detectar "@@": es el prefijo común de los marcadores y no aparece en
-     * texto conversacional normal.
-     */
+    /** Returns true if streaming content contains structured data marker prefix. */
     fun hasPendingStructuredBlock(content: String): Boolean = content.contains("@@")
 
-    /**
-     * Aísla la porción de texto que contiene el JSON de un bloque, priorizando su [marker].
-     * Si el marcador no aparece, busca el JSON suelto en todo el texto.
-     */
+    /** Extracts JSON payload region associated with specified marker. */
     fun extractJsonRegion(text: String, marker: String): String? {
         val markerIdx = text.indexOf(marker)
         var scope = if (markerIdx != -1) text.substring(markerIdx + marker.length) else text
 
-        // Si la respuesta trae los dos bloques, cortamos en el siguiente marcador para no
-        // invadir el JSON del otro.
         MARKERS.filter { it != marker }
             .mapNotNull { other -> scope.indexOf(other).takeIf { it != -1 } }
             .minOrNull()
             ?.let { scope = scope.substring(0, it) }
 
-        // Bloque con fences ```json ... ```
         FENCE_REGEX.find(scope)?.let { match ->
             val body = match.groupValues[1].trim()
             if (body.contains("[") || body.contains("{")) return body
         }
 
-        // Array [ ... ]. Si viene sin cerrar (respuesta truncada por falta de tokens), lo
-        // tomamos desde '[' hasta el final para que el parser tolerante recupere el último
-        // objeto en vez de que se pierda al recortar por la última ']'.
         val start = scope.indexOf('[')
         if (start != -1) {
             val end = scope.lastIndexOf(']')
             return if (end > start) scope.substring(start, end + 1) else scope.substring(start)
         }
 
-        // Objeto suelto { ... }
         val objStart = scope.indexOf('{')
         val objEnd = scope.lastIndexOf('}')
         if (objStart != -1 && objEnd > objStart) return scope.substring(objStart, objEnd + 1)

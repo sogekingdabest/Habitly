@@ -114,8 +114,6 @@ fun RoutineSuggestionCard(
                     modifier = Modifier.align(Alignment.End)
                 )
             } else {
-                // FlowRow y no Row: con fuente grande los dos chips no caben en el ancho
-                // de la tarjeta y tienen que poder pasar a la línea siguiente.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     RoutineTypeChip(
                         selected = type == RoutineType.PERSONAL,

@@ -89,24 +89,14 @@ object AvailableAiModels {
         sizeBytes = 735_999_360L, // 736 MB
         filename = "lfm2-5-1-2b-int4.litertlm",
         sha256 = "e51f10c7b3b8e0568148484e2ece6473f4195ea5a3111b333fdaf9496434fe05",
-        // Umbrales MEDIDOS, no estimados: con la ventana de 4096 la app marca 2,10 GB de RSS
-        // (1,04 GB private dirty, irrecuperable; el resto son páginas limpias del fichero que
-        // el kernel sí puede desalojar). En un móvil de 4 GB eso entra, pero justo: por eso
-        // recomendamos 6 y el de 4 GB recibe el aviso en vez de vía libre.
         minRamBytes = 4 * GB,
         recommendedRamBytes = 6 * GB,
-        // 4096 como los demás. Se probó con 2048 para ahorrar RAM y fue un error: el system
-        // prompt de la app ya ocupa ~650 tokens y un menú semanal ronda los 1200, así que un
-        // solo intercambio agotaba la ventana (y el prefill del segundo mensaje habría
-        // empezado a fallar). Doblar la ventana cuesta 240 MB medidos — la KV cache de LFM2
-        // NO es tan barata como sugiere su model card—, pero sin ella no hay caso de uso.
         maxTokens = 4096,
         supportsSpeculativeDecoding = false,
         supportsToolCalling = false,
         supportsGpu = false
     )
 
-    // Orden de menor a mayor exigencia: en el desplegable, lo que un móvil modesto puede usar
-    // aparece primero en vez de quedar debajo de dos modelos bloqueados.
+    /** Models sorted from lowest to highest RAM requirement. */
     val models = listOf(LFM2_5_1_2B_Instruct, Gemma4_E2B_IT, Gemma4_E4B_IT)
 }

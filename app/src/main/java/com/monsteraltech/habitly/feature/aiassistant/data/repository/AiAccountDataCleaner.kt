@@ -9,11 +9,8 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
- * Al **borrar la cuenta**, elimina todo rastro local del asistente: el historial de chat (Room)
- * y las prefs (system prompt persistido con el contexto privado de la casa). Los modelos
- * descargados no se tocan: pesan GB y no son datos personales.
- *
- * No corre en el logout normal (ver [AccountDataCleaner]).
+ * Clears local AI data (Room chat history and preferences) upon account deletion.
+ * Downloaded model binaries are retained as they contain no user data.
  */
 class AiAccountDataCleaner @Inject constructor(
     private val database: AiAssistantDatabase,
@@ -22,12 +19,11 @@ class AiAccountDataCleaner @Inject constructor(
 ) : AccountDataCleaner {
 
     override suspend fun clearAccountData() {
-        // Suelta la Conversation en memoria del engine (lleva el system prompt del usuario
-        // saliente). Si el modelo no está cargado puede fallar sin consecuencias.
+        // Release active in-memory session.
         runCatching { aiAssistantRepository.resetSession() }
         withContext(Dispatchers.IO) {
             database.clearAllTables()
-            // commit y no apply: que el borrado esté en disco antes de dar la cuenta por borrada.
+            // Commit synchronously to disk before finishing account deletion.
             sharedPreferences.edit().clear().commit()
         }
     }

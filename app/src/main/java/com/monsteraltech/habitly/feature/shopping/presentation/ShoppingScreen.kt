@@ -71,8 +71,6 @@ fun ShoppingScreen(
     var showArchiveDialog by remember { mutableStateOf(false) }
     var showClearDialog by remember { mutableStateOf(false) }
 
-    // skipPartiallyExpanded: la hoja abre entera y con el teclado; un estado intermedio solo
-    // taparía el campo que hay que escribir.
     val quickAddSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     if (uiState.quickAdd.isOpen) {
@@ -103,8 +101,6 @@ fun ShoppingScreen(
         }
     }
 
-    // Confirmación del dictado: al añadir varios de golpe sin abrir ninguna hoja, el recuento
-    // es la única señal de que se ha entendido bien.
     val voiceAdded = uiState.voiceAddedCount
     if (voiceAdded != null) {
         val voiceAddedMessage = pluralStringResource(R.plurals.addproduct_added_count, voiceAdded, voiceAdded)
@@ -262,8 +258,6 @@ fun ShoppingScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // weight: con el micro la cabecera tiene tres iconos; sin esto, en pantallas
-                // estrechas o con fuente grande el título los empujaría fuera en vez de partirse.
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         stringResource(R.string.shopping_title),
@@ -279,9 +273,6 @@ fun ShoppingScreen(
                     }
                 }
                 Row {
-                    // Micro en la cabecera: con las manos ocupadas en la cocina, dictar
-                    // "leche, huevos y pan" es el camino más corto a la lista. El botón no
-                    // aparece si el dispositivo no tiene reconocedor de voz.
                     VoiceInputButton(onSpokenText = viewModel::onVoiceProducts)
                     IconButton(onClick = onNavigateToHistory) {
                         Icon(Icons.Filled.History, contentDescription = stringResource(R.string.shopping_view_history))
@@ -336,8 +327,6 @@ fun ShoppingScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // Los frecuentes van por encima del filtro de tiendas: son lo que más se pulsa
-            // de toda la pantalla y estaban enterrados debajo.
             if (uiState.frequentItems.isNotEmpty()) {
                 Text(
                     stringResource(R.string.shopping_quick_add),
@@ -373,8 +362,6 @@ fun ShoppingScreen(
                 items(uiState.availableStores, key = { it }) { store ->
                     FilterChip(
                         selected = uiState.selectedStore == store,
-                        // Buscando, el filtro de tienda no pinta nada: la búsqueda barre
-                        // toda la lista a propósito.
                         enabled = !uiState.isSearching,
                         onClick = { viewModel.onSelectStore(store) },
                         label = { Text(store) }
@@ -424,8 +411,6 @@ fun ShoppingScreen(
                 uiState.filteredPendingItems.isEmpty() &&
                 uiState.filteredCompletedItems.isEmpty()
             ) {
-                // Que la búsqueda no encuentre nada es la respuesta útil: significa que el
-                // producto no está apuntado y se puede añadir sin miedo a duplicarlo.
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -578,8 +563,6 @@ fun StoreSectionCard(
             )
             val rowColor = MaterialTheme.habitly.card
             items.forEach { item ->
-                // key por id: sin él, el estado del gesto se reutilizaría entre filas al
-                // reordenarse la lista y una fila recién llegada aparecería ya deslizada.
                 key(item.id) {
                     ShoppingItemRow(
                         item = item,
@@ -601,8 +584,6 @@ fun CompletedSectionCard(
     onToggle: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    // Opaco a propósito: las filas de dentro pintan este mismo color para tapar el fondo del
-    // gesto, y con una tarjeta translúcida el color no coincidiría.
     val cardColor = MaterialTheme.colorScheme.surfaceVariant
 
     HabitlyCard(
@@ -728,7 +709,6 @@ fun ShoppingItemRow(
                         deleteLabel = deleteLabel,
                         onDelete = onDelete
                     )
-                    // 48 dp de alto mínimo: el gesto no puede robarle tamaño a la diana.
                     .heightIn(min = 48.dp)
                     .padding(vertical = 6.dp, horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically

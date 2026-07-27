@@ -46,11 +46,7 @@ fun PromptInput(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        // Los chips se van en cuanto empiezas a escribir: ya has decidido qué preguntar, y esa
-        // fila es altura que le hace más falta a la conversación.
         if (quickPrompts.isNotEmpty() && input.isBlank()) {
-            // El padding va en el contenido y no en la fila para que los chips se deslicen
-            // hasta el borde de la pantalla en vez de cortarse en seco a 16dp.
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 16.dp),
@@ -76,12 +72,9 @@ fun PromptInput(
                 value = input,
                 onValueChange = onInputChange,
                 modifier = Modifier.weight(1f),
-                // Placeholder y no label: el label flotante reserva altura permanente para
-                // repetir algo que en un chat ya se da por sabido.
                 placeholder = { Text(stringResource(R.string.ai_input_hint)) },
                 shape = RoundedCornerShape(24.dp),
                 maxLines = 4,
-                // El micro se retira en cuanto hay texto: ahí el hueco es del contenido.
                 trailingIcon = if (onVoiceInput != null && input.isBlank()) {
                     {
                         IconButton(onClick = onVoiceInput) {
@@ -95,8 +88,6 @@ fun PromptInput(
                     null
                 }
             )
-            // Mientras el modelo genera, el botón pasa a "detener": enviar ya no procede
-            // (el ViewModel lo ignora) y así siempre hay una acción útil disponible.
             if (isGenerating) {
                 FilledIconButton(
                     onClick = onStop,

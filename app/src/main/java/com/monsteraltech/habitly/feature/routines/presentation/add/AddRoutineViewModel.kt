@@ -49,7 +49,6 @@ data class AddRoutineUiState(
     val canRotate: Boolean
         get() = type == RoutineType.HOUSEHOLD && householdMembers.size > 1
 
-    // Una semanal sin días no tocaría nunca; una personalizada sin días cuenta a diario.
     val canSave: Boolean
         get() = title.isNotBlank() &&
             (frequency != RoutineFrequency.WEEKLY || selectedDays.isNotEmpty())
@@ -68,7 +67,6 @@ class AddRoutineViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(
         AddRoutineUiState(
-            // La pestaña desde la que se abrió preselecciona el tipo.
             type = savedStateHandle.get<String>(TYPE_ARG)
                 ?.let { name -> RoutineType.entries.find { it.name == name } }
                 ?: RoutineType.PERSONAL
@@ -94,8 +92,6 @@ class AddRoutineViewModel @Inject constructor(
     private suspend fun observeMembers(householdId: String) {
         observeHouseholdUseCase(householdId).collectLatest { household ->
             if (household == null) return@collectLatest
-            // Los nombres viajan dentro del documento de la casa; no hace falta leer
-            // /users de cada miembro (que además ya no es legible por terceros).
             val nicknames = getMemberProfilesUseCase(household)
                 .filter { it.nickname.isNotBlank() || it.displayName.isNotBlank() }
                 .associate { it.id to it.nickname.ifBlank { it.displayName } }

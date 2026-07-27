@@ -1,16 +1,11 @@
 package com.monsteraltech.habitly.feature.widget.domain
 
-/** Estado de sesión de cara al widget. */
 enum class WidgetState {
-    READY,        // Hay sesión y casa activa: se muestran datos.
-    NO_SESSION,   // No hay usuario autenticado.
-    NO_HOUSEHOLD  // Hay usuario pero aún no ha creado/entrado en una casa.
+    READY,
+    NO_SESSION,
+    NO_HOUSEHOLD
 }
 
-/**
- * Una línea marcable del widget. El [id] es lo que viaja en los `ActionParameters` del
- * callback: sin él el widget solo podría enseñar la lista, no tacharla.
- */
 data class WidgetLine(val id: String, val label: String)
 
 /**

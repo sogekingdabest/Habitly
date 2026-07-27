@@ -37,7 +37,6 @@ object SharedTextClassifier {
         return when {
             routineHits == 0 -> SharedTextKind.SHOPPING
             shoppingHits == 0 -> SharedTextKind.ROUTINES
-            // Un texto mixto (un "plan de la semana" con menú y tareas) merece las dos.
             else -> SharedTextKind.BOTH
         }
     }

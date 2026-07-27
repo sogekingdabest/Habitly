@@ -58,8 +58,6 @@ fun ShoppingSuggestionCard(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            // El peso tiene que ir en el texto: sin él se mide primero, se queda con todo el
-            // ancho y el botón acaba partiéndose letra a letra en vertical.
             Text(
                 text = pluralStringResource(R.plurals.ai_suggestion_count, count, count),
                 style = MaterialTheme.typography.bodyMedium,

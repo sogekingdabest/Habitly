@@ -62,10 +62,6 @@ fun ChatMessageItem(
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
         Card(
-            // Sin margen en el lado propio: la burbuja apura hasta el borde (el aire que
-            // queda lo pone el contentPadding de la lista). Enfrente queda solo el offset
-            // justo para leer de qué lado viene cada mensaje: al asistente se le da casi
-            // todo el ancho porque es quien manda tablas y listas largas.
             modifier = Modifier.padding(
                 start = if (isUser) 32.dp else 0.dp,
                 end = if (isUser) 0.dp else 16.dp,
@@ -89,7 +85,6 @@ fun ChatMessageItem(
                 modifier = Modifier.padding(12.dp)
             ) {
                 if (isUser) {
-                    // SelectionContainer: el Text plano del usuario no era seleccionable.
                     SelectionContainer {
                         Text(
                             text = message.content,
@@ -112,8 +107,6 @@ fun ChatMessageItem(
                                 markdown = segment.content,
                                 style = markdownStyle,
                                 linkColor = MaterialTheme.colorScheme.primary,
-                                // SelectionContainer no llega al TextView de la librería:
-                                // hay que activar su selección explícitamente.
                                 isTextSelectable = true
                             )
 
@@ -138,9 +131,6 @@ fun ChatMessageItem(
             }
         }
 
-        // Acciones bajo la burbuja: copiar (prompt propio y respuestas terminadas) y, solo en
-        // respuestas del asistente, reportar (requisito de la política de IA de Google Play).
-        // Durante el streaming se ocultan (copiar/reportar a medias no aporta).
         if (!isStreaming && displayText.isNotBlank()) {
             Row {
                 IconButton(

@@ -6,12 +6,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Escala de formas de Habitly.
- *
- * Más redondeada que la de Material 3 por defecto — lo que separa una app de producto
- * de una plantilla. Los componentes de Material la consumen sola: `Card` usa
- * [Shapes.medium], los diálogos y `BottomSheet` usan [Shapes.extraLarge], los chips
- * usan [Shapes.small].
+ * Custom shapes scale for Habitly.
  */
 val Shapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
@@ -22,14 +17,7 @@ val Shapes = Shapes(
 )
 
 /**
- * La **firma** de Habitly: la esquina-hoja.
- *
- * Toda superficie-tarjeta recorta su esquina inferior-izquierda (como una hoja
- * plegada) mientras mantiene redondeadas las otras tres. Ese detalle, junto con la
- * sombra verde cálida, es lo que hace reconocible la app de un vistazo.
- *
- * @param radius radio de las tres esquinas redondeadas.
- * @param notch  radio (pequeño) de la esquina inferior-izquierda "plegada".
+ * Custom leaf-corner shape with a notched bottom-start corner.
  */
 fun leafCornerShape(radius: Dp = 24.dp, notch: Dp = 8.dp) = RoundedCornerShape(
     topStart = radius,
@@ -38,8 +26,8 @@ fun leafCornerShape(radius: Dp = 24.dp, notch: Dp = 8.dp) = RoundedCornerShape(
     bottomStart = notch,
 )
 
-/** Esquina-hoja grande para tarjetas destacadas (cabecera, compra). */
+/** Large leaf-corner shape for featured cards. */
 val LeafCornerLarge = leafCornerShape(28.dp, 8.dp)
 
-/** Esquina-hoja estándar para filas de lista (rutinas, productos). */
+/** Standard leaf-corner shape for list item cards. */
 val LeafCornerMedium = leafCornerShape(24.dp, 8.dp)

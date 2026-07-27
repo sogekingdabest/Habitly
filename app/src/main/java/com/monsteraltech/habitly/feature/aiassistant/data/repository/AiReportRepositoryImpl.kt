@@ -8,9 +8,7 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 /**
- * Guarda el reporte en la colección `ai_reports` de Firestore (solo creación; la lectura queda
- * para la consola del desarrollador). Es el único punto donde una respuesta del asistente sale
- * del dispositivo, y siempre a petición explícita del usuario.
+ * Saves user feedback reports to the `ai_reports` collection in Firestore.
  */
 class AiReportRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
@@ -20,11 +18,11 @@ class AiReportRepositoryImpl @Inject constructor(
     override suspend fun reportAssistantMessage(content: String, modelId: String): Result<Unit> {
         return try {
             val uid = firebaseAuth.currentUser?.uid
-                ?: return Result.failure(Exception("No hay usuario activo"))
+                ?: return Result.failure(Exception("No active user"))
             val report = mapOf(
                 "userId" to uid,
                 "modelId" to modelId,
-                // Tope alineado con la validación de las reglas de Firestore.
+                // Truncate to maximum length enforced by Firestore rules.
                 "content" to content.take(MAX_CONTENT_CHARS),
                 "createdAt" to FieldValue.serverTimestamp()
             )

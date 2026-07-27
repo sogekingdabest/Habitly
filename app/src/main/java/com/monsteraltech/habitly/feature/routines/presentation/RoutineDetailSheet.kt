@@ -100,8 +100,6 @@ fun RoutineDetailSheet(
                 CompletionHeatmap(
                     month = detail.month,
                     completedDates = detail.completedDates,
-                    // El calendario semanal, sin la pausa ni el intervalo: enseña los días
-                    // en los que tocaba por diseño, no si hoy toca.
                     isDueOn = { date -> RoutineSchedule.matchesDayOfWeek(routine, date) }
                 )
                 Text(

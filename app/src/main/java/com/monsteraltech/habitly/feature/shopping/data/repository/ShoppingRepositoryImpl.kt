@@ -19,8 +19,6 @@ import javax.inject.Inject
 
 class ShoppingRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
-    // El widget lista los productos pendientes: si se tacha uno desde la app, tiene que
-    // enterarse. Se avisa aquí, donde se confirma la escritura, y no desde cada pantalla.
     private val widgetRefresher: WidgetRefresher
 ) : ShoppingRepository {
 
@@ -90,7 +88,6 @@ class ShoppingRepositoryImpl @Inject constructor(
             val now = System.currentTimeMillis()
             items.forEachIndexed { index, raw ->
                 val id = UUID.randomUUID().toString()
-                // Preservamos el orden de inserción sumando el índice a createdAt.
                 val item = raw.copy(id = id, isChecked = false, createdAt = now + index)
                 batch.set(collection.document(id), item)
             }
@@ -144,8 +141,6 @@ class ShoppingRepositoryImpl @Inject constructor(
 
             if (items.isEmpty()) return Result.success(Unit)
 
-            // Lo que se guarda en la despensa se calcula antes de abrir el batch, porque
-            // hay que leer lo que ya había para poder sumar cantidades.
             val pantryWrites = if (stockPantry) {
                 val bought = items.filter { it.isChecked }
                 if (bought.isEmpty()) {
@@ -165,7 +160,6 @@ class ShoppingRepositoryImpl @Inject constructor(
 
             val batch = firestore.batch()
 
-            // 1. Guardamos el historial en otra colección usando un data class para evitar fallos de mapeo
             val historyId = UUID.randomUUID().toString()
             val historyData = ShoppingHistory(
                 id = historyId,
@@ -180,12 +174,10 @@ class ShoppingRepositoryImpl @Inject constructor(
                 
             batch.set(historyRef, historyData)
 
-            // 2. Borramos los items de la lista activa
             for (doc in snapshot.documents) {
                 batch.delete(doc.reference)
             }
 
-            // 3. Lo comprado pasa a la despensa
             if (pantryWrites.isNotEmpty()) {
                 val pantryRef = firestore.collection("households")
                     .document(householdId)
@@ -195,7 +187,6 @@ class ShoppingRepositoryImpl @Inject constructor(
                 }
             }
 
-            // 4. Ejecutamos todo de forma 100% atómica
             batch.commit().await()
 
             widgetRefresher.refresh()

@@ -39,9 +39,8 @@ class GetAiContextUseCase @Inject constructor(
         timeoutMs: Long = DEFAULT_TIMEOUT_MS,
         today: LocalDate = LocalDate.now()
     ): String {
-        // Directiva de idioma: el modelo infiere el idioma del prompt, y todo el contexto va en
-        // español; sin esta orden explícita respondería siempre en español aunque el usuario haya
-        // cambiado el idioma de la app en Ajustes. Se ancla al principio y al final del prompt.
+        today: LocalDate = LocalDate.now()
+    ): String {
         val directive = languageDirective()
         val personality = "$directive\n\n${getBasePersonality()}"
 
@@ -54,8 +53,6 @@ class GetAiContextUseCase @Inject constructor(
         val householdId = profile?.activeHouseholdId?.takeIf { it.isNotBlank() }
             ?: return personality
 
-        // Las cuatro lecturas son independientes entre sí: en paralelo, el peor caso pasa de
-        // cuatro timeouts encadenados a uno (menos espera antes del primer token del chat).
         return coroutineScope {
             val shoppingItems = async {
                 withTimeoutOrNull(timeoutMs) {
@@ -106,7 +103,6 @@ class GetAiContextUseCase @Inject constructor(
         }
     }
 
-    /** Fecha en español sin depender del `Locale` del dispositivo (el prompt siempre es español). */
     private fun formatDate(date: LocalDate): String {
         val dayName = SPANISH_DAYS[date.dayOfWeek.value - 1]
         val monthName = SPANISH_MONTHS[date.monthValue - 1]
@@ -118,7 +114,6 @@ class GetAiContextUseCase @Inject constructor(
 
         val pending = items.filter { !it.isChecked }
         val checked = items.filter { it.isChecked }
-        // Lo pendiente es lo relevante: va primero, así el recorte se come lo ya comprado.
         val shown = (pending + checked).take(MAX_SHOPPING_ITEMS)
         val omitted = items.size - shown.size
 

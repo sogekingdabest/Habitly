@@ -75,7 +75,6 @@ class DashboardViewModel @Inject constructor(
     private val currentUserId: String
         get() = firebaseAuth.currentUser?.uid ?: ""
 
-    // Última rutina completada desde el dashboard, para ofrecer "Deshacer" en un snackbar.
     private val _recentlyCompleted = MutableStateFlow<Routine?>(null)
     val recentlyCompleted: StateFlow<Routine?> = _recentlyCompleted.asStateFlow()
 
@@ -97,10 +96,6 @@ class DashboardViewModel @Inject constructor(
                 val today = LocalDate.now()
                 val pendingShopping = shoppingList.filter { !it.isChecked }
 
-                // Todo el reparto del día sale de RoutineSchedule, el mismo que usan la
-                // pestaña de rutinas y el widget: si aquí se copiara el filtro, los números
-                // acabarían discrepando en cuanto una regla cambiase.
-                // Solo lo que toca hoy: antes se colaban rutinas de otros días de la semana.
                 val pendingRoutines = routines.filter { RoutineSchedule.isPendingOn(it, today) }
                 val completedToday = routines.filter { RoutineSchedule.isCompletedOn(it, today) }
 
@@ -109,8 +104,6 @@ class DashboardViewModel @Inject constructor(
                     household = household,
                     pendingShoppingItems = pendingShopping,
                     pendingRoutines = pendingRoutines,
-                    // Las de intervalo dejan de "tocar" en cuanto se hacen, así que el total
-                    // se arma sumando pendientes y hechas en vez de contar las programadas.
                     todayRoutinesTotal = pendingRoutines.size + completedToday.size,
                     todayRoutinesDone = completedToday.size,
                     todayByMember = tallyByMember(completedToday, household),
@@ -127,13 +120,6 @@ class DashboardViewModel @Inject constructor(
             initialValue = DashboardUiState()
         )
 
-    /**
-     * Quién ha hecho qué hoy, solo con rutinas **de casa**: las personales de los demás ni
-     * siquiera se leen, así que contarlas daría un marcador con un único jugador.
-     *
-     * Los nombres salen de `Household.memberProfiles`, que ya viene en el documento cargado:
-     * ni una lectura extra de Firestore.
-     */
     private fun tallyByMember(completedToday: List<Routine>, household: Household?): List<MemberTally> {
         if (household == null) return emptyList()
 
@@ -160,7 +146,6 @@ class DashboardViewModel @Inject constructor(
         if (currentUserId.isBlank()) return
 
         viewModelScope.launch {
-            // Desde el dashboard solo mostramos pendientes, así que siempre estamos completando
             toggleRoutineUseCase(currentUserId, householdId, routine, true)
                 .onSuccess { _recentlyCompleted.value = routine }
         }

@@ -40,7 +40,6 @@ fun TypingIndicator(modifier: Modifier = Modifier) {
                 animationSpec = infiniteRepeatable(
                     animation = tween(DOT_DURATION_MS, easing = LinearEasing),
                     repeatMode = RepeatMode.Reverse,
-                    // Cada punto arranca un poco más tarde: así la onda recorre los tres.
                     initialStartOffset = StartOffset(index * DOT_STAGGER_MS)
                 ),
                 label = "typing-dot-$index"

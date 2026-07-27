@@ -89,8 +89,6 @@ class AiAssistantViewModel @Inject constructor(
         viewModelScope.launch {
             repository.observeModelStatus().collectLatest { status ->
                 _uiState.update { it.copy(modelStatus = status) }
-                // El estado cambia al terminar/cancelar descargas, borrar o cambiar de
-                // modelo: momento de refrescar qué modelos hay en disco.
                 refreshDownloadedModels()
             }
         }
@@ -130,15 +128,11 @@ class AiAssistantViewModel @Inject constructor(
     }
 
     fun onSelectModel(modelId: String) {
-        // Un modelo que no cabe en el dispositivo no llega ni a seleccionarse: seleccionarlo
-        // dejaría la pantalla en un callejón sin salida (sin chat y sin descarga posible).
         val model = _uiState.value.availableModels.find { it.id == modelId } ?: return
         if (!model.compatibilityWith(_uiState.value.deviceRamBytes).canUse) {
             _uiState.update { it.copy(errorRes = R.string.ai_model_unsupported_error) }
             return
         }
-        // Cambiar de modelo cierra el engine: se corta la generación en curso y se ESPERA a
-        // que el stream suelte la conversación nativa antes de que el repo cierre el engine.
         launchChatOperation {
             repository.selectModel(modelId)
         }
@@ -152,11 +146,6 @@ class AiAssistantViewModel @Inject constructor(
         val input = _uiState.value.currentInput.trim()
         if (input.isBlank() || _uiState.value.isGenerating) return
 
-        // Las puertas de seguimiento necesitan lo último que dijo el asistente ANTES de
-        // añadir los nuevos mensajes. Van los DOS últimos mensajes: tras "parar" +
-        // "continúa", la propuesta (p. ej. la lista) queda repartida en dos y con solo el
-        // último la extracción perdería la primera mitad. Acotado por el final, que es
-        // donde viven los ítems, para no desbordar el contexto del extractor.
         val previousAssistantProse = _uiState.value.chatSession.messages
             .filter { it.role is MessageRole.Assistant }
             .takeLast(FOLLOW_UP_SOURCE_MESSAGES)
@@ -178,8 +167,6 @@ class AiAssistantViewModel @Inject constructor(
 
             var session = _uiState.value.chatSession.addUserMessage(input)
 
-            // On the first message, inject the system instruction into the session object.
-            // The repository will then use it to configure the LiteRT-LM conversation.
             if (session.messages.size == 1 && session.systemPrompt.isBlank()) {
                 val aiContext = getAiContextUseCase()
                 session = session.copy(systemPrompt = aiContext)
@@ -201,9 +188,6 @@ class AiAssistantViewModel @Inject constructor(
                     val now = System.currentTimeMillis()
                     chunkCount++
                     if (firstChunkMs == 0L) firstChunkMs = now
-                    // Throttle: pintar cada token recompone la lista y re-parsea el markdown
-                    // del mensaje entero (coste cuadrático); a ~12 refrescos/s el stream se ve
-                    // igual de vivo. El texto completo se vuelca siempre en el flush final.
                     if (now - lastUiPush >= STREAM_UI_UPDATE_MS) {
                         lastUiPush = now
                         session = session.updateLastAssistantMessage(responseBuilder.toString().trimStart())
@@ -211,15 +195,11 @@ class AiAssistantViewModel @Inject constructor(
                         repository.setActiveSession(session)
                     }
                 }
-                // Flush final: garantiza que la cola del stream (bajo el umbral del throttle)
-                // queda pintada y persistida.
                 session = session.updateLastAssistantMessage(responseBuilder.toString().trimStart())
                 _uiState.update { it.copy(chatSession = session) }
                 repository.setActiveSession(session)
                 repository.saveSession(session)
 
-                // Métricas de generación (solo builds debug): las cifras que piden las
-                // métricas del plan (TTFT y velocidad de decode, GPU/MTP vs CPU).
                 if (BuildConfig.DEBUG && chunkCount > 0) {
                     val ttftSec = (firstChunkMs - sendStartMs) / 1000.0
                     val decodeMs = (System.currentTimeMillis() - firstChunkMs).coerceAtLeast(1L)
@@ -235,11 +215,6 @@ class AiAssistantViewModel @Inject constructor(
                     }
                 }
 
-                // Segundo turno (NL-to-Format): extraemos rutinas y/o lista de la compra del texto
-                // ya generado, solo cuando el usuario lo pidió (evita tarjetas espurias). Lo tecleado
-                // pasa por la puerta directa (el mensaje pide crear) o la de seguimiento (confirmación
-                // corta tras una propuesta). El chip de seguimiento NO pasa por aquí: va por el camino
-                // rápido de [onFollowUpChip], que se salta el turno conversacional.
                 val directRoutineIntent = routineCreationIntentUseCase(input)
                 val directShoppingIntent = shoppingCreationIntentUseCase(input)
                 val isShortConfirmation = routineCreationIntentUseCase.isFollowUpConfirmation(input)
@@ -250,8 +225,6 @@ class AiAssistantViewModel @Inject constructor(
 
                 val wantRoutineExtraction = directRoutineIntent || followUpRoutineIntent
                 val wantShoppingExtraction = directShoppingIntent || followUpShoppingIntent
-                // En los seguimientos la propuesta vive en los mensajes ANTERIORES (la
-                // respuesta a la confirmación puede no repetirla): entran como fuente extra.
                 val extraSource = previousAssistantProse.takeIf {
                     it.isNotBlank() && (followUpRoutineIntent || followUpShoppingIntent)
                 }
@@ -278,7 +251,6 @@ class AiAssistantViewModel @Inject constructor(
                 session = maybeGenerateTitle(session, input)
                 recomputeContextUsage()
             } catch (e: CancellationException) {
-                // Cancelación (parar respuesta, chat nuevo…): no es un error de generación.
                 throw e
             } catch (e: Exception) {
                 _uiState.update {
@@ -290,15 +262,6 @@ class AiAssistantViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Detiene la generación en curso conservando el texto parcial ya mostrado (mismo
-     * comportamiento que el botón de parar de ChatGPT o del AI Edge Gallery). Cancelar el job
-     * de envío hace que el repositorio mande `cancelProcess()` al motor (la cancelación de la
-     * corrutina por sí sola NO lo para: el Flow de litertlm trae el awaitClose vacío) y marque
-     * la conversación para recrearse; después persistimos el texto parcial. Un envío o un
-     * "chat nuevo" justo después esperan en el repo a que el motor confirme la parada antes
-     * de cerrar/recrear la conversación, que era lo que colgaba el engine.
-     */
     fun onStopGeneration() {
         if (!_uiState.value.isGenerating) return
         launchChatOperation {
@@ -306,10 +269,7 @@ class AiAssistantViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Analiza los mensajes del asistente en busca de los bloques estructurados (lista de la
-     * compra y rutinas) y guarda las sugerencias por id de mensaje para pintar sus tarjetas.
-     */
+    /** Parses structured data blocks in assistant messages and stores suggestions by message ID. */
     private fun parseAndStoreSuggestions(session: AiChatSession) {
         val assistantMessages = session.messages
             .filter { it.role is MessageRole.Assistant }
@@ -322,12 +282,6 @@ class AiAssistantViewModel @Inject constructor(
             .associate { it.id to parseAiRoutinesUseCase(it.content) }
             .filterValues { it.isNotEmpty() }
 
-        // Chip de seguimiento: el asistente propuso algo en prosa pero no salió tarjeta (la
-        // puerta no se abrió — p. ej. "continúa donde lo dejaste" — o la extracción no
-        // encontró nada). El destino se decide AQUÍ mirando qué propone el mensaje, para que
-        // el chip nunca ofrezca "crear rutinas" tras una lista de la compra; si propone ambas
-        // cosas, el chip es genérico y lanza las dos extracciones (la que no aplique
-        // devolverá vacío y no sacará tarjeta).
         val followUpTarget = assistantMessages.lastOrNull()?.let { msg ->
             val needsRoutines = routines[msg.id].isNullOrEmpty() &&
                 routineCreationIntentUseCase.looksLikeRoutineProposal(msg.content)
@@ -341,11 +295,10 @@ class AiAssistantViewModel @Inject constructor(
             }
         }
 
-        // Telemetría local: cuántas sugerencias sobreviven a la extracción (para medir fiabilidad).
         Log.d(
             tag,
-            "Sugerencias tras extracción: rutinas=${routines.values.sumOf { it.size }}, " +
-                "compra=${shopping.values.sumOf { it.size }}"
+            "Suggestions after extraction: routines=${routines.values.sumOf { it.size }}, " +
+                "shopping=${shopping.values.sumOf { it.size }}"
         )
         _uiState.update {
             it.copy(
@@ -401,9 +354,6 @@ class AiAssistantViewModel @Inject constructor(
         val prose = AiStructuredBlocks.stripFromDisplay(lastAssistant.content).trim()
         if (prose.isBlank()) return session
 
-        // En los seguimientos ("sí, créalas") la propuesta vive en el mensaje anterior:
-        // entra como fuente adicional para que la extracción no dependa de que la
-        // respuesta de confirmación repita las rutinas.
         val source = listOfNotNull(extraSource?.takeIf { it.isNotBlank() }, prose)
             .joinToString("\n\n")
 
@@ -413,7 +363,6 @@ class AiAssistantViewModel @Inject constructor(
         } finally {
             _uiState.update { it.copy(isExtractingSuggestions = false) }
         }
-        // Sin JSON aprovechable no tocamos el mensaje.
         if (!json.contains('{')) return session
 
         val enriched = lastAssistant.content + "\n\n$marker ${json.trim()}"
@@ -458,7 +407,6 @@ class AiAssistantViewModel @Inject constructor(
         _uiState.update { it.copy(addedToListCount = null) }
     }
 
-    /** Crea las rutinas que propuso el asistente en el mensaje indicado. */
     fun onAddRoutineSuggestions(messageId: String, type: RoutineType) {
         val state = _uiState.value
         val routines = state.routineSuggestions[messageId] ?: return
@@ -498,21 +446,10 @@ class AiAssistantViewModel @Inject constructor(
         onSendMessage()
     }
 
-    /**
-     * Camino rápido del chip de seguimiento ("Sí, a la lista" / "Sí, créalas"): en vez de
-     * mandar otro turno al modelo (que re-narraría toda la propuesta, decenas de segundos),
-     * añade una confirmación breve y lanza directamente el turno 2 de extracción sobre la
-     * propuesta que ya vive en los mensajes anteriores. La tarjeta cuelga de la confirmación.
-     *
-     * [userText] (la confirmación visible) y [ackText] (el "voy") llegan ya localizados desde
-     * la pantalla; el destino de la extracción se lee de [AiAssistantUiState.followUpTarget].
-     */
     fun onFollowUpChipTapped(userText: String, ackText: String) {
         if (_uiState.value.isGenerating) return
         val target = _uiState.value.followUpTarget ?: return
 
-        // Misma fuente que las extracciones de seguimiento de [onSendMessage]: los últimos
-        // mensajes del asistente sin bloques, acotados por el final (donde viven los ítems).
         val source = _uiState.value.chatSession.messages
             .filter { it.role is MessageRole.Assistant }
             .takeLast(FOLLOW_UP_SOURCE_MESSAGES)
@@ -523,7 +460,6 @@ class AiAssistantViewModel @Inject constructor(
         launchChatOperation {
             _uiState.update { it.copy(followUpTarget = null, error = null, errorRes = null) }
 
-            // Intercambio visible SIN modelo: la confirmación del usuario y un "voy" corto.
             var session = _uiState.value.chatSession
                 .addUserMessage(userText)
                 .addAssistantMessage(ackText)
@@ -550,8 +486,6 @@ class AiAssistantViewModel @Inject constructor(
                 parseAndStoreSuggestions(session)
                 recomputeContextUsage()
 
-                // ¿Salió de verdad la tarjeta? Si la extracción no encontró nada, no hay ni
-                // tarjeta ni chip: se repone el chip y se avisa, para poder reintentar.
                 val produced = _uiState.value.shoppingSuggestions[ackMessageId].orEmpty().isNotEmpty() ||
                     _uiState.value.routineSuggestions[ackMessageId].orEmpty().isNotEmpty()
                 if (!produced) {
@@ -563,8 +497,6 @@ class AiAssistantViewModel @Inject constructor(
                     }
                 }
 
-                // La conversación nativa no ha visto este intercambio: que el siguiente envío
-                // la recree desde la sesión persistida en vez de reutilizarla.
                 repository.resetSession()
             } catch (e: CancellationException) {
                 throw e
@@ -582,11 +514,6 @@ class AiAssistantViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Descarga con puerta por memoria. Un modelo que no cabe no se descarga (son cientos de MB
-     * o gigabytes para algo que al cargarse cerraría la app en seco); uno que va justo pide
-     * confirmación antes, igual que hace el AI Edge Gallery de Google.
-     */
     fun onDownloadModel(wifiOnly: Boolean = false) {
         val model = _uiState.value.selectedModel
         when (model?.compatibilityWith(_uiState.value.deviceRamBytes)) {
@@ -603,7 +530,6 @@ class AiAssistantViewModel @Inject constructor(
         startDownload(wifiOnly)
     }
 
-    /** El usuario aceptó el aviso de "va justo de memoria": se descarga igualmente. */
     fun onConfirmTightDownload() {
         _uiState.update { it.copy(pendingTightDownloadModel = null) }
         startDownload(lastDownloadWifiOnly)
@@ -614,7 +540,6 @@ class AiAssistantViewModel @Inject constructor(
     }
 
     private fun startDownload(wifiOnly: Boolean) {
-        // Se recuerda la elección de red para que "reintentar" no vuelva a preguntar.
         lastDownloadWifiOnly = wifiOnly
         viewModelScope.launch {
             try {
@@ -628,10 +553,6 @@ class AiAssistantViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Reintento explícito tras un fallo de carga que se llevó el proceso. Solo lo dispara el
-     * usuario desde el botón: el veto automático existe justo para que no se reintente solo.
-     */
     fun onRetryAfterLoadCrash() {
         val modelId = _uiState.value.selectedModel?.id ?: return
         repository.clearLoadFailures(modelId)
@@ -646,7 +567,6 @@ class AiAssistantViewModel @Inject constructor(
         repository.cancelDownload()
     }
 
-    /** Borra el modelo del disco; si era el seleccionado, vuelve la tarjeta de descarga. */
     fun onDeleteModel(modelId: String) {
         viewModelScope.launch {
             repository.deleteModel(modelId)
@@ -661,16 +581,10 @@ class AiAssistantViewModel @Inject constructor(
     }
 
     fun onNewChat() {
-        // La casa puede haber cambiado desde que se abrió la pantalla (lista, rutinas…).
         refreshQuickPrompts()
         launchChatOperation { startNewSession() }
     }
 
-    /**
-     * Arranca una sesión vacía y la deja activa. Es `suspend` (no lanza su propio job) para
-     * poder reutilizarse tras borrar el chat abierto sin encadenar otra cancelación sobre la
-     * operación que ya está corriendo.
-     */
     private suspend fun startNewSession() {
         val newSession = AiChatSession(modelId = _uiState.value.selectedModel?.id ?: "")
         repository.setActiveSession(newSession)
@@ -696,10 +610,7 @@ class AiAssistantViewModel @Inject constructor(
     fun onLoadChat(sessionId: String) {
         launchChatOperation {
             val session = repository.getSession(sessionId) ?: return@launchChatOperation
-            // La sesión queda activa y pintada YA; el refresco de contexto va después (si
-            // el usuario envía antes de que termine, el envío usa el contexto guardado).
             repository.setActiveSession(session)
-            // Auto switch model if different
             if (session.modelId != _uiState.value.selectedModel?.id) {
                 repository.selectModel(session.modelId)
             }
@@ -717,9 +628,6 @@ class AiAssistantViewModel @Inject constructor(
             parseAndStoreSuggestions(session)
             recomputeContextUsage()
 
-            // El contexto oculto quedó congelado cuando nació la sesión (la lista, despensa
-            // y rutinas de aquel día): se refresca ahora, que la conversación se recrea
-            // igualmente al recargar, así el prefill ya lleva el estado actual de la casa.
             var refreshed = session
             if (session.systemPrompt.isNotBlank()) {
                 val fresh = getAiContextUseCase()
@@ -738,8 +646,6 @@ class AiAssistantViewModel @Inject constructor(
         launchChatOperation {
             repository.deleteSession(sessionId)
             if (_uiState.value.chatSession.id == sessionId) {
-                // El chat abierto era el borrado: se arranca uno vacío en el MISMO job (no
-                // vía onNewChat, que relanzaría otra cancelación sobre esta operación).
                 refreshQuickPrompts()
                 startNewSession()
             }
@@ -750,16 +656,9 @@ class AiAssistantViewModel @Inject constructor(
         _uiState.update { it.copy(error = null, errorRes = null) }
     }
 
-    /**
-     * Compacta el contexto: resume la parte antigua de la conversación y la sustituye por ese
-     * resumen (que viaja en el system prompt), conservando literales los últimos
-     * [KEEP_RECENT_MESSAGES] mensajes. El historial VISIBLE no cambia (todas las burbujas
-     * siguen ahí): solo cambia lo que se le pasa al modelo. Recrea la conversación nativa.
-     */
     fun onCompactContext() {
         val session = _uiState.value.chatSession
         if (_uiState.value.isCompacting || _uiState.value.isGenerating) return
-        // Nada que compactar si no hay más que la cola reciente por encima del resumen.
         if (session.messages.size - session.summarizedUpTo <= KEEP_RECENT_MESSAGES) return
 
         launchChatOperation {
@@ -778,7 +677,6 @@ class AiAssistantViewModel @Inject constructor(
                 repository.saveSession(compacted)
                 _uiState.update { it.copy(chatSession = compacted, contextCompacted = true) }
                 recomputeContextUsage()
-                // La conversación nativa se recrea ya con el resumen + la cola reciente.
                 repository.resetSession()
             } catch (e: CancellationException) {
                 throw e

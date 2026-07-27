@@ -25,17 +25,13 @@ class AuthRepositoryImpl @Inject constructor(
     private val accountDataCleaners: Set<@JvmSuppressWildcards AccountDataCleaner>
 ) : AuthRepository {
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Existente: Login con email/contraseña
-    // ─────────────────────────────────────────────────────────────────────────
-
     override suspend fun login(credentials: LoginCredentials): Result<AuthToken> {
         return try {
             val authResult = firebaseAuth
                 .signInWithEmailAndPassword(credentials.email, credentials.password)
                 .await()
             val user = authResult.user
-                ?: throw Exception("Usuario no encontrado tras el acceso")
+                ?: throw Exception("User not found after sign in")
 
             val tokenResult = user.getIdToken(false).await()
             val accessToken = tokenResult.token ?: ""
@@ -47,28 +43,21 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Nuevo: Registro con email/contraseña
-    // ─────────────────────────────────────────────────────────────────────────
-
     override suspend fun register(credentials: RegisterCredentials): Result<AuthUser> {
         return try {
             val authResult = firebaseAuth
                 .createUserWithEmailAndPassword(credentials.email, credentials.password)
                 .await()
             val user = authResult.user
-                ?: return Result.failure(RegisterError.Unknown(Exception("FirebaseUser null tras registro")))
+                ?: return Result.failure(RegisterError.Unknown(Exception("FirebaseUser null after registration")))
 
-            // Actualizar displayName en el perfil de Firebase
             val profileUpdates = UserProfileChangeRequest.Builder()
                 .setDisplayName(credentials.displayName)
                 .build()
             user.updateProfile(profileUpdates).await()
 
-            // Enviar email de verificación
             user.sendEmailVerification().await()
 
-            // Obtener token de sesión
             val tokenResult = user.getIdToken(false).await()
             val accessToken = tokenResult.token ?: ""
             val authToken = AuthToken(accessToken = accessToken, refreshToken = "")
@@ -93,16 +82,12 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Nuevo: Google Sign-In
-    // ─────────────────────────────────────────────────────────────────────────
-
     override suspend fun signInWithGoogle(idToken: String): Result<AuthUser> {
         return try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             val authResult = firebaseAuth.signInWithCredential(credential).await()
             val user = authResult.user
-                ?: return Result.failure(RegisterError.Unknown(Exception("FirebaseUser null tras Google Sign-In")))
+                ?: return Result.failure(RegisterError.Unknown(Exception("FirebaseUser null after Google Sign-In")))
 
             val tokenResult = user.getIdToken(false).await()
             val accessToken = tokenResult.token ?: ""
@@ -113,7 +98,7 @@ class AuthRepositoryImpl @Inject constructor(
                     uid = user.uid,
                     email = user.email,
                     displayName = user.displayName,
-                    isEmailVerified = true, // Google garantiza verificación
+                    isEmailVerified = true,
                     authToken = authToken
                 )
             )
@@ -125,10 +110,6 @@ class AuthRepositoryImpl @Inject constructor(
             Result.failure(RegisterError.Unknown(e))
         }
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Nuevo: Estado de sesión
-    // ─────────────────────────────────────────────────────────────────────────
 
     override fun getCurrentUser(): AuthUser? {
         val user = firebaseAuth.currentUser ?: return null
@@ -144,8 +125,8 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun reloadCurrentUser(): Result<AuthUser> {
         return try {
             val user = firebaseAuth.currentUser
-                ?: return Result.failure(RegisterError.Unknown(Exception("No hay usuario activo")))
-            user.reload().await() // invalida la caché local de Firebase
+                ?: return Result.failure(RegisterError.Unknown(Exception("No active user")))
+            user.reload().await()
             Result.success(
                 AuthUser(
                     uid = user.uid,
@@ -161,9 +142,6 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun signOut() {
-        // Solo cierra la sesión de Firebase. NO se borran datos locales: un logout (voluntario
-        // o por caducidad de sesión) no debe llevarse el historial de chat; el usuario volvería
-        // a entrar y lo encontraría vacío. La limpieza vive en deleteAccount().
         firebaseAuth.signOut()
     }
 
@@ -172,8 +150,6 @@ class AuthRepositoryImpl @Inject constructor(
             firebaseAuth.sendPasswordResetEmail(email).await()
             Result.success(Unit)
         } catch (e: FirebaseAuthInvalidUserException) {
-            // El correo no está registrado. No lo revelamos (evita enumeración de cuentas):
-            // se responde igual que un envío correcto.
             Result.success(Unit)
         } catch (e: UnknownHostException) {
             Result.failure(RegisterError.NetworkError)

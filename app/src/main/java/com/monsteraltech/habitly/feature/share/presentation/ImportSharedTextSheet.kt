@@ -85,13 +85,11 @@ fun ImportSharedTextSheet(
         viewModel.onTextReceived(sharedText)
     }
 
-    // Cierre inmediato (el gesto ya trae su propia animación).
     val dismiss: () -> Unit = {
         viewModel.onDismissed()
         onDismiss()
     }
 
-    // Cierre desde un botón: primero se retira la hoja con su animación y luego se limpia.
     val hideAndDismiss: () -> Unit = {
         scope.launch { sheetState.hide() }.invokeOnCompletion { dismiss() }
     }
@@ -150,8 +148,6 @@ fun ImportSharedTextSheet(
 
             Spacer(Modifier.height(16.dp))
 
-            // Sin modelo en disco no se deja al usuario tirado: lo que se ve sale del lector de
-            // texto plano y desde aquí puede descargar el modelo para una lectura mejor.
             if (uiState.stage != ImportStage.ANALYZING && !uiState.isModelReady) {
                 OfferLocalModel(
                     isDownloading = uiState.isDownloading,
@@ -162,8 +158,6 @@ fun ImportSharedTextSheet(
                 Spacer(Modifier.height(12.dp))
             }
 
-            // También cuando no se ha reconocido nada: es justo el caso en el que el usuario
-            // acaba de descargar el modelo y necesita poder reintentar con él.
             if (uiState.canAnalyzeWithAi) {
                 HabitlyTextButton(
                     text = stringResource(R.string.share_analyze_with_ai),
@@ -279,7 +273,6 @@ private fun ReviewState(
     onChangeQuantity: (Int, Int) -> Unit,
     onToggleRoutine: (Int) -> Unit
 ) {
-    // Acotada en alto: una receta larga no puede empujar el botón de guardar fuera de la hoja.
     LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
         if (uiState.products.isNotEmpty()) {
             item(key = "products-header") {

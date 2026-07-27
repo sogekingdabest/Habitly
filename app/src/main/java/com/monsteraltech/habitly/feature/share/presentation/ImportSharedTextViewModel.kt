@@ -118,13 +118,8 @@ class ImportSharedTextViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Punto de entrada: el texto crudo que ha llegado por `ACTION_SEND`. Con el modelo en disco
-     * se analiza con IA; sin él se propone ya el parseo por líneas, que es instantáneo, y la
-     * pantalla ofrece descargarlo.
-     */
     fun onTextReceived(raw: String) {
-        if (sanitizedText.isNotBlank()) return // Ya se está trabajando con este texto.
+        if (sanitizedText.isNotBlank()) return
 
         sanitizedText = SharedTextGuard.sanitize(raw)
         if (sanitizedText.isBlank()) {
@@ -139,7 +134,6 @@ class ImportSharedTextViewModel @Inject constructor(
         }
     }
 
-    /** Relanza la extracción con el modelo local (tras descargarlo, o si el parseo simple falló). */
     fun onAnalyzeWithAi() {
         if (!_uiState.value.isModelReady || sanitizedText.isBlank()) return
         analyzeWithAi()
@@ -154,8 +148,7 @@ class ImportSharedTextViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(tag, "Fallo al analizar el texto compartido", e)
-                // Sin IA hay salida: se propone el parseo por líneas y se avisa del fallo.
+                Log.e(tag, "Failed to analyze shared text", e)
                 showExtraction(extractSharedTextUseCase.withoutAi(sanitizedText))
                 _uiState.update { it.copy(errorRes = R.string.share_error_analyze) }
             }

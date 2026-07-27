@@ -124,8 +124,6 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Cabecera comprimida: la fecha y el saludo se comían la primera pantalla
-                // entera, que es justo donde tiene que estar lo accionable.
                 item {
                     DashboardHeader(
                         today = today,
@@ -185,7 +183,6 @@ fun DashboardScreen(
                     }
                 }
 
-                // Añadir rutina
                 item {
                     HabitlyPrimaryButton(
                         text = stringResource(R.string.routines_add_routine),
@@ -257,8 +254,6 @@ private fun TodayProgressCard(
     byMember: List<MemberTally>,
     onClick: () -> Unit
 ) {
-    // Pulsable, como la tarjeta de compra: desde el resumen del día se salta a la lista
-    // completa de rutinas, que es lo que el panel ya no enseña entera a propósito.
     HabitlyCard(shape = LeafCornerLarge, contentPadding = PaddingValues(16.dp), onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ProgressRing(progress = progress)
@@ -341,7 +336,6 @@ private fun ShoppingSummaryCard(
             IconHalo {
                 Icon(
                     Icons.Outlined.ShoppingCart,
-                    // Decorativo: el título de al lado ya dice de qué es la tarjeta.
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )

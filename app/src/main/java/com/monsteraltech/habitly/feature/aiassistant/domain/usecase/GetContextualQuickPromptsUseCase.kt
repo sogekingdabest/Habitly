@@ -68,7 +68,6 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
                     pantryRepository.observePantry(householdId).firstOrNull()
                 }?.size ?: 0
             }
-            // Nº de personas de la casa: el menú semanal pide cantidades para todas.
             val memberCount = async {
                 withTimeoutOrNull(timeoutMs) {
                     householdRepository.observeHousehold(householdId).firstOrNull()
@@ -86,7 +85,6 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
         }
     }
 
-    /** Estado de la casa que influye en los chips. Nulo cuando no se pudo leer. */
     private data class Snapshot(
         val pendingItems: Int?,
         val pendingRoutinesToday: Int,
@@ -97,18 +95,15 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
     private fun build(today: LocalDate, snapshot: Snapshot?, memberCount: Int = 1): List<AiQuickPrompt> {
         val contextual = mutableListOf<AiQuickPrompt>()
 
-        // Fin de semana y lunes: es cuando se planifica la semana.
         if (today.dayOfWeek in PLANNING_DAYS) {
             contextual += AiQuickPrompt(QuickPromptId.WEEKLY_MENU, memberCount)
         }
 
         if (snapshot != null) {
-            // Con la despensa llena, lo más útil que sabe hacer el asistente es cocinar con ella.
             if (snapshot.pantrySize >= ENOUGH_PANTRY) {
                 contextual += AiQuickPrompt(QuickPromptId.COOK_FROM_PANTRY)
             }
 
-            // Con pocas rutinas, lo útil es ayudar a montarlas: el asistente las crea de una tacada.
             if (snapshot.totalRoutines < FEW_ROUTINES) {
                 contextual += AiQuickPrompt(QuickPromptId.CLEANING_PLAN)
             }
