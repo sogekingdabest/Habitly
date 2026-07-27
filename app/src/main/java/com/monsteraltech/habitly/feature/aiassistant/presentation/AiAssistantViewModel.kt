@@ -9,6 +9,8 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiShoppingSuggestion
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.FollowUpTarget
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.ModelCompatibility
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.compatibilityWith
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiAssistantRepository
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiRoutineSuggestion
 import com.monsteraltech.habitly.feature.aiassistant.domain.usecase.AddAiItemsToShoppingListUseCase
@@ -63,7 +65,12 @@ class AiAssistantViewModel @Inject constructor(
     private var lastDownloadWifiOnly = false
 
     init {
-        _uiState.update { it.copy(availableModels = repository.getAvailableModels()) }
+        _uiState.update {
+            it.copy(
+                availableModels = repository.getAvailableModels(),
+                deviceRamBytes = repository.getDeviceRamBytes()
+            )
+        }
 
         refreshQuickPrompts()
 
@@ -123,6 +130,13 @@ class AiAssistantViewModel @Inject constructor(
     }
 
     fun onSelectModel(modelId: String) {
+        // Un modelo que no cabe en el dispositivo no llega ni a seleccionarse: seleccionarlo
+        // dejaría la pantalla en un callejón sin salida (sin chat y sin descarga posible).
+        val model = _uiState.value.availableModels.find { it.id == modelId } ?: return
+        if (!model.compatibilityWith(_uiState.value.deviceRamBytes).canUse) {
+            _uiState.update { it.copy(errorRes = R.string.ai_model_unsupported_error) }
+            return
+        }
         // Cambiar de modelo cierra el engine: se corta la generación en curso y se ESPERA a
         // que el stream suelte la conversación nativa antes de que el repo cierre el engine.
         launchChatOperation {
@@ -568,7 +582,38 @@ class AiAssistantViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Descarga con puerta por memoria. Un modelo que no cabe no se descarga (son cientos de MB
+     * o gigabytes para algo que al cargarse cerraría la app en seco); uno que va justo pide
+     * confirmación antes, igual que hace el AI Edge Gallery de Google.
+     */
     fun onDownloadModel(wifiOnly: Boolean = false) {
+        val model = _uiState.value.selectedModel
+        when (model?.compatibilityWith(_uiState.value.deviceRamBytes)) {
+            ModelCompatibility.Unsupported -> {
+                _uiState.update { it.copy(errorRes = R.string.ai_model_unsupported_error) }
+                return
+            }
+            ModelCompatibility.Tight -> {
+                _uiState.update { it.copy(pendingTightDownloadModel = model) }
+                return
+            }
+            else -> Unit
+        }
+        startDownload(wifiOnly)
+    }
+
+    /** El usuario aceptó el aviso de "va justo de memoria": se descarga igualmente. */
+    fun onConfirmTightDownload() {
+        _uiState.update { it.copy(pendingTightDownloadModel = null) }
+        startDownload(lastDownloadWifiOnly)
+    }
+
+    fun onDismissTightDownload() {
+        _uiState.update { it.copy(pendingTightDownloadModel = null) }
+    }
+
+    private fun startDownload(wifiOnly: Boolean) {
         // Se recuerda la elección de red para que "reintentar" no vuelva a preguntar.
         lastDownloadWifiOnly = wifiOnly
         viewModelScope.launch {
@@ -581,6 +626,15 @@ class AiAssistantViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Reintento explícito tras un fallo de carga que se llevó el proceso. Solo lo dispara el
+     * usuario desde el botón: el veto automático existe justo para que no se reintente solo.
+     */
+    fun onRetryAfterLoadCrash() {
+        val modelId = _uiState.value.selectedModel?.id ?: return
+        repository.clearLoadFailures(modelId)
     }
 
     fun onRetryDownload() {

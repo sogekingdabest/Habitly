@@ -23,6 +23,13 @@ data class AiAssistantUiState(
     val modelStatus: ModelStatus = ModelStatus.NotDownloaded,
     val availableModels: List<AiModelConfig> = emptyList(),
     val selectedModel: AiModelConfig? = null,
+    /**
+     * RAM del dispositivo en GB comerciales (bytes). La pantalla la cruza con los umbrales de
+     * cada modelo (`compatibilityWith`) para saber cuál ofrecer, cuál avisar y cuál bloquear.
+     */
+    val deviceRamBytes: Long = 0L,
+    /** Modelo justo de RAM pendiente de que el usuario confirme la descarga, o `null`. */
+    val pendingTightDownloadModel: AiModelConfig? = null,
     /** Ids de los modelos del catálogo ya descargados (para el desplegable de modelos). */
     val downloadedModelIds: Set<String> = emptySet(),
     val chatHistory: List<AiChatSession> = emptyList(),

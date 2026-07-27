@@ -52,5 +52,50 @@ class EstimateContextUsageUseCaseTest {
         assertTrue(useCase(withPrompt, 4096) > 0f)
     }
 
+    // Reserva proporcional. Viene de un fallo real: con el modelo ligero (ventana de 2048) la
+    // primera respuesta ya marcaba 100%, porque la reserva era una constante de 1000 tokens
+    // pensada para ventanas de 4096 y se comía media ventana.
+
+    @Test
+    fun `the response reserve never eats more than a quarter of the window`() {
+        listOf(1024, 2048, 4096, 8192).forEach { maxTokens ->
+            val reserve = EstimateContextUsageUseCase.responseReserveFor(maxTokens)
+            assertTrue(
+                "Con $maxTokens tokens la reserva ($reserve) pasa del cuarto de la ventana",
+                reserve <= maxTokens / 4
+            )
+            assertTrue("La reserva no puede ser cero", reserve > 0)
+        }
+    }
+
+    @Test
+    fun `large windows keep the reserve they always had`() {
+        // No debe cambiar el comportamiento de los Gemma, que ya iban bien.
+        assertEquals(1000, EstimateContextUsageUseCase.responseReserveFor(4096))
+        assertEquals(1000, EstimateContextUsageUseCase.responseReserveFor(8192))
+    }
+
+    @Test
+    fun `one normal exchange does not fill the window`() {
+        // Medidas reales del dispositivo: system prompt de 2271 caracteres, pregunta de 264 y
+        // un menú semanal con lista de ingredientes de unos 4000.
+        val session = AiChatSession(
+            systemPrompt = "s".repeat(2271),
+            messages = listOf(msg("u".repeat(264)), msg("a".repeat(4000)))
+        )
+
+        val usage = useCase(session, maxTokens = 4096)
+
+        assertTrue("Un solo intercambio no debería agotar el contexto: $usage", usage < 0.9f)
+    }
+
+    @Test
+    fun `a genuinely long conversation still warns`() {
+        val messages = (1..8).flatMap { listOf(msg("u".repeat(300)), msg("a".repeat(3000))) }
+        val session = AiChatSession(systemPrompt = "s".repeat(2271), messages = messages)
+
+        assertEquals(1f, useCase(session, maxTokens = 4096), 0.001f)
+    }
+
     private fun msg(content: String) = AiMessage(role = MessageRole.User, content = content)
 }

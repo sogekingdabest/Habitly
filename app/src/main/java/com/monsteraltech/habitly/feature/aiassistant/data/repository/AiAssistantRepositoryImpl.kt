@@ -29,7 +29,9 @@ import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import androidx.work.workDataOf
 import java.util.concurrent.TimeUnit
+import com.monsteraltech.habitly.feature.aiassistant.data.source.DeviceMemoryProbe
 import com.monsteraltech.habitly.feature.aiassistant.data.source.LocalModelManager
+import com.monsteraltech.habitly.feature.aiassistant.data.source.ModelLoadWatchdog
 import com.monsteraltech.habitly.feature.aiassistant.data.tools.RoutineProposalTools
 import com.monsteraltech.habitly.feature.aiassistant.data.source.local.AiChatDao
 import com.monsteraltech.habitly.feature.aiassistant.data.source.local.AiChatSessionEntity
@@ -38,6 +40,8 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiModelConfig
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AvailableAiModels
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.ModelCompatibility
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.compatibilityWith
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiAssistantRepository
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStatus
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -74,6 +78,8 @@ class AiAssistantRepositoryImpl @Inject constructor(
     private val aiChatDao: AiChatDao,
     private val sharedPreferences: SharedPreferences,
     private val firebaseAuth: FirebaseAuth,
+    private val deviceMemoryProbe: DeviceMemoryProbe,
+    private val modelLoadWatchdog: ModelLoadWatchdog,
     @ApplicationContext private val context: Context
 ) : AiAssistantRepository {
 
@@ -123,12 +129,34 @@ class AiAssistantRepositoryImpl @Inject constructor(
         observeDownloadWork()
     }
 
+    /**
+     * Modelo guardado o, si no hay ninguno, el mejor que aguante el dispositivo. Sin este
+     * segundo caso un móvil de 4 GB estrenaría la app con un modelo que no puede ni descargar.
+     * Una elección explícita del usuario se respeta aunque le quede grande: para eso está el
+     * aviso de la pantalla.
+     */
     private fun getSavedModel(): AiModelConfig {
-        val savedId = sharedPreferences.getString("selected_model_id", AvailableAiModels.Gemma4_E2B_IT.id)
-        return AvailableAiModels.models.find { it.id == savedId } ?: AvailableAiModels.Gemma4_E2B_IT
+        val savedId = sharedPreferences.getString("selected_model_id", null)
+        AvailableAiModels.models.find { it.id == savedId }?.let { return it }
+        return bestModelForDevice()
+    }
+
+    /** El modelo más capaz que el dispositivo soporta; si ninguno encaja, el más liviano. */
+    private fun bestModelForDevice(): AiModelConfig {
+        val ram = deviceMemoryProbe.totalRamBytes()
+        return AvailableAiModels.models
+            .lastOrNull { it.compatibilityWith(ram).canUse }
+            ?: AvailableAiModels.models.first()
     }
 
     override fun getAvailableModels(): List<AiModelConfig> = AvailableAiModels.models
+
+    override fun getDeviceRamBytes(): Long = deviceMemoryProbe.totalRamBytes()
+
+    override fun clearLoadFailures(modelId: String) {
+        modelLoadWatchdog.reset(modelId)
+        if (modelId == _selectedModel.value.id) checkModelStatus(_selectedModel.value)
+    }
 
     override fun observeSelectedModel(): Flow<AiModelConfig> = _selectedModel.asStateFlow()
 
@@ -148,7 +176,22 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
     override fun observeModelStatus(): Flow<ModelStatus> = _modelStatus.asStateFlow()
 
+    /**
+     * Estado del modelo seleccionado. El orden importa: primero lo que impide siquiera
+     * intentarlo (no cabe en el dispositivo, o ya se llevó el proceso por delante) y solo
+     * después si está en disco. Descargar 700 MB o 2,6 GB para algo que no va a arrancar es
+     * el peor final posible.
+     */
     private fun checkModelStatus(config: AiModelConfig) {
+        val compatibility = config.compatibilityWith(deviceMemoryProbe.totalRamBytes())
+        if (compatibility == ModelCompatibility.Unsupported) {
+            _modelStatus.value = ModelStatus.Unsupported
+            return
+        }
+        if (modelLoadWatchdog.failedAttempts(config.id) >= MAX_LOAD_ATTEMPTS) {
+            _modelStatus.value = ModelStatus.LoadCrashed
+            return
+        }
         val path = localModelManager.getModelPath(config)
         if (path != null) {
             _modelStatus.value = ModelStatus.Ready
@@ -159,6 +202,15 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
     override suspend fun downloadModel(wifiOnly: Boolean) {
         val config = _selectedModel.value
+
+        // Puerta dura: aquí no llega la UI en condiciones normales (el botón está bloqueado),
+        // pero es la última línea antes de gastar gigabytes de los datos del usuario.
+        if (config.compatibilityWith(deviceMemoryProbe.totalRamBytes()) == ModelCompatibility.Unsupported) {
+            Log.w(tag, "Descarga rechazada: ${config.id} no cabe en este dispositivo")
+            _modelStatus.value = ModelStatus.Unsupported
+            return
+        }
+
         _modelStatus.value = ModelStatus.Downloading(0f)
 
         // UNMETERED = solo Wi-Fi (u otras redes sin tarifa); CONNECTED = también datos.
@@ -242,6 +294,9 @@ class AiAssistantRepositoryImpl @Inject constructor(
                 engineMutex.withLock { unload() }
             }
             localModelManager.deleteModel(config)
+            // Borrar y volver a descargar es el gesto natural tras un fallo de carga: que el
+            // fichero nuevo no herede el veto del anterior (podía estar simplemente corrupto).
+            modelLoadWatchdog.reset(config.id)
             if (config.id == _selectedModel.value.id) {
                 checkModelStatus(config)
             }
@@ -589,29 +644,69 @@ class AiAssistantRepositoryImpl @Inject constructor(
     /** Carga real del engine. Llamar SIEMPRE con [engineMutex] cogido. */
     @OptIn(ExperimentalApi::class)
     private suspend fun loadModelLocked(session: AiChatSession? = null) {
+        val config = _selectedModel.value
+
+        // Puerta 1: el dispositivo no da. Ni se intenta: intentarlo es perder el proceso.
+        if (config.compatibilityWith(deviceMemoryProbe.totalRamBytes()) == ModelCompatibility.Unsupported) {
+            Log.w(tag, "Carga rechazada: ${config.id} no cabe en este dispositivo")
+            _modelStatus.value = ModelStatus.Unsupported
+            return
+        }
+
+        // Puerta 2: ya se llevó el proceso por delante antes. `onLoadStarting` deja la marca en
+        // disco ANTES de tocar el motor, así que si esta llamada no vuelve, la siguiente lo sabrá.
+        val failedAttempts = modelLoadWatchdog.onLoadStarting(config.id)
+        if (failedAttempts >= MAX_LOAD_ATTEMPTS) {
+            Log.w(tag, "Carga abandonada tras $failedAttempts intentos fallidos. ${modelLoadWatchdog.lastExitDiagnosis()}")
+            _modelStatus.value = ModelStatus.LoadCrashed
+            return
+        }
+
+        // Un fallo previo (no dos) rebaja las pretensiones: CPU y la mitad de KV cache. Si el
+        // primer intento murió por memoria, repetirlo igual solo repite el cierre.
+        val degraded = failedAttempts > 0
+        if (degraded) {
+            Log.w(tag, "Reintento degradado de ${config.id} (CPU, contexto reducido)")
+        }
+
         try {
-            val config = _selectedModel.value
             val modelPath = localModelManager.getModelPath(config)
                 ?: throw IllegalStateException("Modelo no descargado")
 
-            // GPU es mucho más rápida y es donde MTP (speculative decoding) aporta; si no está
-            // disponible, cae a CPU y desactiva MTP (en CPU no compensa).
-            engine = try {
-                buildEngine(config, modelPath, Backend.GPU(), speculative = config.supportsSpeculativeDecoding)
-            } catch (e: Exception) {
-                Log.w(tag, "Backend GPU no disponible, se usa CPU", e)
-                buildEngine(config, modelPath, Backend.CPU(), speculative = false)
+            val maxTokens = if (degraded) config.maxTokens / 2 else config.maxTokens
+
+            engine = if (!config.supportsGpu || degraded) {
+                // Hay modelos cuyo grafo los delegados de GPU no soportan (LFM2.5 y su conv
+                // híbrida). Ahí NO vale intentar y capturar: un delegado atragantándose con un
+                // grafo que no entiende puede irse por SIGSEGV, y eso no lo recoge ningún catch.
+                buildEngine(config, modelPath, Backend.CPU(), speculative = false, maxTokens = maxTokens)
+            } else {
+                // GPU es mucho más rápida y es donde MTP (speculative decoding) aporta; si no
+                // está disponible, cae a CPU y desactiva MTP (en CPU no compensa).
+                try {
+                    buildEngine(config, modelPath, Backend.GPU(), config.supportsSpeculativeDecoding, maxTokens)
+                } catch (e: Exception) {
+                    Log.w(tag, "Backend GPU no disponible, se usa CPU", e)
+                    buildEngine(config, modelPath, Backend.CPU(), speculative = false, maxTokens = maxTokens)
+                }
             }
 
             warmUp(engine!!)
             createConversation(session)
+            // Solo aquí se limpia la marca: el engine existe y ha generado su token de warmup.
+            modelLoadWatchdog.onLoadSucceeded(config.id)
             Log.d(tag, "LiteRT-LM engine loaded from: $modelPath")
             _modelStatus.value = ModelStatus.Ready
         } catch (e: kotlinx.coroutines.CancellationException) {
             // Cancelar el job que cargaba (chat nuevo, parar respuesta…) no es un error
-            // del modelo: se propaga sin pisar el estado con un Error falso.
+            // del modelo: se propaga sin pisar el estado con un Error falso. Y no cuenta como
+            // muerte silenciosa: el proceso sigue vivo, así que se retira la marca.
+            modelLoadWatchdog.onLoadFailedGracefully(config.id)
             throw e
         } catch (e: Exception) {
+            // Falló, pero con excepción: seguimos vivos y esto no es el caso que vigila el
+            // watchdog. Se limpia la marca para no acusar de un cierre que no hubo.
+            modelLoadWatchdog.onLoadFailedGracefully(config.id)
             Log.e(tag, "Error loading LiteRT-LM model", e)
             _modelStatus.value = ModelStatus.Error(
                 "Error al cargar el modelo: ${e.message}"
@@ -629,13 +724,14 @@ class AiAssistantRepositoryImpl @Inject constructor(
         config: AiModelConfig,
         modelPath: String,
         backend: Backend,
-        speculative: Boolean
+        speculative: Boolean,
+        maxTokens: Int = config.maxTokens
     ): Engine {
         ExperimentalFlags.enableSpeculativeDecoding = speculative
         val engineConfig = EngineConfig(
             modelPath = modelPath,
             backend = backend,
-            maxNumTokens = config.maxTokens,
+            maxNumTokens = maxTokens,
             cacheDir = context.cacheDir.path
         )
         val eng = Engine(engineConfig)
@@ -824,6 +920,13 @@ class AiAssistantRepositoryImpl @Inject constructor(
     }
 
     private companion object {
+        /**
+         * Intentos de carga que pueden morir sin volver antes de dejar de intentarlo. Con 2 se
+         * permite un reintento degradado (CPU + contexto reducido) por si el primero cayó por
+         * una punta de memoria puntual, y se para antes de convertirlo en un bucle de cierres.
+         */
+        const val MAX_LOAD_ATTEMPTS = 2
+
         /** Temperatura baja para el turno de extracción: prioriza fidelidad de formato. */
         const val EXTRACTION_TEMPERATURE = 0.15
 

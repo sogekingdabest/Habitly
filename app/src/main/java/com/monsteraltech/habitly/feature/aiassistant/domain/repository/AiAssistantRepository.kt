@@ -9,6 +9,15 @@ sealed class ModelStatus {
     data class Downloading(val progress: Float) : ModelStatus()
     data object Ready : ModelStatus()
     data class Error(val message: String) : ModelStatus()
+
+    /** El dispositivo no tiene RAM para este modelo: no se descarga ni se intenta cargar. */
+    data object Unsupported : ModelStatus()
+
+    /**
+     * Cargarlo mató el proceso (una o más veces) y no se va a reintentar a ciegas. Es el
+     * estado que evita el bucle abrir-petar-abrir.
+     */
+    data object LoadCrashed : ModelStatus()
 }
 
 interface AiAssistantRepository {
@@ -16,7 +25,16 @@ interface AiAssistantRepository {
     fun getAvailableModels(): List<AiModelConfig>
     fun observeSelectedModel(): Flow<AiModelConfig>
     fun selectModel(modelId: String)
-    
+
+    /**
+     * RAM total del dispositivo en GB comerciales (bytes), o 0 si no se pudo leer. Se compara
+     * con los umbrales de [AiModelConfig] vía `compatibilityWith`.
+     */
+    fun getDeviceRamBytes(): Long
+
+    /** Olvida el historial de cargas fallidas de un modelo para permitir un intento limpio. */
+    fun clearLoadFailures(modelId: String)
+
     fun observeModelStatus(): Flow<ModelStatus>
 
     /** Encola la descarga del modelo seleccionado. Con [wifiOnly], solo por redes sin tarifa. */

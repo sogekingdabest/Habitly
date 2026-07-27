@@ -101,6 +101,9 @@ secrets/
 *.properties.bak
 local.properties.bak
 
+# Internal documentation
+internal-docs/
+
 # AI agents
 .agents/
 skills-lock.json

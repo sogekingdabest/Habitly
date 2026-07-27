@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.outlined.Flag
@@ -91,9 +92,11 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiQuickPrompt
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.FollowUpTarget
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.MessageRole
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.QuickPromptId
+import com.monsteraltech.habitly.feature.aiassistant.domain.model.compatibilityWith
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStatus
 import com.monsteraltech.habitly.feature.aiassistant.domain.util.AiStructuredBlocks
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ChatMessageItem
+import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ModelBlockedCard
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.ModelDownloadCard
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.PromptInput
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.QuickPromptChip
@@ -122,6 +125,16 @@ private fun formatModelSize(bytes: Long): String {
     } else {
         String.format(Locale.getDefault(), "%d MB", bytes / 1_000_000)
     }
+}
+
+/**
+ * RAM en los GB de la ficha del móvil: binarios y sin decimales. Con el formateador de
+ * ficheros (GB decimales) unos 6 GiB de RAM se leerían como "6,4 GB", que no es lo que el
+ * usuario tiene escrito en la caja.
+ */
+private fun formatRam(bytes: Long): String {
+    if (bytes <= 0L) return "—"
+    return String.format(Locale.getDefault(), "%d GB", bytes / 1_073_741_824L)
 }
 
 /**
@@ -429,21 +442,34 @@ fun AiAssistantScreen(
                             ) {
                                 uiState.availableModels.forEach { model ->
                                     val isDownloaded = model.id in uiState.downloadedModelIds
+                                    // Un modelo que no cabe se muestra atenuado y sin acción:
+                                    // esconderlo dejaría al usuario preguntándose qué hay ahí,
+                                    // y dejarlo activo le llevaría a un cierre en seco.
+                                    val compatibility = model.compatibilityWith(uiState.deviceRamBytes)
+                                    val isUsable = compatibility.canUse
                                     DropdownMenuItem(
+                                        enabled = isUsable,
                                         text = {
                                             Column {
                                                 Text(model.name)
                                                 Text(
-                                                    text = if (isDownloaded) {
-                                                        stringResource(
+                                                    text = when {
+                                                        !isUsable -> stringResource(
+                                                            R.string.ai_model_ram_required,
+                                                            formatRam(model.minRamBytes)
+                                                        )
+                                                        isDownloaded -> stringResource(
                                                             R.string.ai_model_size_downloaded,
                                                             formatModelSize(model.sizeBytes)
                                                         )
-                                                    } else {
-                                                        formatModelSize(model.sizeBytes)
+                                                        else -> formatModelSize(model.sizeBytes)
                                                     },
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    color = if (isUsable) {
+                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                    } else {
+                                                        MaterialTheme.colorScheme.error
+                                                    }
                                                 )
                                             }
                                         },
@@ -513,6 +539,31 @@ fun AiAssistantScreen(
                             isDownloading = false,
                             // Antes de encolar GB se pregunta con qué red (Wi-Fi o datos).
                             onDownload = { showDownloadDialog = true },
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                        )
+                    }
+                    is ModelStatus.Unsupported -> {
+                        val model = uiState.selectedModel
+                        ModelBlockedCard(
+                            title = stringResource(R.string.ai_model_unsupported_title),
+                            message = stringResource(
+                                R.string.ai_model_unsupported_message,
+                                model?.name.orEmpty(),
+                                formatRam(model?.minRamBytes ?: 0L),
+                                formatRam(uiState.deviceRamBytes)
+                            ),
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                        )
+                    }
+                    is ModelStatus.LoadCrashed -> {
+                        ModelBlockedCard(
+                            title = stringResource(R.string.ai_model_load_crashed_title),
+                            message = stringResource(
+                                R.string.ai_model_load_crashed_message,
+                                uiState.selectedModel?.name.orEmpty()
+                            ),
+                            actionLabel = stringResource(R.string.ai_model_load_crashed_retry),
+                            onAction = { viewModel.onRetryAfterLoadCrash() },
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
                         )
                     }
@@ -810,6 +861,37 @@ fun AiAssistantScreen(
             },
             dismissButton = {
                 TextButton(onClick = { modelToDelete = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    // Modelo que entra por los pelos: se avisa y se deja decidir, como hace el AI Edge Gallery.
+    // Bloquear aquí sería pasarse (puede funcionar de sobra con el móvil despejado); callar,
+    // quedarse corto (son cientos de MB y un posible cierre en seco).
+    uiState.pendingTightDownloadModel?.let { model ->
+        AlertDialog(
+            onDismissRequest = { viewModel.onDismissTightDownload() },
+            icon = { Icon(Icons.Default.Memory, contentDescription = null) },
+            title = { Text(stringResource(R.string.ai_model_tight_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.ai_model_tight_message,
+                        model.name,
+                        formatRam(model.recommendedRamBytes),
+                        formatRam(uiState.deviceRamBytes)
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.onConfirmTightDownload() }) {
+                    Text(stringResource(R.string.ai_model_tight_proceed))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onDismissTightDownload() }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             }

@@ -52,6 +52,22 @@ class FakeAiAssistantRepository : AiAssistantRepository {
 
     override fun getAvailableModels(): List<AiModelConfig> = AvailableAiModels.models
 
+    /**
+     * RAM que simula el dispositivo. Por defecto uno holgado; los tests que van de memoria la
+     * bajan. Se llama `fakeRam` y no `deviceRamBytes` porque el getter generado chocaría con
+     * `getDeviceRamBytes()` de la interfaz (misma firma JVM).
+     */
+    var fakeRam: Long = 12L * 1_073_741_824L
+
+    /** Ids cuyo historial de cargas fallidas se ha limpiado (para verificar el reintento). */
+    val clearedLoadFailures = mutableListOf<String>()
+
+    override fun getDeviceRamBytes(): Long = fakeRam
+
+    override fun clearLoadFailures(modelId: String) {
+        clearedLoadFailures += modelId
+    }
+
     override fun observeSelectedModel(): Flow<AiModelConfig> = _selectedModel
 
     override fun selectModel(modelId: String) {

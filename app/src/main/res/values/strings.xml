@@ -447,6 +447,18 @@
     <string name="ai_cancel_download">Cancelar descarga</string>
     <string name="ai_model_size_downloaded">%s · descargado</string>
     <string name="ai_delete_model">Borrar modelo</string>
+    <!-- Compatibilidad de modelos con la memoria del dispositivo -->
+    <string name="ai_model_ram_required">Necesita %s de RAM</string>
+    <string name="ai_model_unsupported_badge">No compatible</string>
+    <string name="ai_model_unsupported_error">Tu dispositivo no tiene memoria suficiente para este modelo</string>
+    <string name="ai_model_unsupported_title">Modelo no compatible</string>
+    <string name="ai_model_unsupported_message">%1$s necesita %2$s de RAM y tu dispositivo tiene %3$s. Cargarlo cerraría la aplicación.\n\nPrueba con un modelo más ligero desde el menú de arriba.</string>
+    <string name="ai_model_tight_title">Vas justo de memoria</string>
+    <string name="ai_model_tight_message">%1$s recomienda %2$s de RAM y tu dispositivo tiene %3$s. Puede funcionar, pero la aplicación podría cerrarse si tienes otras apps abiertas.</string>
+    <string name="ai_model_tight_proceed">Descargar igualmente</string>
+    <string name="ai_model_load_crashed_title">El modelo no pudo cargarse</string>
+    <string name="ai_model_load_crashed_message">%1$s cerró la aplicación al cargarse, probablemente por falta de memoria. No se volverá a intentar automáticamente.\n\nCierra otras apps y reinténtalo, o elige un modelo más ligero.</string>
+    <string name="ai_model_load_crashed_retry">Intentar de nuevo</string>
     <string name="ai_delete_model_confirm_title">¿Borrar el modelo?</string>
     <string name="ai_delete_model_confirm_message">Se borrará %1$s (%2$s) del dispositivo. Podrás descargarlo de nuevo cuando quieras.</string>
     <string name="ai_voice_input">Dictar por voz</string>

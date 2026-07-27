@@ -5,6 +5,7 @@
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-29+-3DDC84?style=for-the-badge&logo=android&logoColor=white)
 ![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202026.03-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
+![License](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)
 
 **Smart household management powered by on-device AI**
 
@@ -77,8 +78,9 @@ app/src/main/java/com/monsteraltech/habitly/
 
 1. Clone the repository
 2. Create a Firebase project with Auth (Email/Password + Google) and Firestore enabled
-3. Download `google-services.json` and place it in the `app/` directory
-4. Open in Android Studio and run
+3. Download your `google-services.json` and place it in the `app/` directory (see `app/google-services.json.example` for reference)
+4. (Optional for Release builds) Copy `keystore.properties.example` to `keystore.properties` and fill in your signing key details
+5. Open in Android Studio and run
 
 ### Author
 
@@ -149,8 +151,9 @@ app/src/main/java/com/monsteraltech/habitly/
 
 1. Clona el repositorio
 2. Crea un proyecto Firebase con Auth (Email/Contraseña + Google) y Firestore activados
-3. Descarga `google-services.json` y colócalo en el directorio `app/`
-4. Abre en Android Studio y ejecuta
+3. Descarga tu `google-services.json` y colócalo en el directorio `app/` (puedes usar `app/google-services.json.example` como referencia)
+4. (Opcional para builds de Release) Copia `keystore.properties.example` a `keystore.properties` y rellena los datos de tu clave de firma
+5. Abre en Android Studio y ejecuta
 
 ### Autor
 
@@ -221,8 +224,9 @@ app/src/main/java/com/monsteraltech/habitly/
 
 1. Clona o repositorio
 2. Crea un proxecto Firebase con Auth (Email/Contrasinal + Google) e Firestore activados
-3. Descarga `google-services.json` e colócao no directorio `app/`
-4. Abre en Android Studio e executa
+3. Descarga o teu `google-services.json` e colócao no directorio `app/` (podes usar `app/google-services.json.example` como referencia)
+4. (Opcional para builds de Release) Copia `keystore.properties.example` a `keystore.properties` e enche os datos da túa chave de sinatura
+5. Abre en Android Studio e executa
 
 ### Autor
 

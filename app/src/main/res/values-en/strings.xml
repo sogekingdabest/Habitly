@@ -444,6 +444,18 @@
     <string name="ai_cancel_download">Cancel download</string>
     <string name="ai_model_size_downloaded">%s · downloaded</string>
     <string name="ai_delete_model">Delete model</string>
+    <!-- Model compatibility with device memory -->
+    <string name="ai_model_ram_required">Needs %s of RAM</string>
+    <string name="ai_model_unsupported_badge">Not compatible</string>
+    <string name="ai_model_unsupported_error">Your device doesn\'t have enough memory for this model</string>
+    <string name="ai_model_unsupported_title">Model not compatible</string>
+    <string name="ai_model_unsupported_message">%1$s needs %2$s of RAM and your device has %3$s. Loading it would close the app.\n\nTry a lighter model from the menu above.</string>
+    <string name="ai_model_tight_title">Memory is tight</string>
+    <string name="ai_model_tight_message">%1$s recommends %2$s of RAM and your device has %3$s. It may work, but the app could close if you have other apps open.</string>
+    <string name="ai_model_tight_proceed">Download anyway</string>
+    <string name="ai_model_load_crashed_title">The model couldn\'t load</string>
+    <string name="ai_model_load_crashed_message">%1$s closed the app while loading, most likely due to low memory. It won\'t be retried automatically.\n\nClose other apps and try again, or pick a lighter model.</string>
+    <string name="ai_model_load_crashed_retry">Try again</string>
     <string name="ai_delete_model_confirm_title">Delete the model?</string>
     <string name="ai_delete_model_confirm_message">%1$s (%2$s) will be deleted from this device. You can download it again anytime.</string>
     <string name="ai_voice_input">Voice input</string>
