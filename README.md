@@ -82,6 +82,14 @@ app/src/main/java/com/monsteraltech/habitly/
 4. (Optional for Release builds) Copy `keystore.properties.example` to `keystore.properties` and fill in your signing key details
 5. Open in Android Studio and run
 
+### License & Trademark
+
+This project is licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE) for the full text. You are free to use, study, modify and redistribute the source code, as long as derivative works are released under the same license and with their source code available.
+
+The license covers the **source code only**. The name **Habitly**, the app icon, the logo and the Play Store listing assets (screenshots and feature graphic under `play-store/`) are trademarks and copyrighted material of Daniel Olañeta, and are **not** licensed under the GPL.
+
+If you publish a derivative work, use your own name, icon and branding. Do not present it in a way that suggests it is the official Habitly app or that it is endorsed by its author.
+
 ### Author
 
 **Daniel Olañeta**
@@ -155,6 +163,14 @@ app/src/main/java/com/monsteraltech/habitly/
 4. (Opcional para builds de Release) Copia `keystore.properties.example` a `keystore.properties` y rellena los datos de tu clave de firma
 5. Abre en Android Studio y ejecuta
 
+### Licencia y marca
+
+Este proyecto se distribuye bajo la **GNU General Public License v3.0** — consulta [LICENSE](LICENSE) para el texto completo. Puedes usar, estudiar, modificar y redistribuir el código fuente, siempre que las obras derivadas se publiquen bajo la misma licencia y con su código fuente disponible.
+
+La licencia cubre **únicamente el código fuente**. El nombre **Habitly**, el icono de la aplicación, el logotipo y los materiales de la ficha de Play Store (capturas e imagen destacada en `play-store/`) son marca y material protegido de Daniel Olañeta, y **no** se licencian bajo la GPL.
+
+Si publicas una obra derivada, usa tu propio nombre, icono e identidad visual. No la presentes de forma que sugiera que es la aplicación oficial de Habitly o que cuenta con el respaldo de su autor.
+
 ### Autor
 
 **Daniel Olañeta**
@@ -227,6 +243,14 @@ app/src/main/java/com/monsteraltech/habitly/
 3. Descarga o teu `google-services.json` e colócao no directorio `app/` (podes usar `app/google-services.json.example` como referencia)
 4. (Opcional para builds de Release) Copia `keystore.properties.example` a `keystore.properties` e enche os datos da túa chave de sinatura
 5. Abre en Android Studio e executa
+
+### Licenza e marca
+
+Este proxecto distribúese baixo a **GNU General Public License v3.0** — consulta [LICENSE](LICENSE) para o texto completo. Podes usar, estudar, modificar e redistribuír o código fonte, sempre que as obras derivadas se publiquen baixo a mesma licenza e co seu código fonte dispoñible.
+
+A licenza cobre **unicamente o código fonte**. O nome **Habitly**, a icona da aplicación, o logotipo e os materiais da ficha de Play Store (capturas e imaxe destacada en `play-store/`) son marca e material protexido de Daniel Olañeta, e **non** se licencian baixo a GPL.
+
+Se publicas unha obra derivada, usa o teu propio nome, icona e identidade visual. Non a presentes de forma que suxira que é a aplicación oficial de Habitly ou que conta co respaldo do seu autor.
 
 ### Autor
 
