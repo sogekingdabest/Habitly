@@ -1,29 +1,26 @@
 package com.monsteraltech.habitly.navigation
 
 /**
- * Pantalla que se pide desde **fuera** de la app: la notificación de recordatorio o un atajo del
- * icono del launcher.
+ * A screen requested from outside the app: a reminder notification or a launcher shortcut.
  *
- * Existía ya como un `Boolean` (`navigateToRoutines`) que viajaba de `MainActivity` a
- * `MainScreen`; con dos atajos más, un booleano por destino no escala. El mecanismo es el mismo
- * —`MainActivity` lo apunta al recibir el intent, `MainContent` navega y avisa de que lo ha
- * consumido— pero con un solo canal.
+ * `MainActivity` sets it when the intent arrives, `MainContent` navigates and reports it as
+ * consumed. Single channel on purpose — one boolean per destination does not scale.
  */
 enum class ExternalDestination {
-    /** Pestaña de rutinas: notificación de recordatorio y atajo "Rutinas de hoy". */
+    /** Routines tab: reminder notification and the "Today's routines" shortcut. */
     ROUTINES,
 
-    /** Lista de la compra con la hoja de alta rápida abierta: atajo "Añadir a la compra". */
+    /** Shopping list with the quick-add sheet open: the "Add to shopping" shortcut. */
     SHOPPING_QUICK_ADD;
 
     companion object {
-        /** Acción del atajo estático de rutinas (`res/xml/shortcuts.xml`). */
+        /** Action of the static routines shortcut (`res/xml/shortcuts.xml`). */
         const val ACTION_VIEW_ROUTINES = "com.monsteraltech.habitly.action.VIEW_ROUTINES"
 
-        /** Acción del atajo estático de alta rápida (`res/xml/shortcuts.xml`). */
+        /** Action of the static quick-add shortcut (`res/xml/shortcuts.xml`). */
         const val ACTION_ADD_SHOPPING = "com.monsteraltech.habitly.action.ADD_SHOPPING"
 
-        /** Destino que corresponde a la acción de un atajo, o null si no es de un atajo. */
+        /** Destination matching a shortcut action, or null if the action is not a shortcut. */
         fun fromAction(action: String?): ExternalDestination? = when (action) {
             ACTION_VIEW_ROUTINES -> ROUTINES
             ACTION_ADD_SHOPPING -> SHOPPING_QUICK_ADD

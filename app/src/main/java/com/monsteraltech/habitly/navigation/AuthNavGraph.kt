@@ -9,20 +9,12 @@ import com.monsteraltech.habitly.feature.login.presentation.LoginScreen
 import com.monsteraltech.habitly.feature.register.presentation.emailverification.EmailVerificationScreen
 import com.monsteraltech.habitly.feature.register.presentation.register.RegisterScreen
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Rutas tipadas del grafo de autenticación
-// ─────────────────────────────────────────────────────────────────────────────
-
 sealed class AuthRoute(val route: String) {
     object Login : AuthRoute("login")
     object Register : AuthRoute("register")
     object EmailVerification : AuthRoute("email_verification")
     object ForgotPassword : AuthRoute("forgot_password")
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// NavHost raíz (Auth)
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun AuthNavGraph(
@@ -34,7 +26,6 @@ fun AuthNavGraph(
         startDestination = AuthRoute.Login.route
     ) {
 
-        // ── Login ─────────────────────────────────────────────────────────────
         composable(AuthRoute.Login.route) {
             LoginScreen(
                 onNavigateToHome = onNavigateToHome,
@@ -47,18 +38,16 @@ fun AuthNavGraph(
             )
         }
 
-        // ── Register ──────────────────────────────────────────────────────────
         composable(AuthRoute.Register.route) {
             RegisterScreen(
                 navController = navController,
                 onNavigateToHome = {
-                    // Limpia todo el back stack de Auth al navegar a Home
+                    // Clears the whole Auth back stack.
                     onNavigateToHome()
                 }
             )
         }
 
-        // ── Email Verification ────────────────────────────────────────────────
         composable(AuthRoute.EmailVerification.route) {
             EmailVerificationScreen(
                 navController = navController,
@@ -68,7 +57,6 @@ fun AuthNavGraph(
             )
         }
 
-        // ── Forgot Password ───────────────────────────────────────────────────
         composable(AuthRoute.ForgotPassword.route) {
             com.monsteraltech.habitly.feature.login.presentation.ForgotPasswordScreen(
                 onNavigateBack = {

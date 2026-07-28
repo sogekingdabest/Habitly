@@ -29,19 +29,15 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
 /**
- * Fila deslizable de Habitly.
+ * Swipeable row. Swiping **right** runs the primary action (tick, complete) and the row springs
+ * back; swiping **left** deletes. With one hand busy, a swipe is faster and more accurate than
+ * hitting a 20dp icon.
  *
- * Con una mano ocupada —el carro del súper, un trapo, un niño— deslizar es más rápido y más
- * certero que acertar un icono de 20 dp. Deslizar **hacia la derecha** ejecuta la acción
- * principal (tachar, completar) y la fila vuelve a su sitio; deslizar **hacia la izquierda**
- * borra.
+ * The gesture is never the only route: always pair it with [swipeRowSemantics] on the inner row
+ * so TalkBack offers the same actions.
  *
- * El gesto nunca es la única vía: acompáñalo siempre de [swipeRowSemantics] en la fila
- * interior para que TalkBack ofrezca lo mismo sin gesto.
- *
- * @param dismissOnDelete si la fila debe quedarse fuera de pantalla tras el gesto de borrar.
- *   Ponlo a `false` cuando el borrado abra un diálogo de confirmación: la fila sigue ahí
- *   hasta que el usuario confirme.
+ * @param dismissOnDelete whether the row stays off-screen after the delete gesture. Set `false`
+ *   when deletion opens a confirmation dialog — the row must survive until the user confirms.
  */
 @Composable
 fun HabitlySwipeRow(
@@ -65,7 +61,7 @@ fun HabitlySwipeRow(
                 SwipeToDismissBoxValue.StartToEnd -> {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     onPrimaryAction()
-                    // La fila no desaparece, solo cambia de estado: vuelve a su sitio.
+                    // The row does not disappear, it only changes state: send it back.
                     scope.launch { state.reset() }
                 }
 
@@ -83,10 +79,10 @@ fun HabitlySwipeRow(
 }
 
 /**
- * Acciones equivalentes al gesto para los lectores de pantalla.
+ * Screen-reader equivalents of the swipe gestures.
  *
- * Debe aplicarse **al mismo nodo** que lleva el `toggleable`/`clickable` de la fila: es el
- * que TalkBack enfoca, y las acciones personalizadas solo se ofrecen sobre el nodo enfocado.
+ * Must be applied to the **same node** that carries the row's `toggleable`/`clickable`: that is
+ * the node TalkBack focuses, and custom actions are only offered on the focused node.
  */
 fun Modifier.swipeRowSemantics(
     primaryLabel: String,
@@ -100,7 +96,7 @@ fun Modifier.swipeRowSemantics(
     )
 }
 
-/** Fondo que asoma al deslizar: verde con check a la derecha, rojo con papelera a la izquierda. */
+/** Background revealed by the swipe: green with a tick to the right, red with a bin to the left. */
 @Composable
 private fun SwipeBackground(direction: SwipeToDismissBoxValue, primaryIcon: ImageVector) {
     val scheme = MaterialTheme.colorScheme
@@ -123,7 +119,7 @@ private fun SwipeBackground(direction: SwipeToDismissBoxValue, primaryIcon: Imag
         contentAlignment = alignment,
     ) {
         if (direction != SwipeToDismissBoxValue.Settled) {
-            // El fondo es decorativo: lo que la acción hace ya lo anuncia swipeRowSemantics.
+            // Decorative: swipeRowSemantics already announces what the action does.
             Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
         }
     }

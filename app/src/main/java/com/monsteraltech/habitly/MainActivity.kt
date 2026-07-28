@@ -39,21 +39,20 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
-    // Pantalla pedida desde fuera: notificación de recordatorio o atajo del launcher.
+    // Screen requested from outside: reminder notification or launcher shortcut.
     private val externalDestination = mutableStateOf<ExternalDestination?>(null)
 
-    // Texto recibido de otra app por "Compartir con Habitly" (ACTION_SEND).
+    // Text received from another app via ACTION_SEND.
     private val sharedText = mutableStateOf<String?>(null)
 
-    // Aplica el idioma persistido antes de crear la Activity (antes de la inyección de Hilt),
-    // por eso LocaleHelper lee la preferencia de forma síncrona. Un cambio de idioma en Ajustes
-    // llama a recreate(), lo que vuelve a ejecutar este envoltorio con la nueva locale.
+    // Runs before Hilt injection, which is why LocaleHelper reads the preference synchronously.
+    // Changing the language in Settings calls recreate(), re-running this with the new locale.
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleHelper.wrap(newBase))
     }
 
     private val notificationPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* resultado ignorado */ }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* result ignored */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,18 +91,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Al volver a la app, refrescamos el widget para que refleje el estado actual.
         lifecycleScope.launch {
             runCatching { HabitlyWidget().updateAll(applicationContext) }
         }
     }
 
     /**
-     * Traduce el intent de entrada a lo que la UI tiene que hacer: ir a una pestaña concreta
-     * (notificación de rutina o atajo del launcher) o abrir la revisión del texto compartido.
-     *
-     * El texto de `ACTION_SEND` **no se procesa aquí**: se guarda tal cual y lo recoge la hoja de
-     * revisión, que es quien lo sanea y lo trata como datos no fiables.
+     * `ACTION_SEND` text is **not** processed here: it is stored as-is and picked up by the review
+     * sheet, which sanitises it and treats it as untrusted input.
      */
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
@@ -116,7 +111,7 @@ class MainActivity : ComponentActivity() {
         if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
             val received = intent.getStringExtra(Intent.EXTRA_TEXT)
             if (!received.isNullOrBlank()) sharedText.value = received
-            // Un ACTION_SEND ya consumido volvería a abrir la hoja al rotar o al volver a la app.
+            // Without this, a consumed ACTION_SEND reopens the sheet on rotation or on resume.
             intent.removeExtra(Intent.EXTRA_TEXT)
         }
     }

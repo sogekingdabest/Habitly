@@ -17,8 +17,8 @@ import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.ui.theme.habitly
 
 /**
- * Pastilla cálida con texto — la base de los badges de Habitly. Nunca el chip gris
- * neutro de Material: siempre fondo con color y esquinas totalmente redondeadas.
+ * Warm text pill — the base of every Habitly badge. Never Material's neutral grey chip: always a
+ * coloured background with fully rounded corners.
  */
 @Composable
 fun HabitlyPill(
@@ -44,7 +44,7 @@ fun HabitlyPill(
     }
 }
 
-/** Pastilla de racha: 🌱 + número de días encadenados. */
+/** Streak pill: 🌱 + number of consecutive days. */
 @Composable
 fun StreakBadge(streak: Int, modifier: Modifier = Modifier) {
     val habitly = MaterialTheme.habitly
@@ -56,7 +56,7 @@ fun StreakBadge(streak: Int, modifier: Modifier = Modifier) {
     )
 }
 
-/** Pastilla "Te toca" — marca la tarea asignada al usuario actual. */
+/** "Your turn" pill — marks the task assigned to the current user. */
 @Composable
 fun MineBadge(text: String, modifier: Modifier = Modifier) {
     val habitly = MaterialTheme.habitly

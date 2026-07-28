@@ -20,17 +20,15 @@ import androidx.compose.ui.res.stringResource
 import com.monsteraltech.habitly.R
 
 /**
- * Dictado por voz con el **reconocedor del sistema** (`RecognizerIntent`): cero dependencias
- * nuevas, cero permisos propios (el permiso de micrófono lo pide la app del reconocedor) y
- * ningún modelo extra que descargar.
+ * Voice dictation through the system recogniser (`RecognizerIntent`): no new dependencies, no
+ * permissions of our own (the recogniser app asks for the microphone) and no model to download.
  */
 object VoiceInput {
 
     /**
-     * ¿Hay alguna app que resuelva el dictado? No todos los dispositivos traen reconocedor
-     * (algunos Android sin servicios de Google, por ejemplo), y lanzar el intent a ciegas
-     * revienta con `ActivityNotFoundException`. Requiere el `<queries>` del manifiesto: desde
-     * Android 11 la visibilidad de paquetes hay que declararla.
+     * Not every device ships a recogniser, and launching the intent blindly throws
+     * `ActivityNotFoundException`. Needs the `<queries>` entry in the manifest — package
+     * visibility must be declared since Android 11.
      */
     fun isAvailable(context: Context): Boolean =
         context.packageManager
@@ -38,10 +36,9 @@ object VoiceInput {
             .isNotEmpty()
 
     /**
-     * Intent de dictado en el idioma indicado. El idioma sale de la configuración de la
-     * Activity, que es la que envuelve `LocaleHelper`: así el reconocedor sigue el idioma de
-     * **Ajustes de Habitly** y no el del sistema. Dictar en español con el reconocedor en
-     * inglés produce basura.
+     * Dictation intent in the given language. The tag comes from the Activity configuration
+     * wrapped by `LocaleHelper`, so the recogniser follows Habitly's language setting rather than
+     * the system one — dictating Spanish into an English recogniser produces garbage.
      */
     fun intent(prompt: String, languageTag: String): Intent =
         Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -55,8 +52,8 @@ object VoiceInput {
 }
 
 /**
- * Botón de micrófono que **desaparece** si el dispositivo no tiene reconocedor, en vez de
- * fallar al pulsarlo. [onSpokenText] recibe la transcripción con más confianza.
+ * Microphone button that **hides itself** when the device has no recogniser, instead of failing on
+ * tap. [onSpokenText] receives the highest-confidence transcription.
  */
 @Composable
 fun VoiceInputButton(
@@ -69,7 +66,7 @@ fun VoiceInputButton(
     if (!available) return
 
     val prompt = stringResource(R.string.ai_voice_prompt)
-    // El tag de idioma se lee de la configuración ya envuelta por LocaleHelper (idioma de Ajustes).
+    // Language tag read from the configuration already wrapped by LocaleHelper.
     val languageTag = LocalConfiguration.current.locales[0].toLanguageTag()
 
     val launcher = rememberLauncherForActivityResult(

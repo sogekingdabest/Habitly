@@ -10,19 +10,11 @@ import androidx.compose.ui.unit.sp
 import com.monsteraltech.habitly.R
 
 /**
- * Tipografía de Habitly — dirección "Cozy Handcrafted".
+ * Habitly's typography: Baloo 2 (rounded) for display and titles, Nunito (humanist) for body and
+ * labels. Both are downloadable Google Fonts fetched at runtime through the Play Services
+ * provider; if the download fails Compose falls back to the system font, so text never vanishes.
  *
- * Dos familias descargables de Google Fonts:
- *  - **Baloo 2** (redondeada, con carácter) para display, cabeceras y títulos — los
- *    titulares que dan personalidad.
- *  - **Nunito** (humanista, muy legible) para cuerpo y etiquetas — acompaña sin competir.
- *
- * Se descargan en tiempo de ejecución vía el proveedor de Google Play Services
- * (ver `res/values/font_certs.xml`). Si la descarga falla o no hay red, Compose
- * recurre solo a la fuente por defecto del sistema, así que el texto nunca desaparece.
- *
- * La escala de tamaños es la de Material 3 comprimida a ~0.92x, heredada de la versión
- * anterior para no alterar la densidad que ya usaban las pantallas.
+ * The size scale is Material 3's compressed to ~0.92x, inherited so screen density is unchanged.
  */
 private val provider = GoogleFont.Provider(
     providerAuthority = "com.google.android.gms.fonts",
@@ -33,14 +25,14 @@ private val provider = GoogleFont.Provider(
 private val Baloo2 = GoogleFont("Baloo 2")
 private val Nunito = GoogleFont("Nunito")
 
-/** Familia display/títulos — Baloo 2. */
+/** Display/title family — Baloo 2. */
 val DisplayFamily = FontFamily(
     Font(googleFont = Baloo2, fontProvider = provider, weight = FontWeight.Medium),
     Font(googleFont = Baloo2, fontProvider = provider, weight = FontWeight.SemiBold),
     Font(googleFont = Baloo2, fontProvider = provider, weight = FontWeight.Bold),
 )
 
-/** Familia cuerpo/etiquetas — Nunito. */
+/** Body/label family — Nunito. */
 val BodyFamily = FontFamily(
     Font(googleFont = Nunito, fontProvider = provider, weight = FontWeight.Normal),
     Font(googleFont = Nunito, fontProvider = provider, weight = FontWeight.SemiBold),

@@ -8,10 +8,9 @@ class HabitlyApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // App Check acredita que quien habla con Firebase es esta app, y no un script que haya
-        // extraído el google-services.json del APK (es público por diseño). El proveedor depende
-        // de la variante: Play Integrity en release, secreto de depuración en debug. Ver las dos
-        // implementaciones de AppCheckInstaller.kt en src/release/java y src/debug/java.
+        // Proves to Firebase that the caller is this app, not a script using the
+        // google-services.json extracted from the APK (public by design). The provider depends on
+        // the variant: see AppCheckInstaller.kt in src/release/java and src/debug/java.
         installAppCheck()
     }
 }

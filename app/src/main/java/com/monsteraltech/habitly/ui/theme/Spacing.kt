@@ -9,33 +9,32 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Escala de espaciado de Habitly, en pasos de 4dp.
+ * Habitly's spacing scale, in 4dp steps.
  *
- * Material 3 no define tokens de espaciado, así que cada pantalla acababa
- * improvisando sus propios `padding`. Usar esta escala en vez de valores sueltos
- * es lo que da ritmo vertical constante entre pantallas.
+ * Material 3 defines no spacing tokens, so every screen improvised its own paddings. Using this
+ * scale instead of loose values is what keeps the vertical rhythm consistent across screens.
  *
- * Uso: `Modifier.padding(MaterialTheme.spacing.md)`
+ * Usage: `Modifier.padding(MaterialTheme.spacing.md)`
  */
 @Immutable
 data class Spacing(
-    /** 4dp — separación entre un icono y su etiqueta. */
+    /** 4dp — between an icon and its label. */
     val xs: Dp = 4.dp,
-    /** 8dp — separación entre elementos de una misma fila o grupo. */
+    /** 8dp — between items in the same row or group. */
     val sm: Dp = 8.dp,
-    /** 16dp — margen lateral de pantalla y separación entre tarjetas. */
+    /** 16dp — screen side margin and gap between cards. */
     val md: Dp = 16.dp,
-    /** 24dp — separación entre secciones dentro de una pantalla. */
+    /** 24dp — between sections within a screen. */
     val lg: Dp = 24.dp,
-    /** 32dp — respiro alrededor de bloques destacados o estados vacíos. */
+    /** 32dp — breathing room around highlighted blocks or empty states. */
     val xl: Dp = 32.dp,
-    /** 48dp — separación de bloques principales en pantallas de onboarding. */
+    /** 48dp — between main blocks on onboarding screens. */
     val xxl: Dp = 48.dp
 )
 
 val LocalSpacing = staticCompositionLocalOf { Spacing() }
 
-/** Acceso a la escala de espaciado desde cualquier composable bajo `HabitlyTheme`. */
+/** Access to the spacing scale from any composable under `HabitlyTheme`. */
 val MaterialTheme.spacing: Spacing
     @Composable
     @ReadOnlyComposable

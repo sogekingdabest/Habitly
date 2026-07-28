@@ -28,11 +28,8 @@ import com.monsteraltech.habitly.ui.theme.habitly
 private val ButtonShape = RoundedCornerShape(18.dp)
 
 /**
- * Botón primario de Habitly: verde de marca, muy redondeado y con **sombra de color**
- * (no la elevación gris de Material). Texto en Baloo 2 sobre crema.
- *
- * Es un pulsable accesible (rol de botón, altura mínima de 52dp, ripple recortado a la
- * forma, estado deshabilitado atenuado).
+ * Primary button: brand green, heavily rounded, with a coloured shadow rather than Material's grey
+ * elevation. Accessible by construction — button role, 52dp minimum height, dimmed when disabled.
  */
 @Composable
 fun HabitlyPrimaryButton(
@@ -84,8 +81,8 @@ fun HabitlyPrimaryButton(
 }
 
 /**
- * Botón secundario: papel crema con borde verde y texto verde. Para la acción de
- * apoyo junto al primario ("Marcar todo").
+ * Secondary button: cream paper with a green border and green text, for the supporting action next
+ * to the primary one.
  */
 @Composable
 fun HabitlySecondaryButton(
@@ -120,7 +117,7 @@ fun HabitlySecondaryButton(
     }
 }
 
-/** Botón de texto: solo etiqueta en verde de acento, para acciones terciarias. */
+/** Text button: accent-green label only, for tertiary actions. */
 @Composable
 fun HabitlyTextButton(
     text: String,

@@ -65,14 +65,14 @@ sealed class BottomNavRoute(val route: String, val icon: androidx.compose.ui.gra
     object Shopping : BottomNavRoute("shopping", Icons.Rounded.ShoppingCart, R.string.nav_shopping)
     object AiAssistant : BottomNavRoute("ai_assistant", Icons.Rounded.SmartToy, R.string.nav_assistant)
     object Routines : BottomNavRoute("routines", Icons.Rounded.Checklist, R.string.nav_routines)
-    // Groups y no Settings: los Ajustes de verdad cuelgan de dentro de esta pestaña, y dos
-    // cosas distintas con el mismo icono se leen como la misma.
+    // Groups, not Settings: the real Settings screen hangs off this tab, and two different things
+    // sharing one icon read as the same thing.
     object Household : BottomNavRoute("household", Icons.Rounded.Groups, R.string.nav_household)
 }
 
 object HiddenRoutes {
     const val ShoppingHistory = "shopping_history"
-    // El alta de producto ya no navega: es una hoja inferior dentro de ShoppingScreen.
+    // Adding a product no longer navigates: it is a bottom sheet inside ShoppingScreen.
     const val RoutinesAdd = "routines_add"
     const val Settings = "settings"
 }
@@ -95,8 +95,8 @@ fun MainScreen(
             }
         }
         !uiState.hasHousehold -> {
-            // El texto compartido y el destino pedido se conservan en MainActivity: si el
-            // usuario aún no tiene casa, se atenderán en cuanto la cree o se una a una.
+            // Shared text and the requested destination are kept in MainActivity: if the user has
+            // no household yet, they are handled as soon as one is created or joined.
             OnboardingScreen(onSignOut = onSignOut)
         }
         else -> {
@@ -125,10 +125,10 @@ private fun MainContent(
     val currentDestination = navBackStackEntry?.destination
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // El atajo "Añadir a la compra" no solo cambia de pestaña: abre la hoja de alta rápida.
+    // The "add to shopping" shortcut does more than switch tabs: it opens the quick-add sheet.
     var pendingQuickAdd by remember { mutableStateOf(false) }
 
-    // Resumen de lo importado desde un texto compartido, para el snackbar de confirmación.
+    // Summary of what was imported from shared text, for the confirmation snackbar.
     var importedMessage by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(importedMessage) {
         importedMessage?.let { message ->
@@ -137,7 +137,7 @@ private fun MainContent(
         }
     }
 
-    // Destino pedido desde fuera: notificación de recordatorio o atajo del launcher.
+    // Destination requested from outside: reminder notification or launcher shortcut.
     LaunchedEffect(externalDestination) {
         val target = when (externalDestination) {
             ExternalDestination.ROUTINES -> BottomNavRoute.Routines.route
@@ -154,7 +154,7 @@ private fun MainContent(
         onExternalDestinationConsumed()
     }
 
-    // "Compartir con Habitly": la revisión va por encima de la pestaña que hubiera abierta.
+    // "Share with Habitly": the review sheet sits on top of whichever tab was open.
     val importSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     if (sharedText != null) {
         val context = LocalContext.current
@@ -214,9 +214,9 @@ private fun MainContent(
         NavHost(
             navController = navController,
             startDestination = BottomNavRoute.Dashboard.route,
-            // consumeWindowInsets marca estos insets como ya aplicados: sin ello, cada
-            // Scaffold interior volvía a sumar barra de estado y de navegación, dejando
-            // un doble margen arriba y un hueco muerto sobre la barra de pestañas.
+            // consumeWindowInsets marks these insets as already applied. Without it every inner
+            // Scaffold added the status and navigation bars again, leaving a double margin at the
+            // top and dead space above the tab bar.
             modifier = Modifier
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
@@ -295,10 +295,9 @@ private fun MainContent(
 }
 
 /**
- * Barra inferior de Habitly: papel crema con borde superior, pastilla de resalte en la
- * pestaña activa e ícono central elevado (Habi) con sombra de color. Mantiene el
- * comportamiento accesible de una barra de navegación (rol de pestaña, estado
- * seleccionado) con la piel Cozy en vez del `NavigationBar` gris de Material.
+ * Bottom bar: cream paper with a top border, a highlight pill on the active tab and a raised
+ * centre icon. Keeps the accessible behaviour of a navigation bar (tab role, selected state)
+ * while replacing Material's grey `NavigationBar` skin.
  */
 @Composable
 private fun HabitlyBottomBar(

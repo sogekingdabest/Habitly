@@ -14,15 +14,14 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * ¿Hay red ahora mismo?
+ * Whether there is network right now.
  *
- * Firestore cachea las escrituras sin conexión y las manda cuando vuelve, así que la app
- * responde igual de bien estando offline. El problema es justo ese: nada distingue "guardado
- * en el servidor" de "guardado en este móvil y pendiente de subir", y el usuario se entera
- * tarde. Esto es lo mínimo para poder avisar.
+ * Firestore caches offline writes and flushes them on reconnect, so the app feels identical with
+ * no network — which is exactly the problem: nothing distinguishes "saved on the server" from
+ * "saved on this phone, pending upload". This is the minimum needed to warn the user.
  *
- * No dice si Firestore ha sincronizado —eso el SDK no lo expone—, solo si el sistema cree
- * que hay internet.
+ * It does not report whether Firestore has synced — the SDK does not expose that — only whether
+ * the system believes there is internet.
  */
 @Singleton
 class ConnectivityObserver @Inject constructor(
@@ -32,7 +31,7 @@ class ConnectivityObserver @Inject constructor(
     val isOnline: Flow<Boolean> = callbackFlow {
         val manager = context.getSystemService(ConnectivityManager::class.java)
         if (manager == null) {
-            // Sin el servicio no podemos saberlo: mejor callar que dar un aviso falso.
+            // Without the service we cannot tell: better silent than a false warning.
             trySend(true)
             awaitClose { }
             return@callbackFlow

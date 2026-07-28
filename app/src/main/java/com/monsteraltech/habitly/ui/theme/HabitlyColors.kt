@@ -8,48 +8,44 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * Tokens de marca de Habitly que Material 3 no modela.
- *
- * `MaterialTheme.colorScheme` cubre primario, superficie, error, etc., pero la piel
- * "Cozy Handcrafted" necesita extras: el papel crema de las tarjetas, la sombra verde
- * cálida de la "firma", los colores de las pastillas de racha y "Te toca", y las
- * manchas del mesh gradient del fondo. Se exponen aquí y se leen con
- * `MaterialTheme.habitly` desde cualquier composable bajo [HabitlyTheme].
+ * Habitly brand tokens that Material 3 does not model: the cream card paper, the warm green
+ * signature shadow, the streak and "your turn" pill colours, and the background mesh gradient.
+ * Read them via `MaterialTheme.habitly` from any composable under [HabitlyTheme].
  */
 @Immutable
 data class HabitlyColors(
-    /** Papel crema de toda superficie-tarjeta (más cálido que `surface`). */
+    /** Cream paper of every card surface (warmer than `surface`). */
     val card: Color,
-    /** Filo de la tarjeta: casi invisible en claro (manda la sombra), filo claro en
-     * oscuro donde la sombra negra no separa nada del fondo. */
+    /** Card edge: nearly invisible in light (the shadow does the work), a light hairline in dark
+     * where a black shadow separates nothing from the background. */
     val cardBorder: Color,
-    /** Sombra teñida en verde cálido — la elevación firma de Habitly. */
+    /** Warm green tinted shadow — Habitly's signature elevation. */
     val shadow: Color,
-    /** Verde de marca (igual que `primary`, expuesto para dibujar directo). */
+    /** Brand green (same as `primary`, exposed for direct drawing). */
     val accent: Color,
-    /** Verde profundo para texto sobre contenedores claros. */
+    /** Deep green for text on light containers. */
     val accentText: Color,
-    /** Fondo del halo redondeado de los iconos line-art. */
+    /** Background of the rounded halo behind line-art icons. */
     val iconHalo: Color,
-    /** Fondo de una casilla/toggle sin marcar. */
+    /** Background of an unchecked checkbox/toggle. */
     val boxIdle: Color,
-    /** Borde/contorno suave de campos y tarjetas. */
+    /** Soft border/outline of fields and cards. */
     val border: Color,
-    /** Texto secundario (descripciones, metadatos). */
+    /** Secondary text (descriptions, metadata). */
     val textSecondary: Color,
-    /** Iconos y etiquetas de navegación inactivos. */
+    /** Inactive navigation icons and labels. */
     val navIdle: Color,
-    /** Fondo de la pastilla de racha (🌱). */
+    /** Background of the streak pill (🌱). */
     val streakBg: Color,
-    /** Texto/emoji de la pastilla de racha. */
+    /** Text/emoji of the streak pill. */
     val streakFg: Color,
-    /** Fondo de la pastilla "Te toca". */
+    /** Background of the "your turn" pill. */
     val mineBg: Color,
-    /** Texto de la pastilla "Te toca". */
+    /** Text of the "your turn" pill. */
     val mineFg: Color,
-    /** Color sobre el verde de acento (crema, no blanco puro). */
+    /** Colour on top of the accent green (cream, not pure white). */
     val onAccent: Color,
-    /** Base y manchas radiales del mesh gradient del fondo. */
+    /** Base and radial blobs of the background mesh gradient. */
     val meshBase: Color,
     val meshStops: List<Color>,
 )
@@ -96,7 +92,7 @@ val DarkHabitlyColors = HabitlyColors(
 
 val LocalHabitlyColors = staticCompositionLocalOf { LightHabitlyColors }
 
-/** Acceso a los tokens de marca desde cualquier composable bajo `HabitlyTheme`. */
+/** Access to the brand tokens from any composable under `HabitlyTheme`. */
 val MaterialTheme.habitly: HabitlyColors
     @Composable
     @ReadOnlyComposable

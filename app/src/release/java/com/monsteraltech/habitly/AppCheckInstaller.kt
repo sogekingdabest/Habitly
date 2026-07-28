@@ -4,16 +4,15 @@ import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 
 /**
- * Variante de **release**: acredita la app con Play Integrity.
+ * Release variant: attests the app with Play Integrity.
  *
- * Play Integrity solo emite veredictos válidos para builds firmados con la clave real y
- * distribuidos por Play, así que un APK sideloaded o un script hablando con la API de Firestore
- * no consigue token. Esto no protege los datos ajenos —de eso se encargan `firestore.rules`—,
- * protege la cuota del proyecto.
+ * Play Integrity only issues valid verdicts for builds signed with the real key and distributed
+ * by Play, so a sideloaded APK gets no token. This guards the project quota, not other users'
+ * data — that is what `firestore.rules` is for.
  *
- * Requiere que la app esté registrada en Firebase Console → App Check → Play Integrity.
- * Mientras App Check esté en modo *unenforced*, no tener token no rompe nada: las peticiones
- * pasan igual y la consola solo las contabiliza como no verificadas.
+ * Requires the app to be registered in Firebase Console under App Check with Play Integrity, and
+ * every Play app-signing certificate (current *and* previous, if the key was rotated) to be
+ * listed there. While App Check stays unenforced, a missing token breaks nothing.
  */
 fun installAppCheck() {
     FirebaseAppCheck.getInstance()

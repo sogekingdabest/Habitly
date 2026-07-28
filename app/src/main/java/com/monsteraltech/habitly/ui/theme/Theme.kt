@@ -18,9 +18,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * Esquema claro — Verde niebla. El verde de marca es primario; las superficies son
- * papel crema; los contenedores usan las nieblas suaves. Los badges cálidos (racha,
- * mostaza) viven en `tertiary` y en [HabitlyColors].
+ * Light scheme: brand green as primary, cream paper surfaces, soft mists for containers. The warm
+ * badges (streak, mustard) live in `tertiary` and in [HabitlyColors].
  */
 private val LightColorScheme = lightColorScheme(
     primary = Sage,
@@ -67,7 +66,7 @@ private val LightColorScheme = lightColorScheme(
     scrim = Color.Black
 )
 
-/** Esquema oscuro — Verde niebla nocturno (a partir de `Habitly App Oscuro.dc.html`). */
+/** Dark scheme — the night variant of the same palette. */
 private val DarkColorScheme = darkColorScheme(
     primary = SageDarkPrimary,          // #74a596
     onPrimary = SageDarkOnPrimary,      // #f9fbf6
@@ -116,8 +115,8 @@ private val DarkColorScheme = darkColorScheme(
 @Composable
 fun HabitlyTheme(
     darkTheme: Boolean? = null,
-    // El color dinámico rompe la identidad de marca (Verde niebla), así que por
-    // defecto está apagado. Se deja el parámetro por si se quiere ofrecer como opción.
+    // Dynamic colour breaks the brand identity, so it is off by default. The parameter stays in
+    // case it is ever offered as a user option.
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
@@ -135,7 +134,7 @@ fun HabitlyTheme(
 
     val habitlyColors = if (isDark) DarkHabitlyColors else LightHabitlyColors
 
-    // Barras de sistema transparentes con iconos que contrastan con el fondo.
+    // Transparent system bars with icons that contrast against the background.
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {

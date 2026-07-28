@@ -27,10 +27,8 @@ import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
 import com.monsteraltech.habitly.ui.theme.habitly
 
 /**
- * Sombra "firma" de Habitly: teñida en verde cálido en vez del gris de Material.
- *
- * Se usa el tono de [com.monsteraltech.habitly.ui.theme.HabitlyColors.shadow] a plena
- * opacidad como color de foco/ambiente; la [elevation] controla el difuminado.
+ * Habitly's signature shadow: warm green tinted instead of Material's grey. The tint is used at
+ * full opacity as ambient and spot colour; [elevation] controls the blur.
  */
 @Composable
 fun Modifier.habitlyShadow(elevation: Dp, shape: Shape): Modifier {
@@ -39,11 +37,8 @@ fun Modifier.habitlyShadow(elevation: Dp, shape: Shape): Modifier {
 }
 
 /**
- * Tarjeta-firma de Habitly: papel crema, esquina-hoja y sombra cálida.
- *
- * Reemplaza a `Card` de Material manteniendo su rol (contenedor de superficie), pero
- * con la piel Cozy. Si se pasa [onClick] se vuelve pulsable con ripple recortado a la
- * forma.
+ * Habitly's signature card: cream paper, leaf corner and warm shadow. Replaces Material's `Card`
+ * keeping its role as a surface container. Passing [onClick] makes it clickable.
  */
 @Composable
 fun HabitlyCard(
@@ -68,8 +63,8 @@ fun HabitlyCard(
 }
 
 /**
- * Variante conmutable de [HabitlyCard] para filas marcables (rutinas, productos).
- * Expone rol de casilla para accesibilidad; el contenido dibuja el estado.
+ * Toggleable variant of [HabitlyCard] for checkable rows (routines, products). Exposes a checkbox
+ * role for accessibility; the content draws the state.
  */
 @Composable
 fun HabitlyToggleCard(
@@ -100,7 +95,7 @@ fun HabitlyToggleCard(
     )
 }
 
-/** Halo redondeado para un icono line-art, la forma de contenedor de icono del set. */
+/** Rounded halo behind a line-art icon — the icon container shape of the set. */
 @Composable
 fun IconHalo(
     modifier: Modifier = Modifier,

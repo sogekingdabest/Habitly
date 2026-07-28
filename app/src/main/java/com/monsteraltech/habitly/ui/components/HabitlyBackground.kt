@@ -13,14 +13,10 @@ import com.monsteraltech.habitly.ui.theme.habitly
 import androidx.compose.material3.MaterialTheme
 
 /**
- * Fondo *Mesh gradient* de Habitly — el lienzo de toda pantalla principal.
+ * Mesh gradient background — the canvas of every main screen. A misty base colour with soft radial
+ * blobs fading to transparent, giving depth without noise under the cream cards.
  *
- * Un color base de niebla con varias manchas radiales suaves (verde, arena, salvia)
- * que se difuminan a transparente. Da profundidad orgánica sin ruido, la textura
- * "cozy" sobre la que descansan las tarjetas de papel crema.
- *
- * Las posiciones de las manchas se pueden variar con [arrangement] para que pantallas
- * contiguas no se vean idénticas, igual que en el diseño.
+ * [arrangement] varies the blob positions so adjacent screens do not look identical.
  */
 @Composable
 fun HabitlyBackground(
@@ -52,10 +48,10 @@ fun HabitlyBackground(
     )
 }
 
-/** Una mancha radial del mesh: posición en fracción [0..1] y radio en fracción de la dimensión mayor. */
+/** One radial blob: position as a [0..1] fraction, radius as a fraction of the larger dimension. */
 data class MeshBlob(val x: Float, val y: Float, val radius: Float)
 
-/** Disposiciones de manchas por pantalla — mismas nieblas, distinta colocación. */
+/** Per-screen blob layouts — same mists, different placement. */
 enum class MeshArrangement(val blobs: List<MeshBlob>) {
     Home(
         listOf(

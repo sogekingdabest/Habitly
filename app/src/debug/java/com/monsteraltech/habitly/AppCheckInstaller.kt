@@ -4,15 +4,14 @@ import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 
 /**
- * Variante de **debug**: proveedor de depuración de App Check.
+ * Debug variant: App Check debug provider.
  *
- * Play Integrity no funciona en builds de debug (ni en emulador), así que aquí se usa el
- * proveedor que emite un token a partir de un secreto local. La primera ejecución imprime ese
- * secreto en Logcat con la etiqueta `DebugAppCheckProvider`; hay que darlo de alta en
- * Firebase Console → App Check → la app Android → menú ⋮ → *Gestionar tokens de depuración*.
+ * Play Integrity does not work on debug builds or emulators, so this issues a token from a local
+ * secret instead. The first run prints that secret to Logcat under the `DebugAppCheckProvider`
+ * tag; register it in Firebase Console → App Check → the Android app → ⋮ → Manage debug tokens.
  *
- * Si no lo registras no pasa nada mientras App Check siga en modo *unenforced*: la petición
- * viaja sin token verificado y Firestore la atiende igual.
+ * The token is per install: uninstalling the app invalidates it. Registering it only matters once
+ * App Check is enforced — until then, unverified requests are served anyway.
  */
 fun installAppCheck() {
     FirebaseAppCheck.getInstance()

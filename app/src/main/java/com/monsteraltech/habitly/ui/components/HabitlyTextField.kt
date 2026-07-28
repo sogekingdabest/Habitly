@@ -14,9 +14,8 @@ import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.ui.theme.habitly
 
 /**
- * Campo de texto con la piel Habitly: contenedor de papel crema, esquinas 16dp, borde
- * verde al enfocar y etiqueta flotante en verde de acento. Envuelve `OutlinedTextField`
- * de Material, así que conserva su comportamiento (foco, IME, accesibilidad, error).
+ * Text field in the Habitly skin: cream paper container, 16dp corners, green border on focus.
+ * Wraps Material's `OutlinedTextField`, so focus, IME, accessibility and error handling are kept.
  */
 @Composable
 fun HabitlyTextField(

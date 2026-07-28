@@ -24,12 +24,11 @@ import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.ui.theme.habitly
 
 /**
- * **RitualToggle** — el círculo que reemplaza al Checkbox cuadrado de Material.
+ * The circle that replaces Material's square Checkbox: a soft-bordered ring when empty, filled
+ * green with a hand-drawn tick when done.
  *
- * Vacío muestra una casilla circular con borde suave; hecho se rellena de verde con
- * un check dibujado a mano (trazo redondeado). Es **solo visual**: la fila o tarjeta
- * que lo contiene aporta el `toggleable` y el rol de accesibilidad, evitando pulsables
- * anidados.
+ * **Visual only** — the containing row or card provides the `toggleable` and the accessibility
+ * role, which avoids nested clickables.
  */
 @Composable
 fun RitualToggle(
@@ -40,7 +39,7 @@ fun RitualToggle(
     val habitly = MaterialTheme.habitly
     val primary = MaterialTheme.colorScheme.primary
     val onPrimary = MaterialTheme.colorScheme.onPrimary
-    // El check se dibuja progresivamente al marcar, un pequeño gesto "hecho a mano".
+    // The tick draws in progressively when checked — a small "hand-made" gesture.
     val progress by animateFloatAsState(
         targetValue = if (checked) 1f else 0f,
         animationSpec = tween(durationMillis = 260),
@@ -62,13 +61,13 @@ fun RitualToggle(
                 val w = this.size.width
                 val h = this.size.height
                 val stroke = w * 0.16f
-                // Trazo del check: baja al valle y sube a la cima, con esquina redondeada.
+                // Tick stroke: down to the valley, up to the peak, with a rounded corner.
                 val p1 = Offset(w * 0.10f, h * 0.54f)
                 val p2 = Offset(w * 0.42f, h * 0.82f)
                 val p3 = Offset(w * 0.90f, h * 0.24f)
                 val path = Path().apply {
                     moveTo(p1.x, p1.y)
-                    // Primer segmento completo, segundo segmento revelado por [progress].
+                    // First segment complete, second segment revealed by [progress].
                     val firstEnd = 0.45f
                     if (progress <= firstEnd) {
                         val t = progress / firstEnd

@@ -69,7 +69,7 @@ import java.time.LocalDate
 import java.util.Date
 import java.util.Locale
 
-/** Productos de la compra que se nombran en la tarjeta resumen antes de resumir en "y N más". */
+/** Products named on the summary card before collapsing into "and N more". */
 private const val SHOPPING_PREVIEW_COUNT = 3
 
 @Composable
@@ -124,8 +124,8 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Cabecera comprimida: la fecha y el saludo se comían la primera pantalla
-                // entera, que es justo donde tiene que estar lo accionable.
+                // Compressed header: the date and greeting used to eat the whole first screen,
+                // which is exactly where the actionable content belongs.
                 item {
                     DashboardHeader(
                         today = today,
@@ -185,7 +185,7 @@ fun DashboardScreen(
                     }
                 }
 
-                // Añadir rutina
+                // Add routine
                 item {
                     HabitlyPrimaryButton(
                         text = stringResource(R.string.routines_add_routine),
@@ -222,8 +222,8 @@ private fun DashboardHeader(today: String, householdName: String?, isOffline: Bo
 }
 
 /**
- * Aviso de que no hay red. Firestore guarda el tick igual y lo sube al volver la conexión;
- * sin este aviso el usuario se cree que ya está sincronizado y se entera tarde.
+ * Offline warning. Firestore stores the tick anyway and uploads it on reconnect; without this the
+ * user assumes everything is already synced and finds out too late.
  */
 @Composable
 private fun OfflineBadge() {
@@ -244,10 +244,8 @@ private fun OfflineBadge() {
 }
 
 /**
- * Progreso del día: "3 de 7 hechas" con anillo, y debajo el reparto entre miembros.
- *
- * Es lo primero que se mira en un panel familiar y era justo lo que faltaba: antes había que
- * contar las tarjetas a ojo para saber por dónde iba el día.
+ * Progress for the day: "3 of 7 done" with a ring, and the split between members below. It is the
+ * first thing anyone looks at on a family dashboard.
  */
 @Composable
 private fun TodayProgressCard(
@@ -257,8 +255,8 @@ private fun TodayProgressCard(
     byMember: List<MemberTally>,
     onClick: () -> Unit
 ) {
-    // Pulsable, como la tarjeta de compra: desde el resumen del día se salta a la lista
-    // completa de rutinas, que es lo que el panel ya no enseña entera a propósito.
+    // Clickable, like the shopping card: the summary jumps to the full routines list, which the
+    // dashboard deliberately no longer shows in full.
     HabitlyCard(shape = LeafCornerLarge, contentPadding = PaddingValues(16.dp), onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ProgressRing(progress = progress)
@@ -290,7 +288,7 @@ private fun TodayProgressCard(
     }
 }
 
-/** Anillo de progreso, decorativo: el texto de al lado ya dice cuántas van. */
+/** Progress ring, decorative: the text next to it already states the count. */
 @Composable
 private fun ProgressRing(progress: Float) {
     val track = MaterialTheme.habitly.border
@@ -315,7 +313,7 @@ private fun ProgressRing(progress: Float) {
         if (progress > 0f) {
             drawArc(
                 color = fill,
-                // Arranca arriba y avanza en el sentido del reloj, como se lee un reloj.
+                // Starts at the top and sweeps clockwise, the way a clock is read.
                 startAngle = -90f,
                 sweepAngle = 360f * progress.coerceIn(0f, 1f),
                 useCenter = false,
@@ -328,8 +326,8 @@ private fun ProgressRing(progress: Float) {
 }
 
 /**
- * Resumen de la compra. Enseña los primeros productos por su nombre: el recuento a secas
- * obliga a entrar en la pestaña para saber si merece la pena pasar por el súper.
+ * Shopping summary. Names the first few products: a bare count forces the user into the tab just
+ * to decide whether a supermarket trip is worth it.
  */
 @Composable
 private fun ShoppingSummaryCard(
@@ -341,7 +339,7 @@ private fun ShoppingSummaryCard(
             IconHalo {
                 Icon(
                     Icons.Outlined.ShoppingCart,
-                    // Decorativo: el título de al lado ya dice de qué es la tarjeta.
+                    // Decorative: the title next to it already names the card.
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -398,8 +396,8 @@ private fun RoutineDashboardItem(
     isMine: Boolean,
     onToggle: () -> Unit
 ) {
-    // Estado real, no un literal: con `checked = false` fijo, TalkBack anunciaba "no
-    // marcado" aunque la rutina estuviese hecha.
+    // Real state, not a literal: with a hardcoded `checked = false`, TalkBack announced
+    // "not checked" even for routines that were done.
     val isCompleted = RoutineSchedule.isCompletedOn(routine, LocalDate.now())
     val state = stringResource(
         if (isCompleted) R.string.dashboard_routine_state_done
@@ -417,7 +415,7 @@ private fun RoutineDashboardItem(
         contentPadding = PaddingValues(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Solo pinta el estado; quien lo anuncia es la tarjeta, que es el pulsable.
+            // Only draws the state; the card announces it, since the card is the clickable.
             RitualToggle(checked = isCompleted, size = 34.dp)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {

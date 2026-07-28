@@ -3,53 +3,48 @@ package com.monsteraltech.habitly.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Paleta **Verde niebla** de Habitly — dirección "Cozy Handcrafted".
+ * Habitly's "Misty Green" palette.
  *
- * Fuente: proyecto de diseño *Mejora visual de app* (`Habitly App.dc.html`). La idea
- * es mantener la estructura y el comportamiento de Material 3 (accesibilidad, focus,
- * touch targets) y cambiar solo la piel: verde salvia sereno sobre papel crema, con
- * sombra teñida en verde cálido en vez de la elevación gris de Material.
- *
- * Estas son las constantes crudas. [LightColorScheme]/[DarkColorScheme] y
- * [HabitlyColors] las consumen; cualquier ajuste de marca se hace aquí y se propaga.
+ * Material 3 keeps its structure and behaviour (accessibility, focus, touch targets); only the
+ * skin changes: sage green on cream paper, with a warm green-tinted shadow instead of Material's
+ * grey elevation. Raw constants — the schemes and [HabitlyColors] consume them.
  */
 
-// --- Verde salvia (marca / primario) --------------------------------------
-val SageHover = Color(0xFF2F5A4E)   // verde profundo (enlaces :hover)
-val SageDark = Color(0xFF487165)    // primaryDark — texto sobre contenedores claros
-val SageText = Color(0xFF3F7263)    // accentText — etiquetas de acento
-val Sage = Color(0xFF5F8F82)        // primary / accent — el verde de marca
-val SageSoft = Color(0xFFDBE8E2)    // primarySoft — halo de iconos, contenedor primario
-val SageMist = Color(0xFFD7E6DF)    // accentSoft — pastilla "Ver", contenedor secundario
+// --- Sage green (brand / primary) -----------------------------------------
+val SageHover = Color(0xFF2F5A4E)   // deep green (:hover links)
+val SageDark = Color(0xFF487165)    // primaryDark — text on light containers
+val SageText = Color(0xFF3F7263)    // accentText — accent labels
+val Sage = Color(0xFF5F8F82)        // primary / accent — the brand green
+val SageSoft = Color(0xFFDBE8E2)    // primarySoft — icon halo, primary container
+val SageMist = Color(0xFFD7E6DF)    // accentSoft — "View" pill, secondary container
 
-// --- Superficies (papel crema + niebla) -----------------------------------
-val Cream = Color(0xFFF9FBF6)       // surface / tarjeta — el "papel"
-val MeshBase = Color(0xFFEAF1EC)    // fondo base del mesh gradient
-val BoxIdle = Color(0xFFEAF0EC)     // surfaceVariant — casilla vacía, pistas
-val MistBorder = Color(0xFFD1DDD6)  // bordes, divisores, contorno de campos
+// --- Surfaces (cream paper + mist) ----------------------------------------
+val Cream = Color(0xFFF9FBF6)       // surface / card — the "paper"
+val MeshBase = Color(0xFFEAF1EC)    // mesh gradient base
+val BoxIdle = Color(0xFFEAF0EC)     // surfaceVariant — empty checkbox, hints
+val MistBorder = Color(0xFFD1DDD6)  // borders, dividers, field outlines
 
-// --- Texto ----------------------------------------------------------------
-val InkPrimary = Color(0xFF2F3D38)   // texto principal
-val InkSecondary = Color(0xFF7F938C) // texto secundario / descripciones
-val InkMuted = Color(0xFFA6B6AE)     // etiquetas apagadas, iconos de nav inactivos
+// --- Text -----------------------------------------------------------------
+val InkPrimary = Color(0xFF2F3D38)   // primary text
+val InkSecondary = Color(0xFF7F938C) // secondary text / descriptions
+val InkMuted = Color(0xFFA6B6AE)     // muted labels, inactive nav icons
 
-// --- Manchas del mesh gradient (radiales del fondo) -----------------------
+// --- Mesh gradient blobs (background radials) -----------------------------
 val Mesh1 = Color(0xFFCFE6DC)
 val Mesh2 = Color(0xFFE9DDCA)
 val Mesh3 = Color(0xFFCBE3D8)
 val Mesh4 = Color(0xFFD8E8DD)
 val Mesh5 = Color(0xFFEEF5F0)
 
-// --- Racha / mostaza (badges cálidos) -------------------------------------
-val StreakBg = Color(0xFFF6E6C8)   // fondo de la pastilla de racha
-val StreakFg = Color(0xFFB57A1F)   // texto/emoji de racha, acento mostaza
-val Mustard = Color(0xFFD99A4E)    // acento mostaza cálido (tertiary)
+// --- Streak / mustard (warm badges) ---------------------------------------
+val StreakBg = Color(0xFFF6E6C8)   // streak pill background
+val StreakFg = Color(0xFFB57A1F)   // streak text/emoji, mustard accent
+val Mustard = Color(0xFFD99A4E)    // warm mustard accent (tertiary)
 
-// --- Sombra teñida ("firma" cálida, nunca gris de Material) ---------------
-// rgba(60,110,95,0.40) — verde profundo translúcido.
-val WarmShadow = Color(0x663C6E5F)
+// --- Tinted shadow (the warm signature, never Material grey) --------------
+val WarmShadow = Color(0x663C6E5F) // rgba(60,110,95,0.40) — translucent deep green
 
-// --- Error (rampa estándar de Material 3) ---------------------------------
+// --- Error (standard Material 3 ramp) -------------------------------------
 val Error10 = Color(0xFF410002)
 val Error20 = Color(0xFF690005)
 val Error30 = Color(0xFF93000A)
@@ -57,37 +52,36 @@ val Error40 = Color(0xFFBA1A1A)
 val Error80 = Color(0xFFFFB4AB)
 val Error90 = Color(0xFFFFDAD6)
 
-// --- Modo oscuro (Verde niebla nocturno — a partir de `Habitly App Oscuro.dc.html`) ---
-// El mockup vive en una banda muy estrecha de verdes y en pantalla real todo se
-// funde. Aquí se abre la jerarquía: fondo más hondo, tarjetas que suben con un
-// filo claro (la sombra negra no se ve en oscuro), manchas del mesh más luminosas
-// y un acento salvia que se mantiene legible con texto crema.
-val SageDarkPrimary = Color(0xFF74A596)     // primary / accent — verde de marca (legible con crema)
-val SageDarkPrimaryDark = Color(0xFF6BA491) // primaryDark — texto "Te toca" (más luminoso que el mockup)
-val SageDarkAccent = Color(0xFF88CEBA)      // acento luminoso — enlaces, pastilla "Ver", chips
-val SageDarkOnPrimary = Color(0xFFF9FBF6)   // texto/icono sobre el acento (crema)
-val SageDarkContainer = Color(0xFF2A3B33)   // contenedor — halo de iconos, chips, "Te toca"
-val SageDarkNavActive = Color(0xFF31473D)   // fondo de la pestaña activa (accentSoft)
+// --- Dark mode -------------------------------------------------------------
+// The design mockup sits in a very narrow band of greens, which muddles together on a real
+// screen. The hierarchy is widened here: deeper background, cards lifted by a light hairline
+// (a black shadow is invisible in dark), brighter mesh blobs.
+val SageDarkPrimary = Color(0xFF74A596)     // primary / accent — brand green (legible against cream)
+val SageDarkPrimaryDark = Color(0xFF6BA491) // primaryDark — "Your turn" text
+val SageDarkAccent = Color(0xFF88CEBA)      // bright accent — links, "View" pill, chips
+val SageDarkOnPrimary = Color(0xFFF9FBF6)   // text/icon on the accent (cream)
+val SageDarkContainer = Color(0xFF2A3B33)   // container — icon halo, chips, "Your turn"
+val SageDarkNavActive = Color(0xFF31473D)   // active tab background (accentSoft)
 
-val InkDarkBg = Color(0xFF0F1915)           // fondo / base del mesh gradient (más hondo → todo separa)
-val InkDarkCanvas = Color(0xFF0A100D)       // el tono más hondo (lienzo tras la app)
-val InkDarkSurface = Color(0xFF20302A)      // tarjeta — el "papel" en oscuro, claramente sobre el fondo
-val InkDarkVariant = Color(0xFF2A3B33)      // surfaceVariant — chips, campos, segmentos
-val InkDarkBoxIdle = Color(0xFF16211C)      // casilla/toggle sin marcar (un "hueco")
-val InkDarkOnSurface = Color(0xFFEAF2ED)    // texto principal
-val InkDarkSecondary = Color(0xFF9DB2A8)    // texto secundario / descripciones
-val InkDarkMuted = Color(0xFF778A81)        // etiquetas apagadas, iconos de nav inactivos
-val InkDarkBorder = Color(0xFF33443C)       // bordes, divisores, contornos de campos
-val InkDarkHairline = Color(0x1AFFFFFF)     // filo claro de tarjeta (blanco ~10%) — profundidad en oscuro
-val WarmShadowDark = Color(0x99000000)      // sombra en oscuro (negra translúcida, más marcada)
+val InkDarkBg = Color(0xFF0F1915)           // background / mesh gradient base
+val InkDarkCanvas = Color(0xFF0A100D)       // deepest tone (canvas behind the app)
+val InkDarkSurface = Color(0xFF20302A)      // card — the "paper" in dark
+val InkDarkVariant = Color(0xFF2A3B33)      // surfaceVariant — chips, fields, segments
+val InkDarkBoxIdle = Color(0xFF16211C)      // unchecked checkbox/toggle (a "hole")
+val InkDarkOnSurface = Color(0xFFEAF2ED)    // primary text
+val InkDarkSecondary = Color(0xFF9DB2A8)    // secondary text / descriptions
+val InkDarkMuted = Color(0xFF778A81)        // muted labels, inactive nav icons
+val InkDarkBorder = Color(0xFF33443C)       // borders, dividers, field outlines
+val InkDarkHairline = Color(0x1AFFFFFF)     // card hairline (~10% white) — depth in dark
+val WarmShadowDark = Color(0x99000000)      // dark-mode shadow (translucent black)
 
-// Manchas del mesh gradient en oscuro (más luminosas para que el degradado se note).
+// Mesh gradient blobs in dark (brighter, so the gradient still reads).
 val MeshDark1 = Color(0xFF224B3C)
 val MeshDark2 = Color(0xFF453D22)
 val MeshDark3 = Color(0xFF1B4838)
 val MeshDark4 = Color(0xFF285041)
 val MeshDark5 = Color(0xFF1E332C)
 
-// Badges cálidos en oscuro (racha / mostaza).
-val StreakBgDark = Color(0xFF3E3417)        // fondo de la pastilla de racha
-val StreakFgDark = Color(0xFFE0AC4C)        // texto/emoji de racha, acento mostaza
+// Warm badges in dark (streak / mustard).
+val StreakBgDark = Color(0xFF3E3417)        // streak pill background
+val StreakFgDark = Color(0xFFE0AC4C)        // streak text/emoji, mustard accent

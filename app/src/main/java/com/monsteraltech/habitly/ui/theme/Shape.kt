@@ -6,12 +6,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Escala de formas de Habitly.
- *
- * Más redondeada que la de Material 3 por defecto — lo que separa una app de producto
- * de una plantilla. Los componentes de Material la consumen sola: `Card` usa
- * [Shapes.medium], los diálogos y `BottomSheet` usan [Shapes.extraLarge], los chips
- * usan [Shapes.small].
+ * Habitly's shape scale — rounder than the Material 3 default. Material components consume it on
+ * their own: `Card` uses [Shapes.medium], dialogs and `BottomSheet` use [Shapes.extraLarge].
  */
 val Shapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
@@ -22,14 +18,12 @@ val Shapes = Shapes(
 )
 
 /**
- * La **firma** de Habitly: la esquina-hoja.
+ * Habitly's signature leaf corner: every card surface clips its bottom-left corner like a folded
+ * leaf while keeping the other three rounded. That detail plus the warm shadow is what makes the
+ * app recognisable at a glance.
  *
- * Toda superficie-tarjeta recorta su esquina inferior-izquierda (como una hoja
- * plegada) mientras mantiene redondeadas las otras tres. Ese detalle, junto con la
- * sombra verde cálida, es lo que hace reconocible la app de un vistazo.
- *
- * @param radius radio de las tres esquinas redondeadas.
- * @param notch  radio (pequeño) de la esquina inferior-izquierda "plegada".
+ * @param radius radius of the three rounded corners.
+ * @param notch  small radius of the "folded" bottom-left corner.
  */
 fun leafCornerShape(radius: Dp = 24.dp, notch: Dp = 8.dp) = RoundedCornerShape(
     topStart = radius,
@@ -38,8 +32,8 @@ fun leafCornerShape(radius: Dp = 24.dp, notch: Dp = 8.dp) = RoundedCornerShape(
     bottomStart = notch,
 )
 
-/** Esquina-hoja grande para tarjetas destacadas (cabecera, compra). */
+/** Large leaf corner for highlighted cards (header, shopping). */
 val LeafCornerLarge = leafCornerShape(28.dp, 8.dp)
 
-/** Esquina-hoja estándar para filas de lista (rutinas, productos). */
+/** Standard leaf corner for list rows (routines, products). */
 val LeafCornerMedium = leafCornerShape(24.dp, 8.dp)
