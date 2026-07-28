@@ -27,8 +27,8 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * Error de descarga que no merece reintento automático (HTTP 4xx, validación de integridad,
- * falta de espacio): el worker lo convierte en fallo definitivo en vez de en `Result.retry()`.
+ * A download error not worth retrying automatically (HTTP 4xx, integrity validation, no space):
+ * the worker turns it into a definitive failure instead of a `Result.retry()`.
  */
 class NonRetryableDownloadException(message: String) : IOException(message)
 
@@ -56,10 +56,10 @@ class LocalModelManager @Inject constructor(
     }
 
     /**
-     * Un fichero de modelo solo es válido si pesa al menos el 95% del tamaño esperado del
-     * catálogo: descarta páginas de error o ficheros truncados guardados por descargas
-     * antiguas sin validación, sin exigir el byte exacto (el tamaño del catálogo es
-     * aproximado). Un fichero inválido cuenta como "no descargado" y se puede redescargar.
+     * A model file is only valid if it weighs at least 95% of the size the catalog expects. That
+     * discards error pages and truncated files left by older unvalidated downloads without
+     * demanding an exact byte count, since the catalog size is approximate. An invalid file counts
+     * as "not downloaded" and can be fetched again.
      */
     private fun isValidModelFile(file: File, config: AiModelConfig): Boolean =
         file.exists() && file.length() >= config.sizeBytes / 100 * 95
@@ -85,8 +85,8 @@ class LocalModelManager @Inject constructor(
         checkFreeSpace(config, tempFile)
 
         try {
-            // Reanudación: si quedó un .tmp de un intento anterior, se pide solo el resto
-            // con Range. La verificación de integridad del final valida el conjunto.
+            // Resume: if a .tmp survived a previous attempt, only the remainder is requested with
+            // Range. The integrity check at the end validates the whole file.
             var startOffset = tempFile.length()
             var request = buildRequest(config.downloadUrl, startOffset)
             var response = executeCall(okHttpClient.newCall(request))
@@ -100,8 +100,8 @@ class LocalModelManager @Inject constructor(
                     ?: throw IOException("Redirect sin Location")
                 response.close()
 
-                // Solo se siguen redirecciones HTTPS: al seguirlas a mano, OkHttp ya no
-                // puede impedir por sí mismo una degradación a HTTP plano.
+                // Only HTTPS redirects are followed: since they are followed by hand, OkHttp can no
+                // longer prevent a downgrade to plain HTTP on its own.
                 if (!location.startsWith("https://")) {
                     throw NonRetryableDownloadException("Redirección insegura rechazada (solo HTTPS)")
                 }
@@ -110,8 +110,8 @@ class LocalModelManager @Inject constructor(
             }
 
             if (response.code == 416) {
-                // El rango ya no cuadra con el fichero remoto: se descarta lo parcial y el
-                // reintento (este error es transitorio) empieza de cero.
+                // The range no longer matches the remote file: the partial download is discarded
+                // and the retry — this error is transient — starts from scratch.
                 response.close()
                 tempFile.delete()
                 throw IOException("Rango de reanudación no válido; se reinicia la descarga")
@@ -120,23 +120,23 @@ class LocalModelManager @Inject constructor(
                 val code = response.code
                 response.close()
                 if (code in 400..499) {
-                    // Un 4xx (sin permisos, modelo retirado…) no se arregla reintentando.
+                    // A 4xx (no permission, model withdrawn) is not fixed by retrying.
                     throw NonRetryableDownloadException("Error HTTP $code al descargar el modelo")
                 }
                 throw IOException("Error HTTP $code al descargar el modelo")
             }
 
-            // 206 = el servidor acepta reanudar; 200 con Range = manda el fichero entero.
+            // 206 means the server accepts resuming; 200 with a Range means it sends the whole file.
             val resuming = response.code == 206 && startOffset > 0
             if (!resuming) startOffset = 0L
 
-            // SHA-256 en streaming (coste cero de pasada extra). Al reanudar hay que rehacer
-            // primero el hash de lo ya escrito: un digest no se puede retomar a mitad.
+            // SHA-256 computed while streaming, so no extra pass. On resume the hash of what was
+            // already written must be replayed first: a digest cannot be picked up mid-way.
             val digest = MessageDigest.getInstance("SHA-256")
             if (resuming) seedDigestWithExistingBytes(digest, tempFile)
 
-            // Longitud anunciada del CUERPO (en 206 es solo el resto) y total estimado
-            // para el progreso (el header puede faltar en respuestas chunked).
+            // Announced **body** length — on a 206 that is only the remainder — plus an estimated
+            // total for the progress bar, since the header can be missing on chunked responses.
             val bodyLength = response.body?.contentLength() ?: -1L
             val expectedTotal = (if (bodyLength > 0) startOffset + bodyLength else config.sizeBytes)
                 .coerceAtLeast(1L)
@@ -162,9 +162,9 @@ class LocalModelManager @Inject constructor(
             }
             response.close()
 
-            // Un cierre "limpio" del servidor a mitad de fichero no lanza excepción: sin estas
-            // comprobaciones, un modelo truncado (o una página de error diminuta) se daría por
-            // bueno y el engine fallaría después con un error críptico e irrecuperable.
+            // A "clean" server close half-way through the file raises no exception. Without these
+            // checks a truncated model, or a tiny error page, would be accepted and the engine
+            // would fail later with a cryptic, unrecoverable error.
             if (bodyLength > 0 && sessionRead < bodyLength) {
                 throw IOException("Descarga incompleta: $sessionRead de $bodyLength bytes")
             }
@@ -183,15 +183,15 @@ class LocalModelManager @Inject constructor(
             Log.d(tag, "Model downloaded successfully: ${modelFile.absolutePath} " +
                     "(${modelFile.length() / 1024 / 1024}MB)")
         } catch (e: CancellationException) {
-            // Cancelación (usuario o sistema): se conserva el .tmp para reanudar después.
+            // Cancellation (user or system): the .tmp is kept so it can resume later.
             throw e
         } catch (e: NonRetryableDownloadException) {
-            // El contenido no vale (validación, 4xx…): fuera el .tmp, el siguiente intento es limpio.
+            // The content is no good (validation, 4xx): drop the .tmp so the next attempt is clean.
             tempFile.delete()
             Log.e(tag, "Error downloading model (no recuperable)", e)
             throw e
         } catch (e: Exception) {
-            // Error transitorio (red): se conserva el .tmp y el worker reintenta con Range.
+            // Transient error (network): the .tmp is kept and the worker retries with Range.
             Log.e(tag, "Error downloading model", e)
             throw e
         }
@@ -203,10 +203,10 @@ class LocalModelManager @Inject constructor(
         return builder.build()
     }
 
-    /** El margen evita apurar el disco: Android degrada mucho con el almacenamiento al límite. */
+    /** The margin avoids filling the disk: Android degrades badly with storage at the limit. */
     private fun checkFreeSpace(config: AiModelConfig, tempFile: File) {
         val needed = (config.sizeBytes - tempFile.length()).coerceAtLeast(0L) + FREE_SPACE_MARGIN_BYTES
-        // usableSpace devuelve 0 cuando el sistema no sabe responder: ahí no bloqueamos.
+        // usableSpace returns 0 when the system cannot answer; do not block in that case.
         val usable = modelDir.usableSpace
         if (usable in 1 until needed) {
             val missingMb = (needed - usable) / 1_000_000
@@ -216,7 +216,7 @@ class LocalModelManager @Inject constructor(
         }
     }
 
-    /** Rehace el hash de lo ya descargado antes de reanudar. */
+    /** Replays the hash over what was already downloaded, before resuming. */
     private fun seedDigestWithExistingBytes(digest: MessageDigest, file: File) {
         file.inputStream().use { input ->
             val buffer = ByteArray(DOWNLOAD_BUFFER_BYTES)
@@ -228,9 +228,9 @@ class LocalModelManager @Inject constructor(
     }
 
     /**
-     * Compara el SHA-256 calculado durante la escritura con el fijado en el catálogo. Un fallo
-     * aquí no es recuperable reintentando: o el artefacto remoto ha cambiado, o alguien está
-     * sirviendo otro fichero. En ambos casos se descarta la descarga y NO se ejecuta.
+     * Compares the SHA-256 computed while writing against the one pinned in the catalog. A failure
+     * here is not recoverable by retrying: either the remote artifact changed, or someone is
+     * serving a different file. Either way the download is discarded and **never** executed.
      */
     private fun verifyChecksum(config: AiModelConfig, digest: MessageDigest) {
         val computed = digest.digest().joinToString("") { "%02x".format(it) }
@@ -262,17 +262,17 @@ class LocalModelManager @Inject constructor(
         }
     }
 
-    /** Borra el modelo y, si la hay, su descarga parcial (.tmp). */
+    /** Deletes the model and, if present, its partial download (.tmp). */
     fun deleteModel(config: AiModelConfig): Boolean {
         File(modelDir, "${config.filename}.tmp").delete()
         return getModelFile(config).delete()
     }
 
     private companion object {
-        /** Búfer de lectura de la descarga (ficheros de GB: mejor 64 KB que 8 KB). */
+        /** Download read buffer — for gigabyte files 64 KB beats 8 KB. */
         const val DOWNLOAD_BUFFER_BYTES = 64 * 1024
 
-        /** Espacio libre extra exigido además del propio modelo. */
+        /** Extra free space required on top of the model itself. */
         const val FREE_SPACE_MARGIN_BYTES = 200_000_000L
     }
 
@@ -284,11 +284,10 @@ class LocalModelManager @Inject constructor(
     }
 
     /**
-     * Elimina de [modelDir] cualquier fichero que no corresponda a un modelo
-     * vigente en [validModels]. Así, cuando se retira o renombra un modelo del
-     * catálogo, su descarga deja de ocupar espacio sin necesidad de código de
-     * limpieza específico por modelo. Se conservan los modelos vigentes y sus
-     * descargas en curso (.tmp) para no interrumpir una descarga activa.
+     * Removes from [modelDir] any file that does not belong to a model still listed in
+     * [validModels]. When a model is withdrawn or renamed in the catalog, its download stops taking
+     * up space without any per-model cleanup code. Current models and their in-progress downloads
+     * (.tmp) are preserved so an active download is not interrupted.
      */
     fun cleanupOrphanedModels(validModels: List<AiModelConfig>) {
         val known = validModels.flatMap { listOf(it.filename, "${it.filename}.tmp") }.toSet()

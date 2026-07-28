@@ -4,20 +4,20 @@ import java.text.Normalizer
 import javax.inject.Inject
 
 /**
- * Decide si el mensaje del usuario pide **crear** rutinas nuevas (frente a solo consultar las que
- * ya tiene). Es la "puerta de intención" del segundo turno: si devuelve `false`, no se lanza la
- * extracción y no aparece tarjeta de crear rutinas. Así evitamos sugerencias sin sentido (p. ej.
- * ofrecer crear rutinas cuando el usuario pregunta por las que ya existen).
+ * Decides whether the user's message asks to **create** new routines, as opposed to merely asking
+ * about the ones they already have. This is the intent gate of the second turn: when it returns
+ * `false` no extraction runs and no routine card appears, which keeps nonsensical suggestions away.
  *
- * Heurística deliberadamente conservadora y ajustable: exige un verbo de creación específico junto
- * a un sustantivo de rutina, o una frase que ya implica crear ("plan de limpieza"). Evita verbos
- * genéricos (dame, quiero, organiza) que también aparecen en consultas del tipo "organiza mi día
- * con las rutinas que tengo".
+ * The heuristic is deliberately conservative: it requires a specific creation verb next to a
+ * routine noun, or a phrase that already implies creating one. Generic verbs are avoided because
+ * they also show up in queries about existing routines.
  *
- * Los verbos se buscan como **inicio de palabra** (`\b`), no como substring: así "ponme una
- * rutina" abre la puerta pero "¿me respondes con mis rutinas?" no, y "créame" cuenta sin que
- * cuente "ideas creativas". Los verbos cortos (pon, haz, crea…) llevan sus formas cerradas
- * porque como prefijo abierto colisionan con otras palabras (pongo, hazaña, creativas).
+ * Verbs are matched at a **word boundary** (`\b`), not as substrings, so "ponme una rutina" opens
+ * the gate while "¿me respondes con mis rutinas?" does not. Short verbs carry their closed forms,
+ * because as open prefixes they collide with unrelated words.
+ *
+ * The patterns are Spanish and unaccented: the model is prompted in Spanish and the text arrives
+ * normalised.
  */
 class RoutineCreationIntentUseCase @Inject constructor() {
 
@@ -31,25 +31,27 @@ class RoutineCreationIntentUseCase @Inject constructor() {
     }
 
     /**
-     * Confirmación corta de una propuesta previa: "sí", "vale", "créalas", "ponlas". No dice
-     * QUÉ crear (no lleva sustantivo), así que solo abre la puerta si quien llama confirma
-     * que el último mensaje del asistente [looksLikeRoutineProposal].
+     * Short confirmation of an earlier proposal: "sí", "vale", "créalas". It does not say **what**
+     * to create, since it carries no noun, so it only opens the gate when the caller confirms the
+     * assistant's last message [looksLikeRoutineProposal].
      */
     fun isFollowUpConfirmation(userMessage: String): Boolean {
         val text = userMessage.normalizeForMatch()
         if (text.isBlank() || text.length > MAX_FOLLOW_UP_LENGTH) return false
         if (AFFIRMATIVE_REGEX.containsMatchIn(text)) return true
-        // Verbo de creación con pronombre y sin sustantivo: "créalas", "apúntalas", "ponlas".
+        // Creation verb with a pronoun and no noun: "créalas", "apúntalas", "ponlas".
         return CREATION_VERB_REGEX.containsMatchIn(text)
     }
 
     /**
-     * Heurística de "el asistente acaba de proponer rutinas": nombra rutinas/hábitos Y usa
-     * lenguaje de propuesta EN LA MISMA FRASE (ventana acotada, sin cruzar puntuación
-     * fuerte). El marcador evita confundir un listado de las rutinas que YA existen con una
-     * propuesta de crear nuevas; la cercanía evita el falso positivo de una respuesta de
-     * OTRO tema (una lista de la compra con "te recomiendo…" al principio) que menciona
-     * "rutina" de pasada en otra frase.
+     * Heuristic for "the assistant just proposed routines": it names routines or habits **and**
+     * uses proposal language **in the same sentence**, within a bounded window that does not cross
+     * strong punctuation.
+     *
+     * The proposal marker stops a listing of routines that already exist from being read as a
+     * proposal to create new ones; the proximity requirement stops the false positive of an answer
+     * about something else — a shopping list opening with a recommendation — that mentions
+     * "routine" in passing in another sentence.
      */
     fun looksLikeRoutineProposal(assistantText: String): Boolean {
         val text = assistantText.normalizeForMatch()
@@ -57,7 +59,7 @@ class RoutineCreationIntentUseCase @Inject constructor() {
         return PROPOSAL_NEAR_NOUN_REGEX.containsMatchIn(text)
     }
 
-    /** Minúsculas y sin tildes, para comparar sin depender de acentos ni mayúsculas. */
+    /** Lowercased and unaccented, so matching depends on neither accents nor case. */
     private fun String.normalizeForMatch(): String =
         Normalizer.normalize(trim().lowercase(), Normalizer.Form.NFD)
             .replace(DIACRITICS_REGEX, "")
@@ -66,9 +68,9 @@ class RoutineCreationIntentUseCase @Inject constructor() {
         val DIACRITICS_REGEX = Regex("\\p{Mn}+")
 
         /**
-         * Verbos que expresan crear/añadir rutinas (sin tildes, el texto llega normalizado).
-         * Prefijos abiertos donde todas las continuaciones son formas del verbo (anad → añade,
-         * añadir, añádeme…) y formas cerradas para los verbos cortos ambiguos.
+         * Verbs expressing create/add for routines. Open prefixes where every continuation is a
+         * form of the verb (anad → añade, añadir, añádeme), and closed forms for the short,
+         * ambiguous ones.
          */
         val CREATION_VERB_REGEX = listOf(
             "propon", "sugier", "planifica", "establece", "anad", "agreg", "apunt",
@@ -79,32 +81,32 @@ class RoutineCreationIntentUseCase @Inject constructor() {
             "haz(?:me|nos|la|las|lo)?\\b"
         ).joinToString("|").let { Regex("\\b(?:$it)") }
 
-        /** Sustantivos de rutina (sin tildes). */
+        /** Routine nouns. */
         val ROUTINE_NOUNS = listOf("rutina", "habito")
 
-        /** Frases que por sí solas implican querer crear rutinas. */
+        /** Phrases that on their own imply wanting to create routines. */
         val CREATION_PHRASES = listOf(
             "plan de limpieza", "plan de rutinas", "nuevas rutinas", "rutinas nuevas",
             "nueva rutina", "rutina nueva", "ideas de rutinas"
         )
 
-        /** Tope de longitud de una confirmación: más largo ya es una petición con contenido. */
+        /** Length cap for a confirmation: anything longer is a request with content of its own. */
         const val MAX_FOLLOW_UP_LENGTH = 60
 
-        /** Afirmaciones cortas, como palabra completa ("si" suelto, no dentro de "casi"). */
+        /** Short affirmations, as whole words ("si" on its own, not inside "casi"). */
         val AFFIRMATIVE_REGEX =
             Regex("\\b(?:si|vale|adelante|claro|perfecto|ok|venga|genial|de acuerdo)\\b")
 
-        /** Lenguaje de propuesta del asistente (sin tildes; prefijos de conjugación). */
+        /** The assistant's proposal language (conjugation prefixes). */
         val PROPOSAL_MARKERS = listOf(
             "propong", "sugier", "recomiend", "recomendar",
             "podrias crear", "puedes crear", "podrias anadir", "puedes anadir"
         )
 
-        /** Ventana marcador↔sustantivo dentro de la misma frase (en caracteres). */
+        /** Marker-to-noun window within the same sentence, in characters. */
         const val PROPOSAL_WINDOW_CHARS = 80
 
-        /** Marcador de propuesta y sustantivo de rutina cerca y sin cruzar `.!?` ni salto. */
+        /** Proposal marker and routine noun close together, without crossing `.!?` or a newline. */
         val PROPOSAL_NEAR_NOUN_REGEX = run {
             val marker = "(?:${PROPOSAL_MARKERS.joinToString("|")})"
             val noun = "(?:${ROUTINE_NOUNS.joinToString("|")})"

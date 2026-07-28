@@ -20,12 +20,12 @@ import java.util.Locale
 import javax.inject.Inject
 
 /**
- * Construye el prompt de sistema del asistente: personalidad base + un "contexto oculto"
- * con el estado real de la casa (fecha, lista de la compra, rutinas personales y de casa).
+ * Builds the assistant's system prompt: base personality plus a hidden context carrying the
+ * household's real state (date, shopping list, personal and household routines).
  *
- * El contexto va acotado a propósito ([MAX_SHOPPING_ITEMS], [MAX_ROUTINES]): los modelos
- * on-device trabajan con una KV cache de 4096 tokens y un contexto largo degrada la
- * calidad de la respuesta y deja menos sitio para la conversación.
+ * The context is deliberately bounded ([MAX_SHOPPING_ITEMS], [MAX_ROUTINES]): on-device models work
+ * with a 4096-token KV cache, and a long context both degrades answer quality and leaves less room
+ * for the conversation.
  */
 class GetAiContextUseCase @Inject constructor(
     private val authRepository: AuthRepository,
@@ -39,9 +39,9 @@ class GetAiContextUseCase @Inject constructor(
         timeoutMs: Long = DEFAULT_TIMEOUT_MS,
         today: LocalDate = LocalDate.now()
     ): String {
-        // Directiva de idioma: el modelo infiere el idioma del prompt, y todo el contexto va en
-        // español; sin esta orden explícita respondería siempre en español aunque el usuario haya
-        // cambiado el idioma de la app en Ajustes. Se ancla al principio y al final del prompt.
+        // Language directive: the model infers the language from the prompt, and the whole context
+        // is written in Spanish. Without this explicit instruction it would always answer in
+        // Spanish even after the user changed the app language. Anchored at both ends of the prompt.
         val directive = languageDirective()
         val personality = "$directive\n\n${getBasePersonality()}"
 
@@ -54,8 +54,8 @@ class GetAiContextUseCase @Inject constructor(
         val householdId = profile?.activeHouseholdId?.takeIf { it.isNotBlank() }
             ?: return personality
 
-        // Las cuatro lecturas son independientes entre sí: en paralelo, el peor caso pasa de
-        // cuatro timeouts encadenados a uno (menos espera antes del primer token del chat).
+        // The four reads are independent: run in parallel, the worst case drops from four chained
+        // timeouts to one, cutting the wait before the chat's first token.
         return coroutineScope {
             val shoppingItems = async {
                 withTimeoutOrNull(timeoutMs) {
@@ -106,7 +106,7 @@ class GetAiContextUseCase @Inject constructor(
         }
     }
 
-    /** Fecha en español sin depender del `Locale` del dispositivo (el prompt siempre es español). */
+    /** Spanish date without relying on the device `Locale`; the context is always Spanish. */
     private fun formatDate(date: LocalDate): String {
         val dayName = SPANISH_DAYS[date.dayOfWeek.value - 1]
         val monthName = SPANISH_MONTHS[date.monthValue - 1]
@@ -118,7 +118,7 @@ class GetAiContextUseCase @Inject constructor(
 
         val pending = items.filter { !it.isChecked }
         val checked = items.filter { it.isChecked }
-        // Lo pendiente es lo relevante: va primero, así el recorte se come lo ya comprado.
+        // Pending items are what matter: they go first, so the trim eats the purchased ones.
         val shown = (pending + checked).take(MAX_SHOPPING_ITEMS)
         val omitted = items.size - shown.size
 
@@ -129,7 +129,7 @@ class GetAiContextUseCase @Inject constructor(
         }
     }
 
-    /** Omite lo que es valor por defecto para no gastar tokens: `Tomate (6 kg) [Verduras] [Lidl] (pendiente)`. */
+    /** Omits default values to save tokens: `Tomate (6 kg) [Verduras] [Lidl] (pendiente)`. */
     private fun shoppingLine(item: ShoppingItem): String = buildString {
         append(item.name)
         if (item.quantity > 1 || item.unit != DEFAULT_UNIT) append(" (${item.quantity} ${item.unit})")
@@ -163,7 +163,7 @@ class GetAiContextUseCase @Inject constructor(
         today: LocalDate,
         currentUserId: String?
     ) {
-        // Lo que toca hoy es lo relevante: va primero para sobrevivir al recorte.
+        // What is due today matters most: it goes first so it survives the trim.
         val shown = routines
             .sortedByDescending { RoutineSchedule.isDueOn(it, today) }
             .take(MAX_ROUTINES)
@@ -173,7 +173,7 @@ class GetAiContextUseCase @Inject constructor(
         if (omitted > 0) append("\n- … y $omitted rutinas más.")
     }
 
-    /** `Gimnasio (pendiente, hoy toca, racha de 5 días)`. */
+    /** Renders one routine line, e.g. `Gimnasio (pendiente, hoy toca, racha de 5 días)`. */
     private fun routineLine(routine: Routine, today: LocalDate, currentUserId: String?): String {
         val marks = mutableListOf<String>()
 
@@ -191,9 +191,9 @@ class GetAiContextUseCase @Inject constructor(
     }
 
     /**
-     * En rutinas de casa distingue quién la hizo. Se usa "otro miembro" en vez del nombre
-     * porque resolver nicknames costaría dos llamadas de red más dentro del timeout;
-     * los nombres llegan con la fase de rotación/balance, que ya los tiene cargados.
+     * For household routines, distinguishes who completed it. A generic "another member" is used
+     * rather than the name because resolving nicknames would cost two more network calls inside
+     * the timeout; the balance panel, which already has them loaded, shows real names.
      */
     private fun completedMark(routine: Routine, currentUserId: String?): String = when {
         currentUserId == null -> "marcada"
@@ -203,10 +203,10 @@ class GetAiContextUseCase @Inject constructor(
     }
 
     /**
-     * Orden explícita del idioma en que debe responder el asistente, según el idioma elegido en
-     * Ajustes ([AppLanguage]). Si es "sistema", se resuelve con la locale efectiva del dispositivo.
-     * El contexto oculto sigue en español (más barato en tokens); esta directiva es la que hace
-     * que el modelo cambie de idioma al cambiarlo en la app.
+     * Explicit instruction on which language the assistant must answer in, following the choice in
+     * Settings ([AppLanguage]); "system" resolves to the device's effective locale. The hidden
+     * context stays in Spanish because it is cheaper in tokens — this directive is what makes the
+     * model switch languages when the app does.
      */
     private suspend fun languageDirective(): String {
         val selected = settingsRepository.language.firstOrNull() ?: AppLanguage.SYSTEM
@@ -246,17 +246,17 @@ class GetAiContextUseCase @Inject constructor(
     companion object {
         const val DEFAULT_TIMEOUT_MS = 2000L
 
-        /** Tope de productos volcados al contexto (la KV cache del modelo es de 4096 tokens). */
+        /** Cap on products dumped into the context; the model's KV cache is 4096 tokens. */
         const val MAX_SHOPPING_ITEMS = 30
 
-        /** Tope de rutinas por sección (personales y de casa). Acotado para dejar presupuesto
-         *  de KV cache al segundo turno de extracción. */
+        /** Cap on routines per section (personal and household), bounded to leave KV cache budget
+         *  for the extraction turn. */
         const val MAX_ROUTINES = 8
 
-        /** Tope de productos de la despensa volcados al contexto. */
+        /** Cap on pantry products dumped into the context. */
         const val MAX_PANTRY_ITEMS = 30
 
-        /** A partir de esta racha se menciona en el contexto (por debajo no aporta). */
+        /** Streaks are only mentioned in the context from this length up; below it adds nothing. */
         private const val MIN_STREAK_SHOWN = 2
 
         private const val DEFAULT_UNIT = "unidad"
