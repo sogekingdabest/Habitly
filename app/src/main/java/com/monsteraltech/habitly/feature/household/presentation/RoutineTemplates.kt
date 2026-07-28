@@ -6,13 +6,13 @@ import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import java.util.Calendar
 
 /**
- * Una rutina de casa típica, ofrecida al crear la casa.
+ * A typical household routine, offered when the household is created.
  *
- * El título es un id de recurso y no texto: se resuelve en el composable, que es el contexto que
- * sigue el idioma de Ajustes. La frecuencia viene precargada con algo sensato para que el usuario
- * no tenga que decidir ocho veces seguidas.
+ * The title is a resource id rather than text: it is resolved in the composable, the context that
+ * follows the language chosen in Settings. The frequency is preloaded with something sensible so
+ * the user does not have to decide eight times in a row.
  *
- * [scheduledDays] usa las constantes de `java.util.Calendar` (domingo=1), igual que `Routine`.
+ * [scheduledDays] uses `java.util.Calendar` constants (Sunday=1), like `Routine`.
  */
 data class RoutineTemplate(
     val id: String,
@@ -23,10 +23,9 @@ data class RoutineTemplate(
 )
 
 /**
- * Plantillas que se ofrecen en el onboarding. Ocho: las suficientes para que una casa arranque
- * con algo de verdad y las pocas para que la pantalla no dé pereza.
- *
- * Están repartidas por días a propósito, para que no toque todo el mismo día.
+ * Templates offered during onboarding. Eight of them: enough for a household to start with
+ * something real, few enough that the screen is not daunting. Spread across days on purpose, so
+ * everything does not land on the same one.
  */
 val HOUSEHOLD_ROUTINE_TEMPLATES = listOf(
     RoutineTemplate(

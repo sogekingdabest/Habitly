@@ -1,16 +1,14 @@
 package com.monsteraltech.habitly.feature.household.domain.model
 
 /**
- * Datos públicos de un miembro, duplicados dentro del documento de la casa.
+ * Public data of a member, duplicated inside the household document.
  *
- * Existe para poder cerrar la lectura de `/users/{uid}` a su propio dueño: antes, resolver
- * el nombre de un compañero de casa exigía leer su perfil, lo que obligaba a dejar TODOS
- * los perfiles legibles por cualquier usuario autenticado. Con la copia aquí, los nombres
- * salen del documento de la casa —que ya está cargado— y de paso se ahorra una lectura de
- * Firestore por miembro y por pantalla.
+ * This exists so `/users/{uid}` can be locked down to its own owner. Resolving a housemate's name
+ * used to require reading their profile, which forced every profile to stay readable by any
+ * authenticated user. With the copy here, names come from the already-loaded household document
+ * and one Firestore read per member per screen is saved.
  *
- * Solo debe contener lo que los demás miembros necesitan ver. Nada de correo ni de
- * identificadores de otros servicios.
+ * Must only hold what other members need to see — no email, no identifiers from other services.
  */
 data class MemberProfile(
     var displayName: String = "",
@@ -22,44 +20,39 @@ data class Household(
     var name: String = "",
     var inviteCode: String = "",
     /**
-     * Cuándo caduca [inviteCode] (epoch ms). Duplicado del documento de `invite_codes`
-     * —que solo puede leer quien conoce el código— para que la pantalla de la casa pueda
-     * avisar a los miembros. 0 = código antiguo sin caducidad, que ya no se resuelve y hay
-     * que regenerar.
+     * When [inviteCode] expires (epoch ms). Duplicated from the `invite_codes` document — which
+     * only someone who knows the code can read — so the household screen can warn its members.
+     * 0 means a legacy code with no expiry, which no longer resolves and must be regenerated.
      */
     var inviteCodeExpiresAt: Long = 0,
     /**
-     * Quién manda en la casa: el único que puede borrarla o expulsar a otros. Antes
-     * cualquier miembro podía borrar la casa entera con su historial, lo que en una app
-     * de convivencia es un problema de convivencia y no solo técnico.
+     * Who owns the household: the only one who can delete it or remove others. Previously any
+     * member could delete the whole household along with its history.
      *
-     * Vacío en las casas creadas antes de este campo; [ownerOrFallback] resuelve ese caso.
+     * Empty in households created before this field existed; [ownerOrFallback] covers that case.
      */
     var ownerId: String = "",
     var members: List<String> = emptyList(),
     var customStores: List<String> = emptyList(),
     /**
-     * Perfil público de cada miembro, indexado por uid. Se mantiene al día en los puntos
-     * donde cambia la pertenencia (crear, unirse, salir, expulsar) y al editar el nickname.
+     * Public profile of each member, keyed by uid. Kept up to date wherever membership changes
+     * (create, join, leave, remove) and when a nickname is edited.
      *
-     * Puede venir incompleto en casas creadas antes de que existiera este campo: cada
-     * usuario rellena su propia entrada al abrir la app (ver `SyncOwnMemberProfileUseCase`).
-     * Por eso quien lo consuma debe tolerar que falte un uid.
+     * May be incomplete in households created before this field existed: each user fills in their
+     * own entry on launch (see `SyncOwnMemberProfileUseCase`), so consumers must tolerate a
+     * missing uid.
      */
     var memberProfiles: Map<String, MemberProfile> = emptyMap()
 ) {
     /**
-     * Propietario efectivo. En las casas creadas antes de que existiera [ownerId] el campo
-     * llega vacío, y ahí el criterio es "el primer miembro", que por construcción es quien
-     * la creó (createHousehold arranca members con solo el creador y las altas posteriores
-     * usan arrayUnion, que añade al final).
+     * Effective owner. In households created before [ownerId] existed the field arrives empty, and
+     * the rule there is "the first member" — by construction whoever created it, since
+     * createHousehold seeds members with the creator alone and later joins use arrayUnion, which
+     * appends. Returns an empty string for a household with no members, which should not exist.
      *
-     * Devuelve cadena vacía en una casa sin miembros, que no debería existir.
-     *
-     * `@get:Exclude` es obligatorio: el mapeador de Firestore serializa TODO getter público,
-     * así que sin él cada `set(household)` escribía un campo `ownerOrFallback` derivado en el
-     * documento, y cada lectura avisaba en el log ("No setter/field for ownerOrFallback").
-     * Basura duplicada en la nube y ruido que tapa avisos de verdad.
+     * `@get:Exclude` is mandatory: the Firestore mapper serialises **every** public getter, so
+     * without it each `set(household)` wrote a derived `ownerOrFallback` field into the document
+     * and every read logged "No setter/field for ownerOrFallback".
      */
     @get:com.google.firebase.firestore.Exclude
     val ownerOrFallback: String

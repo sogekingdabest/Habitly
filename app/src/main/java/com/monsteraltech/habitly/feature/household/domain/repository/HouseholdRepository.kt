@@ -5,57 +5,41 @@ import com.monsteraltech.habitly.feature.household.domain.model.UserProfile
 import kotlinx.coroutines.flow.Flow
 
 /**
- * El código no sirve: no existe, ya ha caducado o apunta a una casa que no está. Los tres
- * casos se funden en uno a propósito, para no revelar qué códigos existen a quien los vaya
- * probando.
+ * The code is unusable: it does not exist, it has expired, or it points at a household that is
+ * gone. The three cases collapse into one deliberately, so probing does not reveal which codes
+ * exist.
  */
 class InvalidInviteCodeException :
     Exception("El código de invitación no es válido o ha caducado")
 
 interface HouseholdRepository {
     /**
-     * Crea el perfil del usuario si no existe, SIN casa asociada
-     * (activeHouseholdId vacío). El onboarding decide luego crear o unirse.
+     * Creates the user profile if missing, with **no** household attached (empty
+     * activeHouseholdId). Onboarding then decides whether to create one or join one.
      */
     suspend fun ensureUserProfile(userId: String, displayName: String): Result<Unit>
 
-    /**
-     * Crea una nueva casa para el usuario y la marca como activa.
-     */
-    /** Crea la casa, la marca como activa del usuario y devuelve **su id**. */
+    /** Creates the household, marks it as the user's active one and returns **its id**. */
     suspend fun createHousehold(userId: String, displayName: String, householdName: String): Result<String>
 
-    /**
-     * Observa el perfil del usuario para obtener su activeHouseholdId
-     */
     fun observeUserProfile(userId: String): Flow<UserProfile?>
 
-    /**
-     * Observa la casa actual
-     */
     fun observeHousehold(householdId: String): Flow<Household?>
 
-    /**
-     * Permite a un usuario unirse a una casa mediante un código de invitación
-     */
     suspend fun joinHousehold(userId: String, inviteCode: String): Result<Unit>
 
-    /**
-     * Permite editar el nombre de la casa
-     */
     suspend fun updateHouseholdName(householdId: String, newName: String): Result<Unit>
 
     /**
-     * Actualiza el nickname del usuario y lo propaga a la copia pública que vive en el
-     * documento de su casa. [householdId] en blanco (usuario aún sin casa) omite la
-     * propagación.
+     * Updates the nickname and propagates it to the public copy living in the household document.
+     * A blank [householdId] (user without a household yet) skips the propagation.
      */
     suspend fun updateNickname(userId: String, householdId: String, newNickname: String): Result<Unit>
 
     /**
-     * Escribe la entrada de [userId] en el `memberProfiles` de la casa. Idempotente y
-     * pensada para llamarse en cada arranque: rellena las casas creadas antes de que
-     * existiera el campo sin necesidad de un script de migración.
+     * Writes [userId]'s entry into the household's `memberProfiles`. Idempotent and meant to be
+     * called on every launch: it backfills households created before the field existed, with no
+     * migration script.
      */
     suspend fun syncOwnMemberProfile(
         householdId: String,
@@ -65,38 +49,29 @@ interface HouseholdRepository {
     ): Result<Unit>
 
     /**
-     * Fija [userId] como propietario de la casa. Solo tiene efecto en casas creadas antes
-     * de que existiera el campo (las reglas únicamente admiten rellenarlo si está vacío y
-     * si quien lo reclama es el primer miembro, es decir, quien la creó).
+     * Sets [userId] as the household owner. Only has an effect on households created before the
+     * field existed: the rules allow filling it in only when it is empty and the claimant is the
+     * first member, i.e. whoever created it.
      */
     suspend fun claimHouseholdOwnership(householdId: String, userId: String): Result<Unit>
 
-    /**
-     * El usuario sale de su casa actual (se elimina de members y su
-     * activeHouseholdId queda vacío, volviendo al onboarding).
-     */
+    /** Removes the user from members and empties their activeHouseholdId, back to onboarding. */
     suspend fun leaveHousehold(userId: String, householdId: String): Result<Unit>
 
-    /**
-     * Expulsa a un miembro de la casa (solo modifica la lista de members).
-     */
     suspend fun removeMember(householdId: String, memberId: String): Result<Unit>
 
-    /**
-     * Genera un nuevo código de invitación para la casa e invalida el anterior.
-     */
+    /** Issues a new invite code and invalidates the previous one. */
     suspend fun regenerateInviteCode(householdId: String): Result<Unit>
 
     /**
-     * Reinicia la casa activa del usuario a vacío (autocuración cuando ha sido
-     * expulsado y su perfil aún apunta a una casa de la que ya no es miembro).
+     * Resets the user's active household to empty — self-healing for someone who was removed but
+     * whose profile still points at a household they no longer belong to.
      */
     suspend fun clearActiveHousehold(userId: String): Result<Unit>
 
     /**
-     * Borra los datos de Firestore del usuario: lo saca de su casa, elimina sus
-     * rutinas personales y borra su documento de perfil. Se llama antes de eliminar
-     * la cuenta de autenticación.
+     * Wipes the user's Firestore data: removes them from their household, deletes their personal
+     * routines and their profile document. Called before deleting the auth account.
      */
     suspend fun deleteUserData(userId: String): Result<Unit>
 }

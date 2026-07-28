@@ -18,7 +18,7 @@ class EnsureUserProfileUseCase @Inject constructor(
 class CreateHouseholdUseCase @Inject constructor(
     private val repository: HouseholdRepository
 ) {
-    /** @return el id de la casa creada. */
+    /** @return the id of the created household. */
     suspend operator fun invoke(userId: String, displayName: String, householdName: String): Result<String> {
         if (householdName.isBlank()) return Result.failure(Exception("El nombre no puede estar vacío"))
         return repository.createHousehold(userId, displayName, householdName.trim())
@@ -45,8 +45,8 @@ class RemoveMemberUseCase @Inject constructor(
         if (household.id.isBlank() || memberId.isBlank()) {
             return Result.failure(Exception("Datos inválidos"))
         }
-        // La regla de Firestore ya lo impide, pero comprobarlo aquí evita una escritura
-        // condenada a fallar y permite dar un mensaje decente en vez de PERMISSION_DENIED.
+        // The Firestore rule already blocks this, but checking here avoids a write doomed to fail
+        // and allows a decent message instead of PERMISSION_DENIED.
         if (!household.isOwner(requesterId)) {
             return Result.failure(Exception("Solo quien creó la casa puede expulsar miembros"))
         }
@@ -58,9 +58,9 @@ class RemoveMemberUseCase @Inject constructor(
 }
 
 /**
- * Rellena [Household.ownerId] en las casas creadas antes de que el campo existiera. Solo
- * escribe si está vacío y si quien llama es el primer miembro (quien la creó); las reglas
- * imponen lo mismo en servidor.
+ * Backfills [Household.ownerId] in households created before the field existed. Only writes when
+ * it is empty and the caller is the first member (whoever created it); the rules enforce the same
+ * thing server-side.
  */
 class BackfillHouseholdOwnerUseCase @Inject constructor(
     private val repository: HouseholdRepository
@@ -134,13 +134,12 @@ class UpdateNicknameUseCase @Inject constructor(
 }
 
 /**
- * Resuelve los perfiles de los miembros a partir del documento de la casa que ya está
- * cargado: no toca la red. Antes leía `/users/{uid}` uno a uno, lo que exigía dejar todos
- * los perfiles legibles por cualquier usuario autenticado.
+ * Resolves member profiles from the already-loaded household document — no network. It used to
+ * read `/users/{uid}` one by one, which required every profile to stay readable by any
+ * authenticated user.
  *
- * Un miembro sin entrada en `memberProfiles` (casa anterior al campo, o compañero que
- * todavía no ha abierto la app desde la actualización) sale con los nombres en blanco, que
- * es justo lo que la UI ya traduce como "Desconocido".
+ * A member with no `memberProfiles` entry comes out with blank names, which the UI already renders
+ * as "Unknown".
  */
 class GetMemberProfilesUseCase @Inject constructor() {
     operator fun invoke(household: Household): List<UserProfile> {
@@ -157,20 +156,18 @@ class GetMemberProfilesUseCase @Inject constructor() {
 }
 
 /**
- * Rellena la copia pública del perfil del usuario dentro de su casa. Se llama en cada
- * arranque y es idempotente: solo escribe si falta o ha cambiado.
+ * Fills in the user's public profile copy inside their household. Called on every launch and
+ * idempotent: it only writes when the entry is missing or has changed.
  *
- * Es lo que permite cerrar `/users` sin script de migración — las casas creadas antes de
- * que existiera `memberProfiles` se completan solas conforme cada miembro abre la app.
+ * This is what allows `/users` to be locked down without a migration script — households created
+ * before `memberProfiles` existed complete themselves as each member opens the app.
  */
 class SyncOwnMemberProfileUseCase @Inject constructor(
     private val repository: HouseholdRepository
 ) {
-    // userId va aparte del perfil a propósito: observeUserProfile deserializa el documento
-    // tal cual y su campo `id` depende de que se guardara al crearlo. El uid de sesión es
-    // la fuente fiable.
-    // householdId llega aparte del objeto por el mismo motivo que userId: el campo `id`
-    // del documento podría faltar en casas antiguas, y aquí no vale escribir a ciegas.
+    // userId and householdId are passed separately from the objects on purpose: both documents are
+    // deserialised as-is, and their `id` field depends on having been stored at creation time. The
+    // session uid and the explicit household id are the reliable sources.
     suspend operator fun invoke(
         householdId: String,
         household: Household,
@@ -179,9 +176,9 @@ class SyncOwnMemberProfileUseCase @Inject constructor(
     ): Result<Unit> {
         if (householdId.isBlank() || userId.isBlank()) return Result.success(Unit)
 
-        // La casa ya viene cargada, así que comparar aquí no cuesta ninguna lectura. Sin
-        // esta guarda, al llamarse en cada arranque sería una escritura por usuario y
-        // sesión: cuota de Firestore quemada para dejar el documento igual que estaba.
+        // The household is already loaded, so comparing here costs no read. Without this guard,
+        // being called on every launch would mean one write per user per session — Firestore quota
+        // burnt to leave the document exactly as it was.
         val current = household.memberProfiles[userId]
         if (current != null &&
             current.displayName == profile.displayName &&
@@ -200,10 +197,9 @@ class SyncOwnMemberProfileUseCase @Inject constructor(
 }
 
 /**
- * Borra la cuenta del usuario: primero sus datos de Firestore (mientras sigue
- * autenticado) y después la cuenta de autenticación. Si Firebase exige un login
- * reciente, la cuenta de Auth no se borra y se propaga el error para que la UI
- * pida volver a iniciar sesión.
+ * Deletes the user account: first their Firestore data, while still authenticated, then the auth
+ * account. If Firebase demands a recent login the auth account survives and the error is
+ * propagated so the UI can ask them to sign in again.
  */
 class DeleteAccountUseCase @Inject constructor(
     private val householdRepository: HouseholdRepository,

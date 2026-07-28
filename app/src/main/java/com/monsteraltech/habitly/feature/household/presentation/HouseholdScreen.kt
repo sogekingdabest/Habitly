@@ -118,7 +118,7 @@ fun HouseholdScreen(
                 CircularProgressIndicator()
             } else if (uiState.household != null) {
                 
-                // === SECCIÓN: Tu Perfil ===
+                // Your profile
                 HabitlyCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = LeafCornerLarge,
@@ -131,7 +131,7 @@ fun HouseholdScreen(
                             .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Avatar con inicial
+                        // Avatar with initial
                         val nickname = uiState.userProfile?.nickname ?: ""
                         val initial = nickname.firstOrNull()?.uppercase() ?: "?"
                         
@@ -177,7 +177,7 @@ fun HouseholdScreen(
                 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // === SECCIÓN: Info de la Casa ===
+                // Household info
                 HabitlyCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = LeafCornerLarge,
@@ -244,7 +244,7 @@ fun HouseholdScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // === SECCIÓN: Miembros ===
+                // Members
                 Text(
                     text = stringResource(R.string.household_members, uiState.memberProfiles.size),
                     style = MaterialTheme.typography.titleMedium,
@@ -254,9 +254,8 @@ fun HouseholdScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 uiState.memberProfiles.forEach { member ->
-                    // Un miembro que todavía no ha abierto la app desde la actualización no
-                    // tiene su perfil copiado en la casa: se muestra como desconocido en vez
-                    // de como una fila en blanco.
+                    // A member who has not opened the app since the update has no profile copied
+                    // into the household: shown as unknown rather than as a blank row.
                     val memberName = member.nickname.ifBlank { member.displayName }
                         .ifBlank { stringResource(R.string.household_member_unknown) }
                     val memberInitial = memberName.firstOrNull()?.uppercase() ?: "?"
@@ -306,8 +305,8 @@ fun HouseholdScreen(
                                     )
                                 }
                             }
-                            // Expulsar es cosa del propietario. Antes lo veía cualquier
-                            // miembro, y la regla de Firestore tampoco lo impedía.
+                            // Removing members is the owner's business. It used to be visible to
+                            // every member, and the Firestore rule did not stop it either.
                             if (!isYou && uiState.isOwner) {
                                 IconButton(onClick = { memberToRemove = member }) {
                                     Icon(
@@ -323,9 +322,8 @@ fun HouseholdScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // === SECCIÓN: Reparto de la casa ===
-                // Va justo debajo de los miembros porque habla de ellos, y por encima de
-                // "unirse a otra casa", que es una acción de salida.
+                // Household split: sits right under the members because it talks about them, and
+                // above "join another household", which is an exit action.
                 HouseholdSharePanel(
                     summary = uiState.share,
                     memberIds = uiState.household?.members.orEmpty(),
@@ -335,7 +333,7 @@ fun HouseholdScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // === SECCIÓN: Unirse a otra casa ===
+                // Join another household
                 Text(
                     text = stringResource(R.string.household_join_question),
                     style = MaterialTheme.typography.titleMedium,
@@ -394,7 +392,7 @@ fun HouseholdScreen(
     }
     }
 
-    // Dialog de confirmación de salir de la casa
+    // Leave-household confirmation dialog
     if (showLeaveDialog) {
         AlertDialog(
             onDismissRequest = { showLeaveDialog = false },
@@ -417,7 +415,7 @@ fun HouseholdScreen(
         )
     }
 
-    // Dialog de confirmación de regenerar código
+    // Regenerate-code confirmation dialog
     if (showRegenerateDialog) {
         AlertDialog(
             onDismissRequest = { showRegenerateDialog = false },
@@ -440,7 +438,7 @@ fun HouseholdScreen(
         )
     }
 
-    // Dialog de confirmación de expulsar miembro
+    // Remove-member confirmation dialog
     memberToRemove?.let { member ->
         val name = member.nickname.ifBlank { member.displayName }
         AlertDialog(
@@ -467,7 +465,7 @@ fun HouseholdScreen(
         )
     }
 
-    // Dialog para editar nombre de la casa
+    // Edit household name dialog
     if (showEditNameDialog) {
         AlertDialog(
             onDismissRequest = { showEditNameDialog = false },
@@ -500,7 +498,7 @@ fun HouseholdScreen(
         )
     }
     
-    // Dialog para editar nickname
+    // Edit nickname dialog
     if (showEditNicknameDialog) {
         AlertDialog(
             onDismissRequest = { showEditNicknameDialog = false },
@@ -535,9 +533,8 @@ fun HouseholdScreen(
 }
 
 /**
- * Aviso de caducidad del código de invitación. Los códigos emitidos antes de que
- * existiera la caducidad llegan con `expiresAt = 0`: ya no se resuelven, así que el aviso
- * es de regenerar, no de "caduca en N días".
+ * Invite code expiry notice. Codes issued before expiry existed arrive with `expiresAt = 0` and no
+ * longer resolve, so for those the message is "regenerate it" rather than "expires in N days".
  */
 @Composable
 private fun InviteCodeExpiryHint(expiresAt: Long) {

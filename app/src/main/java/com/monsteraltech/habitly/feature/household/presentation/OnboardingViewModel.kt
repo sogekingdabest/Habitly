@@ -17,12 +17,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Pasos del onboarding: los datos de la casa y, después, las rutinas con las que arrancar. */
+/** Onboarding steps: the household details, then the routines to start with. */
 enum class OnboardingStep { FORM, TEMPLATES }
 
 /**
- * Rutina marcada en el paso de plantillas, con el título **ya traducido** por la pantalla
- * (el ViewModel no resuelve recursos, así se respeta el idioma de Ajustes).
+ * A routine ticked in the templates step, with the title **already resolved** by the screen — the
+ * ViewModel does not touch resources, which is how the Settings language is respected.
  */
 data class NewHouseholdRoutine(
     val title: String,
@@ -57,13 +57,13 @@ class OnboardingViewModel @Inject constructor(
             ?: firebaseAuth.currentUser?.email?.substringBefore("@")
             ?: "Usuario"
 
-    // Al tener éxito, el perfil pasa a tener activeHouseholdId y el MainViewModel
-    // conmuta automáticamente a la pantalla principal; aquí solo gestionamos error.
+    // On success the profile gains an activeHouseholdId and MainViewModel switches to the main
+    // screen by itself; only the error path is handled here.
 
     /**
-     * Del formulario al paso de plantillas. **La casa todavía no se crea**: en cuanto existe, el
-     * perfil apunta a ella y `MainViewModel` cambia de pantalla, así que un paso posterior a la
-     * creación no llegaría a verse.
+     * From the form to the templates step. **The household is not created yet**: the moment it
+     * exists the profile points at it and `MainViewModel` changes screen, so a step placed after
+     * creation would never be seen.
      */
     fun onContinueToTemplates() {
         if (_uiState.value.isSubmitting) return
@@ -76,12 +76,12 @@ class OnboardingViewModel @Inject constructor(
     }
 
     /**
-     * Crea la casa y, dentro de ella, las rutinas marcadas. Con [routines] vacío es exactamente
-     * el "prefiero empezar de cero".
+     * Creates the household and, inside it, the ticked routines. An empty [routines] is exactly
+     * the "I'd rather start from scratch" path.
      *
-     * Las rutinas se crean **antes** de devolver el control, en la misma llamada: son de casa y
-     * nacen sin recordatorio (ponerle hora a ocho rutinas sin preguntar sería invasivo) y sin
-     * rotación, editables como cualquier otra.
+     * The routines are created **before** returning, in the same call. They are household
+     * routines, born without reminders — scheduling eight routines unasked would be intrusive —
+     * and without rotation, editable like any other.
      */
     fun onCreateHousehold(name: String, routines: List<NewHouseholdRoutine> = emptyList()) {
         if (_uiState.value.isSubmitting || userId.isBlank()) return
@@ -94,7 +94,7 @@ class OnboardingViewModel @Inject constructor(
                     _uiState.update { it.copy(isSubmitting = false) }
                 },
                 onFailure = { error ->
-                    // Se vuelve al formulario: el nombre de la casa es lo que hay que corregir.
+                    // Back to the form: the household name is what needs fixing.
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,
@@ -108,9 +108,9 @@ class OnboardingViewModel @Inject constructor(
     }
 
     /**
-     * Alta de las plantillas marcadas. Un fallo aquí **no se convierte en error de pantalla**: la
-     * casa ya existe y la app va a conmutar a la principal; dejar al usuario dentro con un error
-     * rojo sería peor que unas rutinas que puede volver a crear a mano.
+     * Creates the ticked templates. A failure here **does not become a screen error**: the
+     * household already exists and the app is about to switch to the main screen; trapping the
+     * user with a red error would be worse than routines they can recreate by hand.
      */
     private suspend fun addTemplateRoutines(
         householdId: String,
@@ -142,7 +142,7 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    /** Cierra la sesión de Firebase (sin borrar datos locales) y avisa para navegar a login. */
+    /** Signs out of Firebase (local data untouched) and signals navigation back to login. */
     fun onSignOut(onComplete: () -> Unit) {
         viewModelScope.launch {
             authRepository.signOut()

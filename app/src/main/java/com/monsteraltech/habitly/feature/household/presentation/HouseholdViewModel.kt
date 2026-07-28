@@ -30,7 +30,7 @@ data class HouseholdUiState(
     val userProfile: UserProfile? = null,
     val household: Household? = null,
     val memberProfiles: List<UserProfile> = emptyList(),
-    /** Reparto de las rutinas de casa (esta semana, la pasada y la racha de la casa). */
+    /** Household routine split (this week, last week and the household streak). */
     val share: HouseholdShareSummary = HouseholdShareSummary(),
     val isLoading: Boolean = true,
     val error: String? = null,
@@ -38,19 +38,19 @@ data class HouseholdUiState(
     val joinError: String? = null,
     val joinSuccess: Boolean = false,
     val infoMessage: String? = null,
-    /** Uid de la sesión. Va en el estado para poder resolver [isOwner] desde la UI. */
+    /** Session uid. Kept in state so the UI can resolve [isOwner]. */
     val currentUserId: String = ""
 ) {
     /**
-     * Si el usuario actual es quien creó la casa. Gobierna qué acciones destructivas se
-     * ven: expulsar miembros y borrar la casa. Los demás solo pueden salirse.
+     * Whether the current user created the household. Governs which destructive actions are
+     * visible: removing members and deleting the household. Everyone else can only leave.
      */
     val isOwner: Boolean
         get() = household?.isOwner(currentUserId) == true
 
     /**
-     * Nombre visible de cada miembro (uid → nombre), con la reserva ya aplicada fuera: un
-     * miembro que aún no ha abierto la app no tiene perfil copiado en la casa.
+     * Display name of each member (uid → name), with the fallback already applied outside: a
+     * member who has not opened the app yet has no profile copied into the household.
      */
     val memberNames: Map<String, String>
         get() = memberProfiles.associate { it.id to it.nickname.ifBlank { it.displayName } }
@@ -80,7 +80,7 @@ class HouseholdViewModel @Inject constructor(
     private var observeHouseholdJob: Job? = null
     private var shareJob: Job? = null
 
-    /** Casa cuyo reparto ya se ha pedido, para no repetir la consulta en cada emisión. */
+    /** Household whose split has already been requested, to avoid re-querying on every emission. */
     private var shareLoadedFor: String? = null
 
     init {
@@ -109,8 +109,8 @@ class HouseholdViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         household = household,
-                        // Los perfiles salen del propio documento de la casa, así que llegan
-                        // en la misma emisión: ni carga aparte ni lecturas extra.
+                        // Profiles come from the household document itself, so they arrive in the
+                        // same emission: no separate load, no extra reads.
                         memberProfiles = household?.let(getMemberProfilesUseCase::invoke).orEmpty(),
                         isLoading = false
                     )
@@ -121,10 +121,9 @@ class HouseholdViewModel @Inject constructor(
     }
 
     /**
-     * Reparto de las rutinas de casa. Se pide **una vez por casa**: el documento de la casa
-     * emite en cada cambio (nombre, código, nicknames) y volver a leer el historial de
-     * completados en cada emisión serían consultas de Firestore para nada. El panel es semanal,
-     * no un contador en vivo.
+     * Household routine split. Requested **once per household**: the household document emits on
+     * every change (name, code, nicknames) and re-reading the completion history each time would
+     * be Firestore queries for nothing. The panel is weekly, not a live counter.
      */
     private fun loadShare(householdId: String) {
         if (householdId.isBlank() || shareLoadedFor == householdId) return
@@ -134,8 +133,8 @@ class HouseholdViewModel @Inject constructor(
         shareJob = viewModelScope.launch {
             val result = getHouseholdShareUseCase(currentUserId, householdId)
             result.onSuccess { summary -> _uiState.update { it.copy(share = summary) } }
-            // Un fallo aquí no debe estropear la pantalla: el panel simplemente no aparece,
-            // pero se permite reintentar en la siguiente entrada.
+            // A failure here must not break the screen: the panel simply does not appear, and a
+            // retry is allowed on the next visit.
             result.onFailure { shareLoadedFor = null }
         }
     }
@@ -176,8 +175,8 @@ class HouseholdViewModel @Inject constructor(
         if (currentUserId == "unknown_user") return
 
         viewModelScope.launch {
-            // El nickname se duplica en la casa para que lo vean los demás miembros; si el
-            // usuario aún no tiene casa, updateNickname omite esa parte.
+            // The nickname is duplicated into the household so other members see it; with no
+            // household yet, updateNickname skips that part.
             val householdId = _uiState.value.userProfile?.activeHouseholdId.orEmpty()
             val result = updateNicknameUseCase(currentUserId, householdId, newNickname)
             if (result.isFailure) {
@@ -190,8 +189,8 @@ class HouseholdViewModel @Inject constructor(
         val householdId = _uiState.value.userProfile?.activeHouseholdId ?: return
         if (currentUserId == "unknown_user" || householdId.isBlank()) return
         viewModelScope.launch {
-            // Al salir, activeHouseholdId queda vacío y el MainViewModel conmuta
-            // automáticamente al onboarding.
+            // Leaving empties activeHouseholdId, and MainViewModel switches to onboarding by
+            // itself.
             val result = leaveHouseholdUseCase(currentUserId, householdId)
             if (result.isFailure) {
                 _uiState.update { it.copy(error = result.exceptionOrNull()?.message) }

@@ -29,18 +29,18 @@ import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
 import com.monsteraltech.habitly.ui.theme.habitly
 
 /**
- * Panel de reparto de la casa: qué ha hecho cada miembro esta semana, cuántos días seguidos lleva
- * la casa completando todo y cómo fue la semana pasada.
+ * Household split panel: what each member did this week, how many consecutive days the household
+ * completed everything, and how last week went.
  *
- * **El tono es parte del diseño, no decoración.** En una app que usa gente que convive, un
- * marcador que señale al que menos hace hace daño de verdad. Por eso:
- *  - lo primero y más grande es el total **de la casa**, no el individual,
- *  - las barras van en el orden de los miembros de la casa, nunca de mayor a menor,
- *  - no hay posiciones, ni "peor", ni números en rojo,
- *  - con un solo miembro desaparece toda la comparación y queda solo su progreso.
+ * **The tone is part of the design, not decoration.** In an app used by people who live together,
+ * a scoreboard that singles out whoever does least causes real harm. Hence:
+ *  - the first and largest number is the **household** total, not the individual one,
+ *  - bars follow the household member order, never highest to lowest,
+ *  - there are no rankings, no "worst", no red numbers,
+ *  - with a single member the comparison disappears entirely, leaving only their progress.
  *
- * [memberIds] llega en el orden de `Household.members` y [memberNames] puede no traer a alguien
- * que todavía no ha abierto la app: ahí se usa el texto de reserva en vez de una fila en blanco.
+ * [memberIds] arrives in `Household.members` order and [memberNames] may be missing someone who
+ * has not opened the app yet: the fallback text is used instead of a blank row.
  */
 @Composable
 fun HouseholdSharePanel(
@@ -50,7 +50,7 @@ fun HouseholdSharePanel(
     currentUserId: String,
     modifier: Modifier = Modifier
 ) {
-    // Sin rutinas de casa no hay reparto del que hablar.
+    // With no household routines there is no split to talk about.
     if (!summary.hasHouseholdRoutines) return
 
     val isSolo = memberIds.size <= 1
@@ -74,7 +74,7 @@ fun HouseholdSharePanel(
                 .padding(top = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // El total de la casa manda: es el número que celebra el esfuerzo común.
+            // The household total leads: it is the number that celebrates the shared effort.
             Text(
                 text = when {
                     summary.thisWeekTotal == 0 -> stringResource(R.string.household_share_empty)
@@ -104,8 +104,8 @@ fun HouseholdSharePanel(
                 }
             }
 
-            // Racha de la casa, en la pastilla de racha de la casa (mismos colores que la de
-            // cada rutina): es un logro compartido, no una nota individual.
+            // Household streak, in the streak pill (same colours as a routine's): it is a shared
+            // achievement, not an individual grade.
             if (summary.houseStreakDays > 0) {
                 HabitlyPill(
                     text = pluralStringResource(
@@ -118,10 +118,10 @@ fun HouseholdSharePanel(
                 )
             }
 
-            // La semana pasada, en una línea y en tono menor: es contexto, no un objetivo.
+            // Last week, one line and understated: it is context, not a target.
             if (summary.lastWeekTotal > 0) {
-                // El formato se resuelve fuera del bucle: stringResource no puede llamarse
-                // dentro de un lambda que no es composable.
+                // Resolved outside the loop: stringResource cannot be called from a
+                // non-composable lambda.
                 val entryFormat = stringResource(R.string.household_share_last_week_entry)
                 val lastWeekText = if (isSolo) {
                     stringResource(R.string.household_share_last_week_total, summary.lastWeekTotal)
@@ -145,10 +145,9 @@ fun HouseholdSharePanel(
 }
 
 /**
- * Una fila del reparto: nombre, barra comparada con el máximo de la semana y recuento.
- *
- * La barra de quien mira lleva el verde de marca y las demás el terciario; es para localizarse
- * de un vistazo, no para marcar quién gana.
+ * One row of the split: name, bar scaled against the week's maximum, and count. The viewer's own
+ * bar uses the brand green and the rest use tertiary — to find yourself at a glance, not to mark
+ * who is winning.
  */
 @Composable
 private fun MemberShareRow(
