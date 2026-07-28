@@ -12,16 +12,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Detecta que un intento anterior de cargar un modelo se llevó por delante el proceso.
+ * Detects that a previous attempt to load a model took the process down with it.
  *
- * Quedarse sin memoria en el motor nativo no lanza ninguna excepción: el kernel mata la app y
- * ya está. Desde dentro solo se puede saber *a posteriori*, y así: se deja una marca en disco
- * justo antes de `Engine.initialize()` y se borra al terminar bien. Si al arrancar la marca
- * sigue puesta, el intento anterior no volvió — sin esto el usuario entra en un bucle de
- * abrir-petar-abrir sin enterarse nunca de por qué.
+ * Running out of memory inside the native engine raises no exception: the kernel kills the app and
+ * that is that. From the inside it can only be known *after the fact*, and this is how — a marker
+ * is written to disk just before `Engine.initialize()` and cleared on a clean finish. If the marker
+ * is still there on the next launch, the previous attempt never returned. Without this the user
+ * enters an open-crash-open loop and never learns why.
  *
- * La marca se escribe con `commit()` a propósito: `apply()` es asíncrono y el proceso puede
- * morir antes de que llegue al disco, que es justo el caso que queremos registrar.
+ * The marker is written with `commit()` on purpose: `apply()` is asynchronous and the process can
+ * die before it reaches disk, which is exactly the case being recorded.
  */
 @Singleton
 class ModelLoadWatchdog @Inject constructor(
@@ -31,19 +31,19 @@ class ModelLoadWatchdog @Inject constructor(
 
     private val tag = "ModelLoadWatchdog"
 
-    /** Intentos fallidos consecutivos registrados para [modelId]. */
+    /** Consecutive failed attempts recorded for [modelId]. */
     fun failedAttempts(modelId: String): Int =
         sharedPreferences.getInt(attemptsKey(modelId), 0)
 
     /**
-     * Marca que empieza un intento de carga. Devuelve cuántos intentos previos murieron sin
-     * llegar a [onLoadSucceeded], para que quien llama decida si degradar o rendirse.
+     * Marks the start of a load attempt. Returns how many previous attempts died without reaching
+     * [onLoadSucceeded], so the caller can decide whether to degrade or give up.
      */
     fun onLoadStarting(modelId: String): Int {
         val pending = sharedPreferences.getString(KEY_PENDING_MODEL, null)
         var attempts = failedAttempts(modelId)
 
-        // La marca del intento anterior sigue puesta: aquel intento nunca terminó.
+        // The previous attempt's marker is still set: that attempt never finished.
         if (pending == modelId) {
             attempts += 1
             Log.w(tag, "El intento anterior de cargar $modelId no terminó (intentos: $attempts). ${lastExitDiagnosis()}")
@@ -56,7 +56,7 @@ class ModelLoadWatchdog @Inject constructor(
         return attempts
     }
 
-    /** El engine arrancó: se limpia la marca y el contador. */
+    /** The engine started: marker and counter are cleared. */
     fun onLoadSucceeded(modelId: String) {
         sharedPreferences.edit()
             .remove(KEY_PENDING_MODEL)
@@ -65,8 +65,8 @@ class ModelLoadWatchdog @Inject constructor(
     }
 
     /**
-     * La carga falló con una excepción normal (modelo corrupto, ruta mala…). Se quita la marca
-     * porque el proceso sigue vivo: esto no es una muerte silenciosa y no debe contar como tal.
+     * The load failed with an ordinary exception (corrupt model, bad path). The marker is removed
+     * because the process is alive: this is not a silent death and must not count as one.
      */
     fun onLoadFailedGracefully(modelId: String) {
         sharedPreferences.edit()
@@ -75,16 +75,16 @@ class ModelLoadWatchdog @Inject constructor(
             .commit()
     }
 
-    /** Olvida el historial de un modelo (p. ej. al borrarlo y volver a descargarlo). */
+    /** Forgets a model's history, e.g. when it is deleted and downloaded again. */
     fun reset(modelId: String) = onLoadFailedGracefully(modelId)
 
     /**
-     * Motivo del último cierre anómalo del proceso, si el sistema lo sabe. Es lo único que
-     * distingue "lo mató el sistema por RAM" de un crash normal, y no aparece en ningún log
-     * de la app porque para cuando ocurre ya no hay app. Requiere API 30+.
+     * Reason for the last abnormal process exit, when the system knows it. It is the only thing
+     * that distinguishes "killed by the system for RAM" from an ordinary crash, and it appears in
+     * no app log, because by the time it happens there is no app. Requires API 30+.
      *
-     * También mira si la descripción menciona `MemoryLimiter`: Android 17 impone un techo de
-     * memoria por app en función de la RAM del dispositivo y ese es el rastro que deja.
+     * Also checks whether the description mentions `MemoryLimiter`: Android 17 enforces a
+     * per-app memory ceiling based on device RAM, and that is the trace it leaves.
      */
     fun lastExitDiagnosis(): String {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return "Sin diagnóstico (API < 30)"
@@ -118,7 +118,7 @@ class ModelLoadWatchdog @Inject constructor(
         const val KEY_PENDING_MODEL = "ai_model_load_pending"
         const val KEY_ATTEMPTS_PREFIX = "ai_model_load_failures_"
 
-        /** Rastro que deja el techo de memoria por app que introduce Android 17. */
+        /** Trace left by the per-app memory ceiling introduced in Android 17. */
         const val MEMORY_LIMITER = "MemoryLimiter"
     }
 }
