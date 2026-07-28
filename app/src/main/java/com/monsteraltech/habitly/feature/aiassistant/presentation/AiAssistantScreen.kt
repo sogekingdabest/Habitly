@@ -114,10 +114,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** A partir de esta fracción de contexto ocupado se muestra el aviso de compactar. */
+/** Above this fraction of used context, the compaction notice appears. */
 private const val CONTEXT_WARN_THRESHOLD = 0.7f
 
-/** `2,6 GB` o `850 MB`, con el separador decimal del idioma del dispositivo. */
+/** `2.6 GB` or `850 MB`, using the device language's decimal separator. */
 private fun formatModelSize(bytes: Long): String {
     val gb = bytes / 1_000_000_000.0
     return if (gb >= 1) {
@@ -128,9 +128,9 @@ private fun formatModelSize(bytes: Long): String {
 }
 
 /**
- * RAM en los GB de la ficha del móvil: binarios y sin decimales. Con el formateador de
- * ficheros (GB decimales) unos 6 GiB de RAM se leerían como "6,4 GB", que no es lo que el
- * usuario tiene escrito en la caja.
+ * RAM in the gigabytes printed on the phone's spec sheet: binary and without decimals. With the
+ * file formatter (decimal GB), 6 GiB of RAM would read as "6.4 GB", which is not what the user has
+ * written on the box.
  */
 private fun formatRam(bytes: Long): String {
     if (bytes <= 0L) return "—"
@@ -138,10 +138,9 @@ private fun formatRam(bytes: Long): String {
 }
 
 /**
- * Botón flotante "ir al final". En su propio composable (sin ColumnScope/RowScope alrededor)
- * para que [AnimatedVisibility] resuelva a la sobrecarga genérica; el `align` del padre llega
- * por [modifier]. Es la pieza de scroll de la fase 3 (equivalente al ScrollToBottomButton del
- * AI Edge Gallery).
+ * Floating "scroll to bottom" button. In its own composable, with no ColumnScope or RowScope
+ * around it, so [AnimatedVisibility] resolves to the generic overload; the parent's `align`
+ * arrives through [modifier].
  */
 @Composable
 private fun ScrollToBottomFab(
@@ -165,8 +164,8 @@ private fun ScrollToBottomFab(
 }
 
 /**
- * Aviso de "conversación larga" con acción de compactar (fase 6). El historial visible no
- * cambia: compactar solo resume la parte antigua que se le pasa al modelo.
+ * "Long conversation" notice with a compaction action. The visible history does not change:
+ * compacting only summarises the older part that is handed to the model.
  */
 @Composable
 private fun ContextCompactBanner(
@@ -219,14 +218,14 @@ fun AiAssistantScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
-    // Seguimiento del final durante el streaming. Se rompe cuando el usuario sube a releer
-    // (gesto hacia arriba) y se vuelve a enganchar al llegar de nuevo al final.
+    // Follows the tail while streaming. Breaks when the user scrolls up to re-read, and latches on
+    // again once they return to the bottom.
     val autoFollow = remember { mutableStateOf(true) }
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // available.y > 0 = el dedo arrastra hacia abajo = se revela lo anterior: el
-                // usuario quiere releer, así que dejamos de seguir la cola del stream.
+                // available.y > 0 means the finger is dragging down, revealing earlier content: the
+                // user wants to re-read, so stop following the stream's tail.
                 if (available.y > 0f) autoFollow.value = false
                 return Offset.Zero
             }
@@ -237,8 +236,8 @@ fun AiAssistantScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Copiar mensajes al portapapeles. En Android 13+ el sistema ya muestra su propia
-    // confirmación al copiar, así que el snackbar solo se lanza por debajo de esa versión.
+    // Copy messages to the clipboard. Android 13+ shows its own copy confirmation, so the snackbar
+    // only fires below that version.
     val clipboard = LocalClipboardManager.current
     val copiedMessage = stringResource(R.string.ai_copied)
     val onCopyMessage: (String) -> Unit = { text ->
@@ -251,11 +250,11 @@ fun AiAssistantScreen(
     var chatToDelete by remember { mutableStateOf<AiChatSession?>(null) }
     var showDownloadDialog by remember { mutableStateOf(false) }
     var modelToDelete by remember { mutableStateOf<AiModelConfig?>(null) }
-    // Id del mensaje del asistente pendiente de confirmar el reporte.
+    // Id of the assistant message whose report is awaiting confirmation.
     var messageToReport by remember { mutableStateOf<String?>(null) }
 
-    // Dictado por voz con el reconocedor del sistema: sin permisos propios ni modelos extra.
-    // El texto reconocido se deja en el campo para que el usuario lo revise antes de enviar.
+    // Voice dictation through the system recogniser: no permissions of our own, no extra models.
+    // The transcription is left in the field so the user can review it before sending.
     val voicePromptText = stringResource(R.string.ai_voice_prompt)
     val voiceUnavailableText = stringResource(R.string.ai_voice_unavailable)
     val speechLauncher = rememberLauncherForActivityResult(
@@ -267,7 +266,7 @@ fun AiAssistantScreen(
         if (!spoken.isNullOrBlank()) viewModel.onInputChange(spoken)
     }
 
-    // Al enviar un mensaje nuevo, baja al final y vuelve a enganchar el seguimiento.
+    // Sending a new message scrolls to the bottom and re-latches the follow.
     val userMessageCount = uiState.chatSession.messages.count { it.role is MessageRole.User }
     LaunchedEffect(userMessageCount) {
         if (userMessageCount > 0) {
@@ -277,10 +276,10 @@ fun AiAssistantScreen(
         }
     }
 
-    // Sigue la cola de la respuesta durante el streaming, solo mientras autoFollow siga vivo
-    // (si el usuario subió a releer, no se le interrumpe). El objetivo es el item ancla del
-    // final: sobre el mensaje —que es un item muy alto— scrollToItem fijaría su INICIO, no la
-    // cola que crece. Sin animación: relanzarla en cada refresco del stream la corta a tirones.
+    // Follows the answer's tail while streaming, but only while autoFollow holds — a user who
+    // scrolled up to re-read is not interrupted. The target is the anchor item at the end: aimed
+    // at the message itself, a very tall item, scrollToItem would pin its **start** rather than the
+    // growing tail. Unanimated, because relaunching the animation on every refresh makes it stutter.
     val streamingLength = uiState.chatSession.messages.lastOrNull()?.content?.length ?: 0
     LaunchedEffect(uiState.isGenerating, streamingLength) {
         if (!uiState.isGenerating || !autoFollow.value) return@LaunchedEffect
@@ -288,8 +287,8 @@ fun AiAssistantScreen(
         if (total > 0) listState.scrollToItem(total - 1)
     }
 
-    // Botón "ir al final" + re-enganche del seguimiento. canScrollForward = queda contenido
-    // por debajo; con 500 ms de margen el botón no parpadea mientras se sigue el stream.
+    // "Scroll to bottom" button plus follow re-latching. canScrollForward means there is content
+    // below; a 500 ms margin keeps the button from flickering while the stream is being followed.
     LaunchedEffect(listState) {
         snapshotFlow { listState.canScrollForward }.collectLatest { canScroll ->
             if (!canScroll) {
@@ -302,8 +301,8 @@ fun AiAssistantScreen(
         }
     }
 
-    // El error puede venir como texto dinámico (uiState.error) o como id de recurso localizado
-    // (uiState.errorRes); se resuelve aquí, en el contexto de la Activity que sí sigue el idioma.
+    // The error arrives either as dynamic text (uiState.error) or as a localised resource id
+    // (uiState.errorRes); resolved here, in the Activity context that follows the language.
     val errorResText = uiState.errorRes?.let { stringResource(it) }
     LaunchedEffect(uiState.error, uiState.errorRes) {
         val message = uiState.error ?: errorResText
@@ -398,8 +397,8 @@ fun AiAssistantScreen(
                                 viewModel.onLoadChat(session.id)
                                 scope.launch { drawerState.close() }
                             },
-                            // Sin icono por fila: no distingue nada entre chats y solo mete
-                            // ruido; la papelera al final ya marca la zona de acción.
+                            // No per-row icon: it distinguishes nothing between chats and only adds
+                            // noise; the bin at the end already marks the action area.
                             badge = {
                                 IconButton(onClick = { chatToDelete = session }) {
                                     Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete), modifier = Modifier.size(20.dp))
@@ -419,9 +418,9 @@ fun AiAssistantScreen(
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     title = {
-                        // El modelo y su estado se quedan en el desplegable: con el modelo
-                        // listo el subtítulo no aportaba nada, y cuando no lo está ya manda la
-                        // tarjeta de descarga. Aquí solo restaba altura a la conversación.
+                        // The model and its state stay in the dropdown: with the model ready the
+                        // subtitle added nothing, and when it is not ready the download card
+                        // already leads. Here it only stole height from the conversation.
                         Box {
                             Row(
                                 modifier = Modifier
@@ -442,9 +441,9 @@ fun AiAssistantScreen(
                             ) {
                                 uiState.availableModels.forEach { model ->
                                     val isDownloaded = model.id in uiState.downloadedModelIds
-                                    // Un modelo que no cabe se muestra atenuado y sin acción:
-                                    // esconderlo dejaría al usuario preguntándose qué hay ahí,
-                                    // y dejarlo activo le llevaría a un cierre en seco.
+                                    // A model that does not fit is shown dimmed and inert: hiding
+                                    // it would leave the user wondering what is missing, and
+                                    // leaving it active would lead them straight into a crash.
                                     val compatibility = model.compatibilityWith(uiState.deviceRamBytes)
                                     val isUsable = compatibility.canUse
                                     DropdownMenuItem(
@@ -521,14 +520,13 @@ fun AiAssistantScreen(
             },
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { innerPadding ->
-            // Sin padding horizontal aquí: lo pone cada bloque por su cuenta, para que la fila
-            // de chips pueda ocupar el ancho completo y deslizarse hasta el borde.
+            // No horizontal padding here: each block adds its own, so the chip row can take the
+            // full width and scroll all the way to the edge.
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    // Sube el campo de texto con el teclado; el resto de la app lo hace
-                    // igual (login/registro) y aquí faltaba.
+                    // Lifts the text field with the keyboard, matching the rest of the app.
                     .imePadding()
             ) {
                 when (uiState.modelStatus) {
@@ -537,7 +535,7 @@ fun AiAssistantScreen(
                             modelConfig = uiState.selectedModel,
                             progress = 0f,
                             isDownloading = false,
-                            // Antes de encolar GB se pregunta con qué red (Wi-Fi o datos).
+                            // Before queueing gigabytes, ask which network: Wi-Fi or mobile data.
                             onDownload = { showDownloadDialog = true },
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
                         )
@@ -618,9 +616,9 @@ fun AiAssistantScreen(
                         ) {
                             if (uiState.chatSession.messages.isEmpty()) {
                                 item {
-                                    // fillParentMaxHeight y no weight: dentro de un item de
-                                    // LazyColumn el weight se resolvía contra el Column de
-                                    // fuera, la lista lo ignoraba y esto nunca llegó a centrarse.
+                                    // fillParentMaxHeight rather than weight: inside a LazyColumn
+                                    // item the weight resolved against the outer Column, the list
+                                    // ignored it and this never actually centred.
                                     Box(
                                         modifier = Modifier
                                             .fillParentMaxHeight()
@@ -651,14 +649,14 @@ fun AiAssistantScreen(
                                 }
                             }
 
-                            // key por id: durante el streaming solo recompone el mensaje que
-                            // crece, en vez de rehacer todas las filas en cada refresco.
+                            // Keyed by id: while streaming, only the growing message recomposes
+                            // instead of every row being rebuilt on each refresh.
                             items(uiState.chatSession.messages, key = { it.id }) { message ->
                                 Column {
                                     ChatMessageItem(
                                         message = message,
-                                        // El último mensaje del asistente mientras se genera:
-                                        // sin botón de copiar y, si sigue vacío, con puntos.
+                                        // The last assistant message while generating: no copy
+                                        // button, and dots while it is still empty.
                                         isStreaming = uiState.isGenerating &&
                                             message.id == uiState.chatSession.messages.lastOrNull()?.id &&
                                             message.role is MessageRole.Assistant,
@@ -687,10 +685,10 @@ fun AiAssistantScreen(
                                 }
                             }
 
-                            // Si el stream ya va por el bloque @@…@@ oculto, el texto visible
-                            // deja de crecer un buen rato: se avisa de que vienen sugerencias.
-                            // Ya no hay spinner: el mensaje se completa solo y los puntos de la
-                            // burbuja cubren la espera hasta el primer token.
+                            // Once the stream reaches the hidden @@…@@ block the visible text stops
+                            // growing for a while, so the user is told suggestions are coming. No
+                            // spinner: the message completes on its own and the bubble's dots cover
+                            // the wait until the first token.
                             if (uiState.isGenerating || uiState.isExtractingSuggestions) {
                                 val streamingTail = uiState.chatSession.messages.lastOrNull()
                                     ?.takeIf { it.role is MessageRole.Assistant }
@@ -701,15 +699,15 @@ fun AiAssistantScreen(
                                 }
                             }
 
-                            // Ancla del final: objetivo del scroll de seguimiento. Sobre el
-                            // mensaje (item muy alto) scrollToItem fijaría su inicio, no la cola.
-                            // Solo con mensajes, para no hacer scrollable la pantalla vacía.
+                            // Tail anchor: the target of the follow scroll. Aimed at the message,
+                            // a very tall item, scrollToItem would pin its start rather than the
+                            // tail. Only present with messages, so the empty screen stays unscrollable.
                             if (uiState.chatSession.messages.isNotEmpty()) {
                                 item(key = "bottom-anchor") { Spacer(Modifier.height(1.dp)) }
                             }
                         }
 
-                        // "Ir al final": solo cuando el usuario se ha quedado arriba.
+                        // "Scroll to bottom": only when the user has stayed above.
                         ScrollToBottomFab(
                             visible = showScrollToBottom,
                             onClick = {
@@ -725,7 +723,7 @@ fun AiAssistantScreen(
                         )
                         }
 
-                        // Métricas de la última respuesta: solo llegan en builds debug.
+                        // Metrics for the last answer: only produced in debug builds.
                         uiState.lastGenerationStats?.let { stats ->
                             Text(
                                 text = stats,
@@ -735,7 +733,7 @@ fun AiAssistantScreen(
                             )
                         }
 
-                        // Aviso de conversación larga con acción de compactar (fase 6).
+                        // Long-conversation notice with a compaction action.
                         if (uiState.contextUsage >= CONTEXT_WARN_THRESHOLD && !uiState.isGenerating) {
                             ContextCompactBanner(
                                 usagePercent = (uiState.contextUsage * 100).toInt(),
@@ -744,9 +742,9 @@ fun AiAssistantScreen(
                             )
                         }
 
-                        // Chips ya localizados: el de seguimiento (si lo hay) va delante de los
-                        // fijos. Los textos se resuelven aquí (contexto de la Activity = idioma
-                        // de Ajustes) y cada chip lleva su propia acción.
+                        // Localised chips: the follow-up one, if any, goes ahead of the fixed ones.
+                        // Texts are resolved here, in the Activity context that follows the
+                        // Settings language, and each chip carries its own action.
                         val followUpAck = stringResource(R.string.ai_follow_up_ack)
                         val quickPromptChips = listOfNotNull(
                             uiState.followUpTarget?.let { target ->
@@ -785,8 +783,8 @@ fun AiAssistantScreen(
                             quickPrompts = quickPromptChips
                         )
 
-                        // Disclaimer de IA: el modelo puede equivocarse. No es obligatorio pero
-                        // es estándar y protege; va bajo el input, discreto.
+                        // AI disclaimer: the model can be wrong. Not mandatory, but standard
+                        // practice; sits discreetly under the input.
                         Text(
                             text = stringResource(R.string.ai_disclaimer),
                             style = MaterialTheme.typography.labelSmall,
@@ -867,9 +865,9 @@ fun AiAssistantScreen(
         )
     }
 
-    // Modelo que entra por los pelos: se avisa y se deja decidir, como hace el AI Edge Gallery.
-    // Bloquear aquí sería pasarse (puede funcionar de sobra con el móvil despejado); callar,
-    // quedarse corto (son cientos de MB y un posible cierre en seco).
+    // A model that barely fits: warn and let the user decide. Blocking here would be too much — it
+    // may run fine on an otherwise idle phone — and saying nothing too little, given hundreds of
+    // megabytes and a possible crash.
     uiState.pendingTightDownloadModel?.let { model ->
         AlertDialog(
             onDismissRequest = { viewModel.onDismissTightDownload() },
@@ -953,10 +951,8 @@ fun AiAssistantScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Textos localizados de los chips. Se resuelven con stringResource (contexto de la
-// Activity) para que respeten el idioma elegido en Ajustes; el dominio solo aporta el id.
-// ─────────────────────────────────────────────────────────────────────────────
+// Localised chip texts. Resolved with stringResource in the Activity context so they respect the
+// language chosen in Settings; the domain layer only supplies the id.
 
 @Composable
 private fun quickPromptLabel(id: QuickPromptId): String = stringResource(
