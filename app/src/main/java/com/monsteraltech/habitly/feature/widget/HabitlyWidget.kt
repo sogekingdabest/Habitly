@@ -111,7 +111,7 @@ private fun WidgetBody(snapshot: WidgetSnapshot) {
             WidgetState.READY -> {
                 WidgetSection(
                     context = context,
-                    emoji = "🛒",
+                    emoji = "🛒", // 🛒
                     header = context.getString(R.string.widget_shopping),
                     lines = snapshot.pendingItems,
                     emptyText = context.getString(R.string.widget_shopping_empty),
@@ -222,9 +222,13 @@ private fun WidgetSection(
 }
 
 /**
+ * Línea marcable. La casilla es la que hace útil al widget: antes solo se podía mirar.
+ * Al pulsarla, el callback escribe en Firestore y repinta; no hay estado local que mantener.
+ */
 @Composable
 private fun ItemRow(line: WidgetLine, onCheck: (WidgetLine) -> Action) {
     CheckBox(
+        // Solo se listan pendientes, así que siempre arranca sin marcar.
         checked = false,
         onCheckedChange = onCheck(line),
         modifier = GlanceModifier.fillMaxWidth().padding(vertical = 1.dp),

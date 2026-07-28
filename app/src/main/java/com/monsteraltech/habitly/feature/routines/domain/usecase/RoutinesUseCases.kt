@@ -52,8 +52,9 @@ class AddRoutineUseCase @Inject constructor(
         rotationEnabled: Boolean = false,
         assignedTo: String? = null
     ): Result<Routine> {
-        if (title.isBlank()) return Result.failure(Exception("Title cannot be empty"))
+        if (title.isBlank()) return Result.failure(Exception("El título no puede estar vacío"))
 
+        // La rotación solo existe en las rutinas de casa.
         val rotates = rotationEnabled && type == RoutineType.HOUSEHOLD
 
         val routine = Routine(

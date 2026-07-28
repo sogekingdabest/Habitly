@@ -108,11 +108,16 @@ fun QuickAddSheet(
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
 
+    // El foco se pide al abrir y después de cada guardado, que es cuando el campo se vacía.
+    // La espera es porque la hoja entra animada: en el primer frame el campo aún no está
+    // enganchado y `requestFocus` lanzaría IllegalStateException.
     LaunchedEffect(state.savedCount) {
         delay(FOCUS_DELAY_MS)
         runCatching { focusRequester.requestFocus() }
     }
 
+    // Cerrar de verdad: primero se retira la hoja con su animación y solo después se limpia
+    // el estado. Si se limpiase antes, la hoja desaparecería de golpe.
     val dismissWithAnimation: () -> Unit = {
         scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
     }
@@ -144,14 +149,19 @@ fun QuickAddSheet(
                     .focusRequester(focusRequester),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { onSave() }),
+                // El dictado aquí **rellena** el formulario en vez de guardar: el usuario ve la
+                // cantidad y la unidad reconocidas ("dos litros de leche" → 2 L) antes de dar de
+                // alta. El botón desaparece si el dispositivo no tiene reconocedor.
                 trailingIcon = { VoiceInputButton(onSpokenText = onVoiceInput) }
             )
 
+            // Avisa de que ya lo tienes en casa antes de que lo compres otra vez.
             if (pantryQuantity != null && pantryUnit != null) {
                 Spacer(Modifier.height(8.dp))
                 PantryHint(quantity = pantryQuantity, unit = pantryUnit)
             }
 
+            // …y de que ya está apuntado, que es la otra forma de comprarlo dos veces.
             if (duplicate != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -195,6 +205,8 @@ fun QuickAddSheet(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // Recuento de lo que llevas apuntado sin salir: la única confirmación que hace
+            // falta cuando la hoja no se cierra al guardar.
             if (state.savedCount > 0) {
                 Spacer(Modifier.height(8.dp))
                 Text(

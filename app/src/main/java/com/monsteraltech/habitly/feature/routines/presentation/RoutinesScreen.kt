@@ -247,6 +247,7 @@ private fun RoutineFormDialog(
     var showTimePicker by remember { mutableStateOf(false) }
 
     val needsDays = frequency == RoutineFrequency.WEEKLY || frequency == RoutineFrequency.CUSTOM
+    // La rotación solo tiene sentido en una casa con más de un miembro.
     val canRotate = type == RoutineType.HOUSEHOLD && members.size > 1
 
     AlertDialog(
@@ -508,6 +509,8 @@ fun RoutineCard(
     )
     val deleteLabel = stringResource(R.string.routines_delete_routine)
 
+    // Deslizar a la derecha marca/desmarca; a la izquierda abre la confirmación de borrado
+    // (por eso `dismissOnDelete = false`: la tarjeta sigue ahí hasta que el usuario confirme).
     HabitlySwipeRow(
         onPrimaryAction = onToggle,
         onDelete = { showDeleteDialog = true },
@@ -602,6 +605,7 @@ fun RoutineCard(
                     )
                 }
 
+                // De quién es el turno. "Te toca a ti" se destaca porque es lo accionable.
                 if (routine.assignedTo != null && !isCompleted) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(

@@ -42,6 +42,7 @@ class GetHouseholdShareUseCase @Inject constructor(
             val lastMonday = thisMonday.minusWeeks(1)
             val from = minOf(lastMonday, today.minusDays(STREAK_LOOKBACK_DAYS))
 
+            // uid → días completados, y día → rutinas completadas ese día (para la racha).
             val completionsByRoutine = mutableMapOf<String, List<RoutineCompletion>>()
             for (routine in routines) {
                 completionsByRoutine[routine.id] = repository.getCompletions(
@@ -111,6 +112,7 @@ class GetHouseholdShareUseCase @Inject constructor(
                 }
                 when {
                     allDone -> streak++
+                    // El día de hoy aún no ha terminado: no puede contar como fallo.
                     cursor == today -> Unit
                     else -> return streak
                 }

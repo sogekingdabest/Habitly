@@ -65,6 +65,8 @@ sealed class BottomNavRoute(val route: String, val icon: androidx.compose.ui.gra
     object Shopping : BottomNavRoute("shopping", Icons.Rounded.ShoppingCart, R.string.nav_shopping)
     object AiAssistant : BottomNavRoute("ai_assistant", Icons.Rounded.SmartToy, R.string.nav_assistant)
     object Routines : BottomNavRoute("routines", Icons.Rounded.Checklist, R.string.nav_routines)
+    // Groups y no Settings: los Ajustes de verdad cuelgan de dentro de esta pestaña, y dos
+    // cosas distintas con el mismo icono se leen como la misma.
     object Household : BottomNavRoute("household", Icons.Rounded.Groups, R.string.nav_household)
 }
 
@@ -93,6 +95,8 @@ fun MainScreen(
             }
         }
         !uiState.hasHousehold -> {
+            // El texto compartido y el destino pedido se conservan en MainActivity: si el
+            // usuario aún no tiene casa, se atenderán en cuanto la cree o se una a una.
             OnboardingScreen(onSignOut = onSignOut)
         }
         else -> {
@@ -121,8 +125,10 @@ private fun MainContent(
     val currentDestination = navBackStackEntry?.destination
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // El atajo "Añadir a la compra" no solo cambia de pestaña: abre la hoja de alta rápida.
     var pendingQuickAdd by remember { mutableStateOf(false) }
 
+    // Resumen de lo importado desde un texto compartido, para el snackbar de confirmación.
     var importedMessage by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(importedMessage) {
         importedMessage?.let { message ->
@@ -131,6 +137,7 @@ private fun MainContent(
         }
     }
 
+    // Destino pedido desde fuera: notificación de recordatorio o atajo del launcher.
     LaunchedEffect(externalDestination) {
         val target = when (externalDestination) {
             ExternalDestination.ROUTINES -> BottomNavRoute.Routines.route
@@ -147,6 +154,7 @@ private fun MainContent(
         onExternalDestinationConsumed()
     }
 
+    // "Compartir con Habitly": la revisión va por encima de la pestaña que hubiera abierta.
     val importSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     if (sharedText != null) {
         val context = LocalContext.current
@@ -206,6 +214,9 @@ private fun MainContent(
         NavHost(
             navController = navController,
             startDestination = BottomNavRoute.Dashboard.route,
+            // consumeWindowInsets marca estos insets como ya aplicados: sin ello, cada
+            // Scaffold interior volvía a sumar barra de estado y de navegación, dejando
+            // un doble margen arriba y un hueco muerto sobre la barra de pestañas.
             modifier = Modifier
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)

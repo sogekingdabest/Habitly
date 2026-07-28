@@ -93,6 +93,7 @@ fun AddRoutineScreen(
         ) {
             Spacer(modifier = Modifier.height(0.dp))
 
+            // ---------- Qué rutina es ----------
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionHeader(stringResource(R.string.routines_add_section_what))
                 OutlinedTextField(
@@ -114,6 +115,7 @@ fun AddRoutineScreen(
                 )
             }
 
+            // ---------- De quién es ----------
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionHeader(stringResource(R.string.routines_add_section_type))
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -142,6 +144,7 @@ fun AddRoutineScreen(
                 )
             }
 
+            // ---------- Cada cuánto toca ----------
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionHeader(stringResource(R.string.routines_add_section_frequency))
                 RoutineFrequency.entries.forEach { freq ->

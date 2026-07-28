@@ -186,7 +186,10 @@ class ShoppingViewModel @Inject constructor(
     private var observeStoresJob: Job? = null
     private var observePantryJob: Job? = null
 
+    // Último producto borrado, guardado en memoria para poder deshacer (re-añadir).
     private var lastDeletedItem: ShoppingItem? = null
+
+    // Lo mismo para la despensa: el gesto de sacar un producto también se puede deshacer.
     private var lastDeletedPantryItem: PantryItem? = null
 
     init {
@@ -412,6 +415,16 @@ class ShoppingViewModel @Inject constructor(
         onAddItem(itemName)
     }
 
+    // ---------- Añadir por voz ----------
+
+    /**
+     * Alta desde el dictado de la cabecera: "leche, huevos y pan" son tres productos.
+     *
+     * El texto se lee con [PlainListParser], que resuelve cantidad y unidad ("dos litros de
+     * leche" → 2 L) al instante. **No pasa por el modelo local a propósito**: cargar un modelo
+     * de gigabytes y esperar una inferencia para tres palabras dichas en la cocina es
+     * exactamente el problema que esta función viene a resolver.
+     */
     fun onVoiceProducts(spokenText: String) {
         val householdId = currentHouseholdId ?: return
         val products = PlainListParser.fromSpeech(spokenText)
@@ -442,6 +455,11 @@ class ShoppingViewModel @Inject constructor(
         _uiState.update { it.copy(voiceAddedCount = null) }
     }
 
+    /**
+     * Dictado dentro de la hoja de alta rápida: rellena el formulario con lo dicho en vez de
+     * guardar. Aquí el usuario está delante del formulario, así que lo natural es que vea la
+     * cantidad y la unidad reconocidas y pulse él el botón.
+     */
     fun onQuickAddVoice(spokenText: String) {
         val product = PlainListParser.fromSpeech(spokenText, limit = 1).firstOrNull()
         if (product == null) {
@@ -453,6 +471,9 @@ class ShoppingViewModel @Inject constructor(
         }
     }
 
+    // ---------- Alta rápida (hoja inferior) ----------
+
+    /** Abre la hoja heredando la tienda que esté filtrada, que es casi siempre la buena. */
     fun onOpenQuickAdd() {
         val store = _uiState.value.selectedStore
         _uiState.update { it.copy(quickAdd = QuickAddState(isOpen = true, store = store)) }

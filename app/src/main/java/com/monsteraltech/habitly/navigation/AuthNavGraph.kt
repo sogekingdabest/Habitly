@@ -10,7 +10,7 @@ import com.monsteraltech.habitly.feature.register.presentation.emailverification
 import com.monsteraltech.habitly.feature.register.presentation.register.RegisterScreen
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Typed navigation routes for authentication
+// Rutas tipadas del grafo de autenticación
 // ─────────────────────────────────────────────────────────────────────────────
 
 sealed class AuthRoute(val route: String) {
@@ -21,7 +21,7 @@ sealed class AuthRoute(val route: String) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Authentication NavHost Graph
+// NavHost raíz (Auth)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -52,7 +52,7 @@ fun AuthNavGraph(
             RegisterScreen(
                 navController = navController,
                 onNavigateToHome = {
-                    // Clear authentication backstack on navigating to main app
+                    // Limpia todo el back stack de Auth al navegar a Home
                     onNavigateToHome()
                 }
             )

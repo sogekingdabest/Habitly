@@ -55,8 +55,16 @@ class OnboardingViewModel @Inject constructor(
     private val displayName: String
         get() = firebaseAuth.currentUser?.displayName?.takeIf { it.isNotBlank() }
             ?: firebaseAuth.currentUser?.email?.substringBefore("@")
-            ?: "User"
+            ?: "Usuario"
 
+    // Al tener éxito, el perfil pasa a tener activeHouseholdId y el MainViewModel
+    // conmuta automáticamente a la pantalla principal; aquí solo gestionamos error.
+
+    /**
+     * Del formulario al paso de plantillas. **La casa todavía no se crea**: en cuanto existe, el
+     * perfil apunta a ella y `MainViewModel` cambia de pantalla, así que un paso posterior a la
+     * creación no llegaría a verse.
+     */
     fun onContinueToTemplates() {
         if (_uiState.value.isSubmitting) return
         _uiState.update { it.copy(step = OnboardingStep.TEMPLATES, error = null) }

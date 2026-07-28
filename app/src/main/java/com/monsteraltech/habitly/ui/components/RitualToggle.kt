@@ -40,6 +40,7 @@ fun RitualToggle(
     val habitly = MaterialTheme.habitly
     val primary = MaterialTheme.colorScheme.primary
     val onPrimary = MaterialTheme.colorScheme.onPrimary
+    // El check se dibuja progresivamente al marcar, un pequeño gesto "hecho a mano".
     val progress by animateFloatAsState(
         targetValue = if (checked) 1f else 0f,
         animationSpec = tween(durationMillis = 260),

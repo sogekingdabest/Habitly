@@ -79,6 +79,8 @@ class ExtractSharedTextUseCase @Inject constructor(
         val entries = PlainListParser.fromLines(sanitized)
         if (entries.isEmpty()) return SharedTextExtraction()
 
+        // Un texto de tareas se propone como rutinas; en un texto mixto, la compra manda:
+        // adivinar rutinas de un menú semanal sin modelo daría basura.
         return if (kind == SharedTextKind.ROUTINES) {
             SharedTextExtraction(
                 routines = entries.map { entry ->

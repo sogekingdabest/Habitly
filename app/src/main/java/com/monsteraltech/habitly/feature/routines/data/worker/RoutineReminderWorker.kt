@@ -32,6 +32,7 @@ class RoutineReminderWorker(
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
+        // Interruptor maestro de recordatorios (Ajustes). Si está apagado, no molestamos.
         if (!SettingsRepositoryImpl.readRemindersEnabled(applicationContext)) return Result.success()
 
         val routineId = inputData.getString(KEY_ROUTINE_ID) ?: return Result.failure()
@@ -48,15 +49,20 @@ class RoutineReminderWorker(
 
         val routineResult = repository.getRoutine(userId, householdId, routineId, type)
 
+        // No se pudo leer (sin red y sin caché): avisamos con lo último que sabíamos.
         if (routineResult.isFailure) {
             showNotification(fallbackTitle, routineId)
             return Result.success()
         }
 
+        // Se leyó bien pero no existe: la rutina se borró, el recordatorio sobra.
         val routine = routineResult.getOrNull() ?: return Result.success()
 
+        // No molestamos si hoy no toca, si está en pausa o si ya está hecha.
         if (!RoutineSchedule.isPendingOn(routine, LocalDate.now())) return Result.success()
 
+        // Si la rutina está asignada a otro miembro, no es asunto de este usuario.
+        // Esto da el "te toca a ti" sin necesitar FCM ni backend.
         val assignedTo = routine.assignedTo
         if (assignedTo != null && userId.isNotBlank() && assignedTo != userId) {
             return Result.success()
@@ -69,6 +75,8 @@ class RoutineReminderWorker(
     private fun showNotification(title: String, routineId: String) {
         val channelId = "routines_reminders"
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        // Contexto con el idioma elegido en Ajustes: el applicationContext no lo refleja (solo
+        // el de la Activity), así que sin esto los textos salían en el idioma del sistema.
         val ctx = LocaleHelper.wrap(applicationContext)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

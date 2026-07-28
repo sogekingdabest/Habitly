@@ -219,12 +219,14 @@ fun AiAssistantScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val listState = rememberLazyListState()
+    // Seguimiento del final durante el streaming. Se rompe cuando el usuario sube a releer
+    // (gesto hacia arriba) y se vuelve a enganchar al llegar de nuevo al final.
     val autoFollow = remember { mutableStateOf(true) }
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // available.y > 0 = el dedo arrastra hacia abajo = se revela lo anterior: el
+                // usuario quiere releer, así que dejamos de seguir la cola del stream.
                 if (available.y > 0f) autoFollow.value = false
                 return Offset.Zero
             }
@@ -235,6 +237,8 @@ fun AiAssistantScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    // Copiar mensajes al portapapeles. En Android 13+ el sistema ya muestra su propia
+    // confirmación al copiar, así que el snackbar solo se lanza por debajo de esa versión.
     val clipboard = LocalClipboardManager.current
     val copiedMessage = stringResource(R.string.ai_copied)
     val onCopyMessage: (String) -> Unit = { text ->
@@ -247,8 +251,11 @@ fun AiAssistantScreen(
     var chatToDelete by remember { mutableStateOf<AiChatSession?>(null) }
     var showDownloadDialog by remember { mutableStateOf(false) }
     var modelToDelete by remember { mutableStateOf<AiModelConfig?>(null) }
+    // Id del mensaje del asistente pendiente de confirmar el reporte.
     var messageToReport by remember { mutableStateOf<String?>(null) }
 
+    // Dictado por voz con el reconocedor del sistema: sin permisos propios ni modelos extra.
+    // El texto reconocido se deja en el campo para que el usuario lo revise antes de enviar.
     val voicePromptText = stringResource(R.string.ai_voice_prompt)
     val voiceUnavailableText = stringResource(R.string.ai_voice_unavailable)
     val speechLauncher = rememberLauncherForActivityResult(
@@ -260,6 +267,7 @@ fun AiAssistantScreen(
         if (!spoken.isNullOrBlank()) viewModel.onInputChange(spoken)
     }
 
+    // Al enviar un mensaje nuevo, baja al final y vuelve a enganchar el seguimiento.
     val userMessageCount = uiState.chatSession.messages.count { it.role is MessageRole.User }
     LaunchedEffect(userMessageCount) {
         if (userMessageCount > 0) {
@@ -269,6 +277,10 @@ fun AiAssistantScreen(
         }
     }
 
+    // Sigue la cola de la respuesta durante el streaming, solo mientras autoFollow siga vivo
+    // (si el usuario subió a releer, no se le interrumpe). El objetivo es el item ancla del
+    // final: sobre el mensaje —que es un item muy alto— scrollToItem fijaría su INICIO, no la
+    // cola que crece. Sin animación: relanzarla en cada refresco del stream la corta a tirones.
     val streamingLength = uiState.chatSession.messages.lastOrNull()?.content?.length ?: 0
     LaunchedEffect(uiState.isGenerating, streamingLength) {
         if (!uiState.isGenerating || !autoFollow.value) return@LaunchedEffect
@@ -276,6 +288,8 @@ fun AiAssistantScreen(
         if (total > 0) listState.scrollToItem(total - 1)
     }
 
+    // Botón "ir al final" + re-enganche del seguimiento. canScrollForward = queda contenido
+    // por debajo; con 500 ms de margen el botón no parpadea mientras se sigue el stream.
     LaunchedEffect(listState) {
         snapshotFlow { listState.canScrollForward }.collectLatest { canScroll ->
             if (!canScroll) {
@@ -288,6 +302,8 @@ fun AiAssistantScreen(
         }
     }
 
+    // El error puede venir como texto dinámico (uiState.error) o como id de recurso localizado
+    // (uiState.errorRes); se resuelve aquí, en el contexto de la Activity que sí sigue el idioma.
     val errorResText = uiState.errorRes?.let { stringResource(it) }
     LaunchedEffect(uiState.error, uiState.errorRes) {
         val message = uiState.error ?: errorResText
@@ -382,6 +398,8 @@ fun AiAssistantScreen(
                                 viewModel.onLoadChat(session.id)
                                 scope.launch { drawerState.close() }
                             },
+                            // Sin icono por fila: no distingue nada entre chats y solo mete
+                            // ruido; la papelera al final ya marca la zona de acción.
                             badge = {
                                 IconButton(onClick = { chatToDelete = session }) {
                                     Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete), modifier = Modifier.size(20.dp))
@@ -401,6 +419,9 @@ fun AiAssistantScreen(
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     title = {
+                        // El modelo y su estado se quedan en el desplegable: con el modelo
+                        // listo el subtítulo no aportaba nada, y cuando no lo está ya manda la
+                        // tarjeta de descarga. Aquí solo restaba altura a la conversación.
                         Box {
                             Row(
                                 modifier = Modifier
@@ -421,6 +442,9 @@ fun AiAssistantScreen(
                             ) {
                                 uiState.availableModels.forEach { model ->
                                     val isDownloaded = model.id in uiState.downloadedModelIds
+                                    // Un modelo que no cabe se muestra atenuado y sin acción:
+                                    // esconderlo dejaría al usuario preguntándose qué hay ahí,
+                                    // y dejarlo activo le llevaría a un cierre en seco.
                                     val compatibility = model.compatibilityWith(uiState.deviceRamBytes)
                                     val isUsable = compatibility.canUse
                                     DropdownMenuItem(
@@ -497,10 +521,14 @@ fun AiAssistantScreen(
             },
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { innerPadding ->
+            // Sin padding horizontal aquí: lo pone cada bloque por su cuenta, para que la fila
+            // de chips pueda ocupar el ancho completo y deslizarse hasta el borde.
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    // Sube el campo de texto con el teclado; el resto de la app lo hace
+                    // igual (login/registro) y aquí faltaba.
                     .imePadding()
             ) {
                 when (uiState.modelStatus) {
@@ -509,6 +537,7 @@ fun AiAssistantScreen(
                             modelConfig = uiState.selectedModel,
                             progress = 0f,
                             isDownloading = false,
+                            // Antes de encolar GB se pregunta con qué red (Wi-Fi o datos).
                             onDownload = { showDownloadDialog = true },
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
                         )
@@ -589,6 +618,9 @@ fun AiAssistantScreen(
                         ) {
                             if (uiState.chatSession.messages.isEmpty()) {
                                 item {
+                                    // fillParentMaxHeight y no weight: dentro de un item de
+                                    // LazyColumn el weight se resolvía contra el Column de
+                                    // fuera, la lista lo ignoraba y esto nunca llegó a centrarse.
                                     Box(
                                         modifier = Modifier
                                             .fillParentMaxHeight()
@@ -625,6 +657,8 @@ fun AiAssistantScreen(
                                 Column {
                                     ChatMessageItem(
                                         message = message,
+                                        // El último mensaje del asistente mientras se genera:
+                                        // sin botón de copiar y, si sigue vacío, con puntos.
                                         isStreaming = uiState.isGenerating &&
                                             message.id == uiState.chatSession.messages.lastOrNull()?.id &&
                                             message.role is MessageRole.Assistant,
@@ -667,11 +701,15 @@ fun AiAssistantScreen(
                                 }
                             }
 
+                            // Ancla del final: objetivo del scroll de seguimiento. Sobre el
+                            // mensaje (item muy alto) scrollToItem fijaría su inicio, no la cola.
+                            // Solo con mensajes, para no hacer scrollable la pantalla vacía.
                             if (uiState.chatSession.messages.isNotEmpty()) {
                                 item(key = "bottom-anchor") { Spacer(Modifier.height(1.dp)) }
                             }
                         }
 
+                        // "Ir al final": solo cuando el usuario se ha quedado arriba.
                         ScrollToBottomFab(
                             visible = showScrollToBottom,
                             onClick = {
@@ -687,6 +725,7 @@ fun AiAssistantScreen(
                         )
                         }
 
+                        // Métricas de la última respuesta: solo llegan en builds debug.
                         uiState.lastGenerationStats?.let { stats ->
                             Text(
                                 text = stats,
@@ -696,6 +735,7 @@ fun AiAssistantScreen(
                             )
                         }
 
+                        // Aviso de conversación larga con acción de compactar (fase 6).
                         if (uiState.contextUsage >= CONTEXT_WARN_THRESHOLD && !uiState.isGenerating) {
                             ContextCompactBanner(
                                 usagePercent = (uiState.contextUsage * 100).toInt(),
@@ -704,6 +744,9 @@ fun AiAssistantScreen(
                             )
                         }
 
+                        // Chips ya localizados: el de seguimiento (si lo hay) va delante de los
+                        // fijos. Los textos se resuelven aquí (contexto de la Activity = idioma
+                        // de Ajustes) y cada chip lleva su propia acción.
                         val followUpAck = stringResource(R.string.ai_follow_up_ack)
                         val quickPromptChips = listOfNotNull(
                             uiState.followUpTarget?.let { target ->
@@ -742,6 +785,8 @@ fun AiAssistantScreen(
                             quickPrompts = quickPromptChips
                         )
 
+                        // Disclaimer de IA: el modelo puede equivocarse. No es obligatorio pero
+                        // es estándar y protege; va bajo el input, discreto.
                         Text(
                             text = stringResource(R.string.ai_disclaimer),
                             style = MaterialTheme.typography.labelSmall,
@@ -822,9 +867,9 @@ fun AiAssistantScreen(
         )
     }
 
-    // Tight fit model: notify and let the user decide, as done in the AI Edge Gallery.
-    // Blocking it would be overkill (it might work fine with a clear device); doing nothing
-    // could result in failure (hundreds of MB and a potential crash).
+    // Modelo que entra por los pelos: se avisa y se deja decidir, como hace el AI Edge Gallery.
+    // Bloquear aquí sería pasarse (puede funcionar de sobra con el móvil despejado); callar,
+    // quedarse corto (son cientos de MB y un posible cierre en seco).
     uiState.pendingTightDownloadModel?.let { model ->
         AlertDialog(
             onDismissRequest = { viewModel.onDismissTightDownload() },

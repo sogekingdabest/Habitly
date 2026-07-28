@@ -55,14 +55,25 @@ class MainViewModel @Inject constructor(
                     } else {
                         observeHouseholdUseCase(householdId)
                             .map { household ->
+                                // Autocuración: si nos han expulsado (ya no estamos en
+                                // members) reseteamos la casa activa y volvemos al onboarding.
                                 if (household != null && !household.members.contains(userId)) {
                                     clearActiveHouseholdUseCase(userId)
                                     MainUiState(isLoading = false, hasHousehold = false)
                                 } else {
+                                    // Rellena nuestra copia pública del perfil dentro de la
+                                    // casa. Es lo que permite que las casas creadas antes de
+                                    // que existiera memberProfiles se completen solas, sin
+                                    // script de migración: cada miembro escribe la suya la
+                                    // primera vez que abre la app. Es idempotente, así que en
+                                    // los arranques siguientes no genera escritura.
                                     if (household != null && profile != null) {
                                         syncOwnMemberProfileUseCase(
                                             householdId, household, userId, profile
                                         )
+                                        // Misma idea para el propietario: las casas
+                                        // anteriores al campo lo tienen vacío y quien la
+                                        // creó lo reclama al abrir la app.
                                         backfillHouseholdOwnerUseCase(
                                             householdId, household, userId
                                         )
@@ -71,12 +82,14 @@ class MainViewModel @Inject constructor(
                                 }
                             }
                             .catch { e ->
+                                // Permiso denegado ⇒ expulsado; lo reflejamos como sin casa.
                                 if ((e as? FirebaseFirestoreException)?.code ==
                                     FirebaseFirestoreException.Code.PERMISSION_DENIED
                                 ) {
                                     clearActiveHouseholdUseCase(userId)
                                     emit(MainUiState(isLoading = false, hasHousehold = false))
                                 } else {
+                                    // Error transitorio (offline usa caché): mantener acceso.
                                     emit(MainUiState(isLoading = false, hasHousehold = true))
                                 }
                             }

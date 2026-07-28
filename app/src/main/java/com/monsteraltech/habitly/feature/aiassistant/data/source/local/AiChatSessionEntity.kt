@@ -8,18 +8,23 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiMessage
 
 @Entity(
     tableName = "ai_chat_sessions",
+    // El historial vive en una BD local compartida por todas las cuentas del dispositivo:
+    // sin dueño, cada cuenta veía las conversaciones de las demás. Se indexa para que las
+    // consultas acotadas por usuario no barran toda la tabla.
     indices = [Index("userId")]
 )
 data class AiChatSessionEntity(
     @PrimaryKey val id: String,
-    /** Firebase Auth UID owning this session. */
+    /** UID de Firebase del dueño de la sesión. Aísla el historial entre cuentas locales. */
     val userId: String,
     val title: String,
     val systemPrompt: String,
     val modelId: String,
     val timestamp: Long,
     val messages: List<AiMessage>,
-    /** Context compaction summary (v2 schema). */
+    // Columnas añadidas en la v2 (compactación de contexto). La migración las crea con
+    // DEFAULT '' / 0 para las filas existentes; la entidad no declara @ColumnInfo(defaultValue)
+    // a propósito, así Room omite la comparación de defaults al validar la migración.
     val contextSummary: String = "",
     val summarizedUpTo: Int = 0
 ) {

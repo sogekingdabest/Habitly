@@ -39,14 +39,15 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
-    // Destination requested from external triggers (notifications, launcher shortcuts).
+    // Pantalla pedida desde fuera: notificación de recordatorio o atajo del launcher.
     private val externalDestination = mutableStateOf<ExternalDestination?>(null)
 
-    // Text shared from another app via ACTION_SEND.
+    // Texto recibido de otra app por "Compartir con Habitly" (ACTION_SEND).
     private val sharedText = mutableStateOf<String?>(null)
 
-    // Apply persisted language preference before Activity creation (prior to Hilt injection).
-    // Changing language in Settings calls recreate(), which re-wraps the base context.
+    // Aplica el idioma persistido antes de crear la Activity (antes de la inyección de Hilt),
+    // por eso LocaleHelper lee la preferencia de forma síncrona. Un cambio de idioma en Ajustes
+    // llama a recreate(), lo que vuelve a ejecutar este envoltorio con la nueva locale.
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleHelper.wrap(newBase))
     }
@@ -91,14 +92,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Refresh home widget state on foregrounding.
+        // Al volver a la app, refrescamos el widget para que refleje el estado actual.
         lifecycleScope.launch {
             runCatching { HabitlyWidget().updateAll(applicationContext) }
         }
     }
 
     /**
-     * Parses incoming intent actions (routine notifications, launcher shortcuts, shared text).
+     * Traduce el intent de entrada a lo que la UI tiene que hacer: ir a una pestaña concreta
+     * (notificación de rutina o atajo del launcher) o abrir la revisión del texto compartido.
+     *
+     * El texto de `ACTION_SEND` **no se procesa aquí**: se guarda tal cual y lo recoge la hoja de
+     * revisión, que es quien lo sanea y lo trata como datos no fiables.
      */
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
@@ -111,7 +116,7 @@ class MainActivity : ComponentActivity() {
         if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
             val received = intent.getStringExtra(Intent.EXTRA_TEXT)
             if (!received.isNullOrBlank()) sharedText.value = received
-            // Prevent re-processing shared text on configuration changes or activity resume.
+            // Un ACTION_SEND ya consumido volvería a abrir la hoja al rotar o al volver a la app.
             intent.removeExtra(Intent.EXTRA_TEXT)
         }
     }

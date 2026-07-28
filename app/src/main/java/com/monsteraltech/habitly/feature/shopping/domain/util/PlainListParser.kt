@@ -63,11 +63,14 @@ object PlainListParser {
         var text = raw.trim()
         if (text.isEmpty()) return null
 
+        // Viñetas, numeración y casillas de una lista pegada de cualquier sitio.
         text = text.replace(BULLET_PREFIX, "").trim()
+        // Un encabezado ("Ingredientes:") no es un producto.
         if (text.endsWith(':')) return null
         text = text.trim(*TRAILING_PUNCTUATION)
         if (text.isBlank()) return null
 
+        // Un párrafo de instrucciones no es un producto; tampoco un enlace ni una línea sin letras.
         if (text.length > MAX_ENTRY_LENGTH) return null
         if (!HAS_LETTER.containsMatchIn(text)) return null
         if (URL.containsMatchIn(text)) return null
@@ -79,6 +82,7 @@ object PlainListParser {
         var quantity: Int? = null
         var unit: String? = null
 
+        // 1. Cantidad al principio: "2 …", "2kg …", "2x …", "dos …".
         val numeric = splitNumericToken(tokens[0])
         if (numeric != null) {
             val (value, suffix) = numeric
@@ -93,6 +97,7 @@ object PlainListParser {
                     unit = suffixUnit
                     index = 1
                 }
+                // "2ª", "2do"… no es cantidad + unidad: se deja tal cual como nombre.
                 else -> Unit
             }
         } else {
@@ -102,6 +107,7 @@ object PlainListParser {
             }
         }
 
+        // 2. Tras la cantidad puede venir la unidad y/o un "de"/"of" de relleno.
         if (quantity != null) {
             if (unit == null && index < tokens.size) {
                 if (tokens[index].equals("x", ignoreCase = true)) index++
@@ -112,6 +118,7 @@ object PlainListParser {
 
         var name = tokens.drop(index).joinToString(" ")
 
+        // 3. Cantidad al final: "leche x2", "leche (2)". Solo si no había una al principio.
         if (quantity == null) {
             TRAILING_QUANTITY.find(name)?.let { match ->
                 quantity = match.groupValues[1].toIntOrNull()

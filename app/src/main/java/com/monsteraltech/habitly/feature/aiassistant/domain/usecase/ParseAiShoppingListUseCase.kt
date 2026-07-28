@@ -52,7 +52,7 @@ class ParseAiShoppingListUseCase @Inject constructor() {
         }
     }
 
-    @Suppress("DEPRECATION")
+    @Suppress("DEPRECATION") // setStrictness(LENIENT) no existe en Gson 2.10.1; isLenient es la API válida.
     private fun parseLenient(region: String): JsonElement? {
         return try {
             val reader = JsonReader(StringReader(region))
@@ -82,7 +82,7 @@ class ParseAiShoppingListUseCase @Inject constructor() {
         return byName.values.toList()
     }
 
-    /** Regex fallback extracting fields from Json objects. */
+    /** Último recurso: extrae los campos con regex sobre cada objeto `{ ... }`. */
     private fun regexFallback(region: String): List<AiShoppingSuggestion> {
         val byName = LinkedHashMap<String, AiShoppingSuggestion>()
         for (match in OBJECT_REGEX.findAll(region)) {
@@ -115,6 +115,7 @@ class ParseAiShoppingListUseCase @Inject constructor() {
             val element = get(key) ?: continue
             if (element.isJsonNull || !element.isJsonPrimitive) continue
             runCatching { return element.asInt }
+            // "2 kg" u otros valores textuales: extraemos el primer número.
             runCatching {
                 DIGITS_REGEX.find(element.asString)?.value?.toIntOrNull()?.let { return it }
             }

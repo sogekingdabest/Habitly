@@ -45,6 +45,9 @@ fun OnboardingScreen(
     viewModel: OnboardingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // rememberSaveable y no remember: el paso de plantillas vive en el ViewModel y sobrevive a
+    // una rotación, así que el nombre de la casa tiene que sobrevivir también o al volver del
+    // paso 2 se intentaría crear una casa sin nombre.
     var householdName by rememberSaveable { mutableStateOf("") }
     var inviteCode by rememberSaveable { mutableStateOf("") }
     var showSignOutDialog by remember { mutableStateOf(false) }
@@ -52,6 +55,7 @@ fun OnboardingScreen(
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
 
+    // Atrás en el paso de plantillas vuelve al formulario, no saca de la app.
     BackHandler(enabled = uiState.step == OnboardingStep.TEMPLATES && !uiState.isSubmitting) {
         viewModel.onBackToForm()
     }
@@ -90,15 +94,21 @@ fun OnboardingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                // consumeWindowInsets: el Scaffold ya reserva el hueco de la barra de navegación
+                // en `padding`. Sin consumirlo, imePadding volvería a sumar esa zona (el teclado
+                // la incluye) y aparecía una banda del color del fondo entre el campo y el teclado.
                 .consumeWindowInsets(padding)
+                // imePadding: con edge-to-edge activo, adjustResize no reduce la ventana de
+                // Compose por sí solo. Sin esto, el teclado tapaba el recuadro de "unirse con
+                // código" y su botón; ahora el área desplazable queda por encima del teclado.
                 .imePadding()
                 .padding(24.dp)
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Second step: routines to start the household with. Placed here instead of after 
-            // creation because the MainViewModel switches screens as soon as the household exists.
+            // Segundo paso: las rutinas con las que arranca la casa. Va aquí y no después de
+            // crearla porque en cuanto la casa existe el MainViewModel conmuta de pantalla.
             if (uiState.step == OnboardingStep.TEMPLATES) {
                 RoutineTemplatesStep(
                     isSubmitting = uiState.isSubmitting,
@@ -176,6 +186,7 @@ fun OnboardingScreen(
             )
             Spacer(Modifier.height(20.dp))
 
+            // === Unirse con código ===
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -206,6 +217,11 @@ fun OnboardingScreen(
                         singleLine = true,
                         modifier = Modifier
                             .fillMaxWidth()
+                            // Al enfocar el código, el desplazamiento automático del campo lo
+                            // deja pegado al teclado y su botón queda debajo (tapado). Como esta
+                            // tarjeta es el último elemento, desplazamos hasta el final para que
+                            // el botón "Unirse" quede visible. El delay espera a que el teclado
+                            // termine de abrir y el inset esté aplicado antes de medir maxValue.
                             .onFocusEvent { focus ->
                                 if (focus.isFocused) {
                                     scope.launch {
@@ -225,6 +241,8 @@ fun OnboardingScreen(
                         )
                     )
                     Spacer(Modifier.height(12.dp))
+                    // Botón sólido (no OutlinedButton) para que se lea claramente como acción,
+                    // igual que "Crear casa": color secondary sobre la tarjeta secondaryContainer.
                     Button(
                         onClick = { viewModel.onJoinHousehold(inviteCode) },
                         enabled = inviteCode.length == 6 && !uiState.isSubmitting,
@@ -247,6 +265,7 @@ fun OnboardingScreen(
         }
     }
 
+    // Confirmación de cierre de sesión (mismo patrón que Ajustes).
     if (showSignOutDialog) {
         AlertDialog(
             onDismissRequest = { showSignOutDialog = false },
@@ -282,9 +301,12 @@ private fun ColumnScope.RoutineTemplatesStep(
     onBack: () -> Unit,
     onCreate: (List<NewHouseholdRoutine>) -> Unit
 ) {
+    // Todas marcadas por defecto: es lo que hace que arrancar sea un toque. Saveable para que una
+    // rotación no vuelva a marcar lo que el usuario acaba de desmarcar.
     var selectedIds by rememberSaveable {
         mutableStateOf(HOUSEHOLD_ROUTINE_TEMPLATES.map { it.id })
     }
+    // Títulos resueltos aquí, en el contexto que sigue el idioma de Ajustes.
     val titles = HOUSEHOLD_ROUTINE_TEMPLATES.associate { it.id to stringResource(it.titleRes) }
 
     val selectedRoutines = HOUSEHOLD_ROUTINE_TEMPLATES
@@ -375,6 +397,7 @@ private fun ColumnScope.RoutineTemplatesStep(
 
     Spacer(Modifier.height(8.dp))
 
+    // Salida sin fricción: crea la casa igual, pero vacía.
     HabitlyTextButton(
         text = stringResource(R.string.templates_skip),
         onClick = { onCreate(emptyList()) },

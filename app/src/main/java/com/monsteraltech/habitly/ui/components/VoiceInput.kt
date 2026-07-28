@@ -69,6 +69,7 @@ fun VoiceInputButton(
     if (!available) return
 
     val prompt = stringResource(R.string.ai_voice_prompt)
+    // El tag de idioma se lee de la configuración ya envuelta por LocaleHelper (idioma de Ajustes).
     val languageTag = LocalConfiguration.current.locales[0].toLanguageTag()
 
     val launcher = rememberLauncherForActivityResult(

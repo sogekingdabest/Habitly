@@ -29,7 +29,18 @@ import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
 import com.monsteraltech.habitly.ui.theme.habitly
 
 /**
- * Household distribution panel showing completed items per member and household streak.
+ * Panel de reparto de la casa: qué ha hecho cada miembro esta semana, cuántos días seguidos lleva
+ * la casa completando todo y cómo fue la semana pasada.
+ *
+ * **El tono es parte del diseño, no decoración.** En una app que usa gente que convive, un
+ * marcador que señale al que menos hace hace daño de verdad. Por eso:
+ *  - lo primero y más grande es el total **de la casa**, no el individual,
+ *  - las barras van en el orden de los miembros de la casa, nunca de mayor a menor,
+ *  - no hay posiciones, ni "peor", ni números en rojo,
+ *  - con un solo miembro desaparece toda la comparación y queda solo su progreso.
+ *
+ * [memberIds] llega en el orden de `Household.members` y [memberNames] puede no traer a alguien
+ * que todavía no ha abierto la app: ahí se usa el texto de reserva en vez de una fila en blanco.
  */
 @Composable
 fun HouseholdSharePanel(
@@ -39,6 +50,7 @@ fun HouseholdSharePanel(
     currentUserId: String,
     modifier: Modifier = Modifier
 ) {
+    // Sin rutinas de casa no hay reparto del que hablar.
     if (!summary.hasHouseholdRoutines) return
 
     val isSolo = memberIds.size <= 1
@@ -62,6 +74,7 @@ fun HouseholdSharePanel(
                 .padding(top = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // El total de la casa manda: es el número que celebra el esfuerzo común.
             Text(
                 text = when {
                     summary.thisWeekTotal == 0 -> stringResource(R.string.household_share_empty)
@@ -91,6 +104,8 @@ fun HouseholdSharePanel(
                 }
             }
 
+            // Racha de la casa, en la pastilla de racha de la casa (mismos colores que la de
+            // cada rutina): es un logro compartido, no una nota individual.
             if (summary.houseStreakDays > 0) {
                 HabitlyPill(
                     text = pluralStringResource(
@@ -103,7 +118,10 @@ fun HouseholdSharePanel(
                 )
             }
 
+            // La semana pasada, en una línea y en tono menor: es contexto, no un objetivo.
             if (summary.lastWeekTotal > 0) {
+                // El formato se resuelve fuera del bucle: stringResource no puede llamarse
+                // dentro de un lambda que no es composable.
                 val entryFormat = stringResource(R.string.household_share_last_week_entry)
                 val lastWeekText = if (isSolo) {
                     stringResource(R.string.household_share_last_week_total, summary.lastWeekTotal)

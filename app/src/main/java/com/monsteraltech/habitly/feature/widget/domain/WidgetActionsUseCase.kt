@@ -55,6 +55,8 @@ class WidgetActionsUseCase @Inject constructor(
 
         return toggleRoutineUseCase(session.userId, session.householdId, routine, true)
             .onSuccess {
+                // Mismo comportamiento que la pantalla de rutinas: al completarla, el turno
+                // pasa al siguiente miembro. Si falla, la rutina ya está marcada igualmente.
                 val members = withTimeoutOrNull(TIMEOUT_MS) {
                     householdRepository.observeHousehold(session.householdId).firstOrNull()
                 }?.members.orEmpty()

@@ -20,6 +20,8 @@ import javax.inject.Inject
 
 class RoutinesRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
+    // El widget lista las rutinas pendientes de hoy: cualquier escritura que las cambie
+    // tiene que repintarlo, o se queda enseñando algo que ya no es verdad.
     private val widgetRefresher: WidgetRefresher
 ) : RoutinesRepository {
 
@@ -102,6 +104,8 @@ class RoutinesRepositoryImpl @Inject constructor(
             val completionsRef = routineRef.collection("completions")
             val zone = ZoneId.systemDefault()
 
+            // 1. Registramos/eliminamos el completado del día en la subcolección de historial.
+            //    Doc id = fecha ISO (yyyy-MM-dd) => idempotente, un completado por día.
             if (completedAt != null) {
                 val dateId = Instant.ofEpochMilli(completedAt).atZone(zone).toLocalDate().toString()
                 completionsRef.document(dateId).set(
@@ -116,6 +120,7 @@ class RoutinesRepositoryImpl @Inject constructor(
                 completionsRef.document(today).delete().await()
             }
 
+            // 2. Recalculamos la racha desde el historial (acotado al último año).
             val snapshot = completionsRef
                 .orderBy("date", Query.Direction.DESCENDING)
                 .limit(MAX_COMPLETIONS_SCANNED)
@@ -123,6 +128,7 @@ class RoutinesRepositoryImpl @Inject constructor(
                 .await()
             val dates = snapshot.toLocalDates()
 
+            // La racha depende de la frecuencia, así que se calcula con la rutina ya actualizada.
             val streak = StreakCalculator.forRoutine(
                 routine = routine.copy(lastCompletedAt = completedAt, lastCompletedBy = completedBy),
                 completedDates = dates,
@@ -156,6 +162,8 @@ class RoutinesRepositoryImpl @Inject constructor(
         to: LocalDate
     ): Result<List<RoutineCompletion>> {
         return try {
+            // Los ids/campos son fechas ISO (yyyy-MM-dd), así que el orden lexicográfico
+            // coincide con el cronológico y se puede filtrar por rango como texto.
             val snapshot = documentFor(type, userId, householdId, routineId)
                 .collection("completions")
                 .whereGreaterThanOrEqualTo("date", from.toString())
@@ -270,6 +278,7 @@ class RoutinesRepositoryImpl @Inject constructor(
         collectionFor(type, userId, householdId).document(routineId)
 
     private companion object {
+        // Acota las lecturas del historial: ~1 año es más que suficiente para la racha.
         const val MAX_COMPLETIONS_SCANNED = 370L
     }
 }

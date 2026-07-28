@@ -123,6 +123,7 @@ private fun SwipeBackground(direction: SwipeToDismissBoxValue, primaryIcon: Imag
         contentAlignment = alignment,
     ) {
         if (direction != SwipeToDismissBoxValue.Settled) {
+            // El fondo es decorativo: lo que la acción hace ya lo anuncia swipeRowSemantics.
             Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
         }
     }

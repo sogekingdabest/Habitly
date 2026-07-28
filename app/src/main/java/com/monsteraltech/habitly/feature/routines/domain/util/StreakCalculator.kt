@@ -66,6 +66,7 @@ object StreakCalculator {
         val earliest = days.first()
         val horizon = maxOf(earliest, today.minusDays(MAX_LOOKBACK_DAYS))
 
+        // Racha actual: hacia atrás desde hoy, perdonando hasta graceMisses ocurrencias.
         var current = 0
         var misses = 0
         var cursor = today
@@ -73,6 +74,7 @@ object StreakCalculator {
             if (isDueOn(cursor)) {
                 when {
                     days.contains(cursor) -> current++
+                    // El día de hoy aún no ha terminado: no puede contar como fallo.
                     cursor == today -> Unit
                     else -> {
                         misses++
@@ -83,6 +85,7 @@ object StreakCalculator {
             cursor = cursor.minusDays(1)
         }
 
+        // Mejor racha: tramo más largo de ocurrencias consecutivas cumplidas, sin tolerancia.
         var best = 0
         var run = 0
         var scan = horizon
@@ -93,6 +96,7 @@ object StreakCalculator {
                         run++
                         if (run > best) best = run
                     }
+                    // Hoy sin marcar todavía no corta el tramo.
                     scan == today -> Unit
                     else -> run = 0
                 }
@@ -142,6 +146,7 @@ object StreakCalculator {
             }
         }
 
+        // Mejor racha: tramo más largo con huecos dentro del intervalo, sin tolerancia.
         var best = 1
         var run = 1
         var previous: LocalDate? = null

@@ -1,23 +1,29 @@
 package com.monsteraltech.habitly.navigation
 
 /**
- * Represents external navigation requests (push notifications or launcher shortcuts).
+ * Pantalla que se pide desde **fuera** de la app: la notificación de recordatorio o un atajo del
+ * icono del launcher.
+ *
+ * Existía ya como un `Boolean` (`navigateToRoutines`) que viajaba de `MainActivity` a
+ * `MainScreen`; con dos atajos más, un booleano por destino no escala. El mecanismo es el mismo
+ * —`MainActivity` lo apunta al recibir el intent, `MainContent` navega y avisa de que lo ha
+ * consumido— pero con un solo canal.
  */
 enum class ExternalDestination {
-    /** Routines tab: reminder notification or "Today's Routines" launcher shortcut. */
+    /** Pestaña de rutinas: notificación de recordatorio y atajo "Rutinas de hoy". */
     ROUTINES,
 
-    /** Shopping list tab with quick-add modal open: "Add to Shopping" launcher shortcut. */
+    /** Lista de la compra con la hoja de alta rápida abierta: atajo "Añadir a la compra". */
     SHOPPING_QUICK_ADD;
 
     companion object {
-        /** Action for routines shortcut (`res/xml/shortcuts.xml`). */
+        /** Acción del atajo estático de rutinas (`res/xml/shortcuts.xml`). */
         const val ACTION_VIEW_ROUTINES = "com.monsteraltech.habitly.action.VIEW_ROUTINES"
 
-        /** Action for quick-add shopping shortcut (`res/xml/shortcuts.xml`). */
+        /** Acción del atajo estático de alta rápida (`res/xml/shortcuts.xml`). */
         const val ACTION_ADD_SHOPPING = "com.monsteraltech.habitly.action.ADD_SHOPPING"
 
-        /** Resolves ExternalDestination from intent action string. */
+        /** Destino que corresponde a la acción de un atajo, o null si no es de un atajo. */
         fun fromAction(action: String?): ExternalDestination? = when (action) {
             ACTION_VIEW_ROUTINES -> ROUTINES
             ACTION_ADD_SHOPPING -> SHOPPING_QUICK_ADD

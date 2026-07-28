@@ -44,6 +44,7 @@ fun CompletionHeatmap(
     today: LocalDate = LocalDate.now()
 ) {
     val firstDay = month.atDay(1)
+    // java.time numera lunes=1: los huecos previos alinean el día 1 con su columna.
     val leadingBlanks = firstDay.dayOfWeek.value - 1
     val daysInMonth = month.lengthOfMonth()
     val cells = leadingBlanks + daysInMonth
@@ -100,6 +101,7 @@ private fun DayCell(
 ) {
     val isCompleted = date in completedDates
     val isFuture = date.isAfter(today)
+    // Solo marcamos como fallado lo que ya pasó: hoy sigue siendo recuperable.
     val isMissed = !isCompleted && !isFuture && date != today && isDueOn(date)
 
     val background = when {

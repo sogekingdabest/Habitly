@@ -117,6 +117,8 @@ fun HouseholdScreen(
             if (uiState.isLoading) {
                 CircularProgressIndicator()
             } else if (uiState.household != null) {
+                
+                // === SECCIÓN: Tu Perfil ===
                 HabitlyCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = LeafCornerLarge,
@@ -174,6 +176,8 @@ fun HouseholdScreen(
                 }
                 
                 Spacer(modifier = Modifier.height(24.dp))
+
+                // === SECCIÓN: Info de la Casa ===
                 HabitlyCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = LeafCornerLarge,
@@ -240,6 +244,7 @@ fun HouseholdScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // === SECCIÓN: Miembros ===
                 Text(
                     text = stringResource(R.string.household_members, uiState.memberProfiles.size),
                     style = MaterialTheme.typography.titleMedium,
@@ -249,6 +254,9 @@ fun HouseholdScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 uiState.memberProfiles.forEach { member ->
+                    // Un miembro que todavía no ha abierto la app desde la actualización no
+                    // tiene su perfil copiado en la casa: se muestra como desconocido en vez
+                    // de como una fila en blanco.
                     val memberName = member.nickname.ifBlank { member.displayName }
                         .ifBlank { stringResource(R.string.household_member_unknown) }
                     val memberInitial = memberName.firstOrNull()?.uppercase() ?: "?"
@@ -298,6 +306,8 @@ fun HouseholdScreen(
                                     )
                                 }
                             }
+                            // Expulsar es cosa del propietario. Antes lo veía cualquier
+                            // miembro, y la regla de Firestore tampoco lo impedía.
                             if (!isYou && uiState.isOwner) {
                                 IconButton(onClick = { memberToRemove = member }) {
                                     Icon(
@@ -313,15 +323,19 @@ fun HouseholdScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // === SECCIÓN: Reparto de la casa ===
+                // Va justo debajo de los miembros porque habla de ellos, y por encima de
+                // "unirse a otra casa", que es una acción de salida.
                 HouseholdSharePanel(
-                    summary = uiState.shareSummary,
+                    summary = uiState.share,
                     memberIds = uiState.household?.members.orEmpty(),
-                    memberNames = uiState.memberProfiles.associate { it.id to (it.nickname.ifBlank { it.displayName }) },
+                    memberNames = uiState.memberNames,
                     currentUserId = uiState.currentUserId
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // === SECCIÓN: Unirse a otra casa ===
                 Text(
                     text = stringResource(R.string.household_join_question),
                     style = MaterialTheme.typography.titleMedium,
@@ -380,6 +394,7 @@ fun HouseholdScreen(
     }
     }
 
+    // Dialog de confirmación de salir de la casa
     if (showLeaveDialog) {
         AlertDialog(
             onDismissRequest = { showLeaveDialog = false },
@@ -402,6 +417,7 @@ fun HouseholdScreen(
         )
     }
 
+    // Dialog de confirmación de regenerar código
     if (showRegenerateDialog) {
         AlertDialog(
             onDismissRequest = { showRegenerateDialog = false },
@@ -424,6 +440,7 @@ fun HouseholdScreen(
         )
     }
 
+    // Dialog de confirmación de expulsar miembro
     memberToRemove?.let { member ->
         val name = member.nickname.ifBlank { member.displayName }
         AlertDialog(

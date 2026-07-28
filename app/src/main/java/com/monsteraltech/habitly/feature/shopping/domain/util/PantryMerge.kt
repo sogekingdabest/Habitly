@@ -32,6 +32,7 @@ object PantryMerge {
 
         for (item in incoming) {
             val id = ProductNameNormalizer.toDocumentId(item.name) ?: continue
+            // Lo ya acumulado en esta misma tanda cuenta igual que lo que había en la despensa.
             val current = result[id] ?: byId[id]
 
             result[id] = when {
@@ -43,6 +44,7 @@ object PantryMerge {
 
                 current.unit == item.unit -> current.copy(
                     quantity = (current.quantity + item.quantity).coerceIn(1, MAX_QUANTITY),
+                    // Un producto puede llegar sin categoría desde la IA: no borramos la que ya tenía.
                     category = item.category.ifBlank { current.category },
                     updatedAt = now
                 )

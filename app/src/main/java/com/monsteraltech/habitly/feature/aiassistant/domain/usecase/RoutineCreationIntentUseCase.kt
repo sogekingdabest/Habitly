@@ -4,7 +4,20 @@ import java.text.Normalizer
 import javax.inject.Inject
 
 /**
- * Determines whether user input requests routine creation.
+ * Decide si el mensaje del usuario pide **crear** rutinas nuevas (frente a solo consultar las que
+ * ya tiene). Es la "puerta de intención" del segundo turno: si devuelve `false`, no se lanza la
+ * extracción y no aparece tarjeta de crear rutinas. Así evitamos sugerencias sin sentido (p. ej.
+ * ofrecer crear rutinas cuando el usuario pregunta por las que ya existen).
+ *
+ * Heurística deliberadamente conservadora y ajustable: exige un verbo de creación específico junto
+ * a un sustantivo de rutina, o una frase que ya implica crear ("plan de limpieza"). Evita verbos
+ * genéricos (dame, quiero, organiza) que también aparecen en consultas del tipo "organiza mi día
+ * con las rutinas que tengo".
+ *
+ * Los verbos se buscan como **inicio de palabra** (`\b`), no como substring: así "ponme una
+ * rutina" abre la puerta pero "¿me respondes con mis rutinas?" no, y "créame" cuenta sin que
+ * cuente "ideas creativas". Los verbos cortos (pon, haz, crea…) llevan sus formas cerradas
+ * porque como prefijo abierto colisionan con otras palabras (pongo, hazaña, creativas).
  */
 class RoutineCreationIntentUseCase @Inject constructor() {
 
@@ -18,17 +31,25 @@ class RoutineCreationIntentUseCase @Inject constructor() {
     }
 
     /**
-     * Checks if user message is a short affirmative follow-up to a routine proposal.
+     * Confirmación corta de una propuesta previa: "sí", "vale", "créalas", "ponlas". No dice
+     * QUÉ crear (no lleva sustantivo), así que solo abre la puerta si quien llama confirma
+     * que el último mensaje del asistente [looksLikeRoutineProposal].
      */
     fun isFollowUpConfirmation(userMessage: String): Boolean {
         val text = userMessage.normalizeForMatch()
         if (text.isBlank() || text.length > MAX_FOLLOW_UP_LENGTH) return false
         if (AFFIRMATIVE_REGEX.containsMatchIn(text)) return true
+        // Verbo de creación con pronombre y sin sustantivo: "créalas", "apúntalas", "ponlas".
         return CREATION_VERB_REGEX.containsMatchIn(text)
     }
 
     /**
-     * Checks if assistant text contains a routine proposal.
+     * Heurística de "el asistente acaba de proponer rutinas": nombra rutinas/hábitos Y usa
+     * lenguaje de propuesta EN LA MISMA FRASE (ventana acotada, sin cruzar puntuación
+     * fuerte). El marcador evita confundir un listado de las rutinas que YA existen con una
+     * propuesta de crear nuevas; la cercanía evita el falso positivo de una respuesta de
+     * OTRO tema (una lista de la compra con "te recomiendo…" al principio) que menciona
+     * "rutina" de pasada en otra frase.
      */
     fun looksLikeRoutineProposal(assistantText: String): Boolean {
         val text = assistantText.normalizeForMatch()
@@ -36,6 +57,7 @@ class RoutineCreationIntentUseCase @Inject constructor() {
         return PROPOSAL_NEAR_NOUN_REGEX.containsMatchIn(text)
     }
 
+    /** Minúsculas y sin tildes, para comparar sin depender de acentos ni mayúsculas. */
     private fun String.normalizeForMatch(): String =
         Normalizer.normalize(trim().lowercase(), Normalizer.Form.NFD)
             .replace(DIACRITICS_REGEX, "")

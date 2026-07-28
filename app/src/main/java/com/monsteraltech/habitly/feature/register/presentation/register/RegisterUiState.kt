@@ -23,6 +23,10 @@ data class RegisterUiState(
     // — Estado de carga —
     val isLoading: Boolean = false,
     val isGoogleSignInLoading: Boolean = false,
+
+    // — Error global (errores de red, email en uso, etc.) —
     val globalError: RegisterError? = null,
+
+    // — Habilitación del botón principal (heurística rápida: campos no vacíos) —
     val isRegisterButtonEnabled: Boolean = false,
 )

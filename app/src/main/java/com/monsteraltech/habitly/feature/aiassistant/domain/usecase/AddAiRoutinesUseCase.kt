@@ -10,9 +10,13 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
- * Creates AI-suggested routines in the active household.
+ * Crea en la casa activa las rutinas que ha propuesto la IA.
+ * Resuelve internamente el usuario y su casa para no acoplar el ViewModel a Firebase.
  *
- * @return Number of routines created, or [Result.failure] if session/household is unavailable or all fail.
+ * Las rutinas nacen sin recordatorio: ponerle hora a cinco rutinas de golpe sin preguntar
+ * sería invasivo, y el usuario puede añadirlo al editarlas.
+ *
+ * @return número de rutinas creadas, o [Result.failure] si no hay sesión/casa o fallan todas.
  */
 class AddAiRoutinesUseCase @Inject constructor(
     private val authRepository: AuthRepository,
@@ -26,17 +30,19 @@ class AddAiRoutinesUseCase @Inject constructor(
         if (routines.isEmpty()) return Result.success(0)
 
         val user = authRepository.getCurrentUser()
-            ?: return Result.failure(IllegalStateException("User unauthenticated"))
+            ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
 
         val profile = withTimeoutOrNull(PROFILE_TIMEOUT_MS) {
             householdRepository.observeUserProfile(user.uid).firstOrNull()
         }
         val householdId = profile?.activeHouseholdId?.takeIf { it.isNotBlank() }
-            ?: return Result.failure(IllegalStateException("No active household"))
+            ?: return Result.failure(IllegalStateException("No hay una casa activa"))
 
         var created = 0
         var lastError: Throwable? = null
 
+        // No hay batch para rutinas (personales y de casa viven en colecciones distintas),
+        // así que se crean una a una y se informa de cuántas entraron.
         for (suggestion in routines) {
             addRoutineUseCase(
                 userId = user.uid,
@@ -54,6 +60,7 @@ class AddAiRoutinesUseCase @Inject constructor(
             )
         }
 
+        // Solo es un fallo si no entró ninguna: con algunas creadas, informamos del número.
         return if (created == 0 && lastError != null) {
             Result.failure(lastError)
         } else {

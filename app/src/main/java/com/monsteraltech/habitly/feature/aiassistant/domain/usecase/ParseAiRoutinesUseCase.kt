@@ -59,7 +59,7 @@ class ParseAiRoutinesUseCase @Inject constructor() {
         }
     }
 
-    @Suppress("DEPRECATION")
+    @Suppress("DEPRECATION") // setStrictness(LENIENT) no existe en Gson 2.10.1; isLenient es la API válida.
     private fun parseLenient(region: String): JsonElement? {
         return try {
             val reader = JsonReader(StringReader(region))
@@ -96,7 +96,12 @@ class ParseAiRoutinesUseCase @Inject constructor() {
         return byTitle.values.toList()
     }
 
-    /** Regex fallback extracting fields from Json objects. */
+    /**
+     * Último recurso: extrae los campos con regex sobre cada objeto `{ ... }`. Además intenta
+     * recuperar un último objeto **truncado** (sin llave de cierre): es lo que ocurre cuando el
+     * modelo se queda sin presupuesto de tokens generando el JSON, y sin esto la última rutina
+     * se perdía.
+     */
     private fun regexFallback(region: String): List<AiRoutineSuggestion> {
         val byTitle = LinkedHashMap<String, AiRoutineSuggestion>()
         for (match in OBJECT_REGEX.findAll(region)) {
@@ -104,6 +109,7 @@ class ParseAiRoutinesUseCase @Inject constructor() {
             if (byTitle.size >= MAX_ROUTINES) break
         }
 
+        // Objeto final sin cerrar: lo que quede tras la última '}' y contenga un '{'.
         val lastClose = region.lastIndexOf('}')
         val tail = if (lastClose == -1) region else region.substring(lastClose + 1)
         val open = tail.indexOf('{')

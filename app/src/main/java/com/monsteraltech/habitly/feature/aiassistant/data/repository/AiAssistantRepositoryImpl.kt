@@ -111,26 +111,37 @@ class AiAssistantRepositoryImpl @Inject constructor(
      */
     private val engineMutex = Mutex()
 
+    // Scope de aplicación (vive mientras exista el singleton), independiente del
+    // ciclo de vida de los ViewModels.
     private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val workManager = WorkManager.getInstance(context)
 
     init {
         checkModelStatus(_selectedModel.value)
+        // Limpieza de modelos legacy y huérfanos, y observación de descargas fuera del hilo principal.
         repoScope.launch {
             localModelManager.cleanupLegacyModels()
             localModelManager.cleanupOrphanedModels(AvailableAiModels.models)
         }
+        // El nombre de work antiguo era compartido entre modelos; se cancela para que no
+        // quede una descarga huérfana que ya nadie observa.
         workManager.cancelUniqueWork(ModelDownloadWorker.LEGACY_WORK_NAME)
         observeDownloadWork()
     }
 
-    /** Returns saved model configuration or fallback based on device RAM. */
+    /**
+     * Modelo guardado o, si no hay ninguno, el mejor que aguante el dispositivo. Sin este
+     * segundo caso un móvil de 4 GB estrenaría la app con un modelo que no puede ni descargar.
+     * Una elección explícita del usuario se respeta aunque le quede grande: para eso está el
+     * aviso de la pantalla.
+     */
     private fun getSavedModel(): AiModelConfig {
         val savedId = sharedPreferences.getString("selected_model_id", null)
         AvailableAiModels.models.find { it.id == savedId }?.let { return it }
         return bestModelForDevice()
     }
 
+    /** El modelo más capaz que el dispositivo soporta; si ninguno encaja, el más liviano. */
     private fun bestModelForDevice(): AiModelConfig {
         val ram = deviceMemoryProbe.totalRamBytes()
         return AvailableAiModels.models
@@ -165,7 +176,12 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
     override fun observeModelStatus(): Flow<ModelStatus> = _modelStatus.asStateFlow()
 
-    /** Updates status for the specified model based on RAM compatibility, crash history, and file existence. */
+    /**
+     * Estado del modelo seleccionado. El orden importa: primero lo que impide siquiera
+     * intentarlo (no cabe en el dispositivo, o ya se llevó el proceso por delante) y solo
+     * después si está en disco. Descargar 700 MB o 2,6 GB para algo que no va a arrancar es
+     * el peor final posible.
+     */
     private fun checkModelStatus(config: AiModelConfig) {
         val compatibility = config.compatibilityWith(deviceMemoryProbe.totalRamBytes())
         if (compatibility == ModelCompatibility.Unsupported) {
@@ -187,14 +203,18 @@ class AiAssistantRepositoryImpl @Inject constructor(
     override suspend fun downloadModel(wifiOnly: Boolean) {
         val config = _selectedModel.value
 
+        // Puerta dura: aquí no llega la UI en condiciones normales (el botón está bloqueado),
+        // pero es la última línea antes de gastar gigabytes de los datos del usuario.
         if (config.compatibilityWith(deviceMemoryProbe.totalRamBytes()) == ModelCompatibility.Unsupported) {
-            Log.w(tag, "Download rejected: ${config.id} unsupported on this device")
+            Log.w(tag, "Descarga rechazada: ${config.id} no cabe en este dispositivo")
             _modelStatus.value = ModelStatus.Unsupported
             return
         }
 
         _modelStatus.value = ModelStatus.Downloading(0f)
 
+        // UNMETERED = solo Wi-Fi (u otras redes sin tarifa); CONNECTED = también datos.
+        // La elección la hace el usuario en el diálogo previo (el modelo pesa GB).
         val networkType = if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED
         val request = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
             .setInputData(workDataOf(ModelDownloadWorker.KEY_MODEL_ID to config.id))
@@ -203,6 +223,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
                     .setRequiredNetworkType(networkType)
                     .build()
             )
+            // Backoff de los Result.retry() del worker (errores transitorios de red).
             .setBackoffCriteria(
                 BackoffPolicy.EXPONENTIAL,
                 WorkRequest.MIN_BACKOFF_MILLIS,
@@ -210,6 +231,9 @@ class AiAssistantRepositoryImpl @Inject constructor(
             )
             .build()
 
+        // Nombre único POR MODELO + KEEP: repetir la descarga del mismo modelo no la
+        // reinicia, y descargar otro modelo ya no se descarta en silencio (antes el nombre
+        // era compartido y el KEEP se comía la segunda petición).
         workManager.enqueueUniqueWork(
             ModelDownloadWorker.workNameFor(config.id),
             ExistingWorkPolicy.KEEP,
@@ -242,11 +266,12 @@ class AiAssistantRepositoryImpl @Inject constructor(
                         WorkInfo.State.SUCCEEDED,
                         WorkInfo.State.CANCELLED -> {
                             checkModelStatus(_selectedModel.value)
+                            // Sin poda, este estado terminal se re-emitiría en cada arranque.
                             workManager.pruneWork()
                         }
                         WorkInfo.State.FAILED -> {
                             val message = info.outputData.getString(ModelDownloadWorker.KEY_ERROR)
-                                ?: "Download error"
+                                ?: "Error de descarga"
                             _modelStatus.value = ModelStatus.Error(message)
                             workManager.pruneWork()
                         }
@@ -256,17 +281,21 @@ class AiAssistantRepositoryImpl @Inject constructor(
     }
 
     override fun cancelDownload() {
+        // El worker conserva el .tmp al cancelarse: una nueva descarga reanuda donde iba.
         workManager.cancelUniqueWork(ModelDownloadWorker.workNameFor(_selectedModel.value.id))
     }
 
     override suspend fun deleteModel(modelId: String) {
         val config = AvailableAiModels.models.find { it.id == modelId } ?: return
+        // Si tenía una descarga en marcha, se corta antes de borrar sus ficheros.
         workManager.cancelUniqueWork(ModelDownloadWorker.workNameFor(config.id))
         withContext(Dispatchers.IO) {
             if (config.id == _selectedModel.value.id) {
                 engineMutex.withLock { unload() }
             }
             localModelManager.deleteModel(config)
+            // Borrar y volver a descargar es el gesto natural tras un fallo de carga: que el
+            // fichero nuevo no herede el veto del anterior (podía estar simplemente corrupto).
             modelLoadWatchdog.reset(config.id)
             if (config.id == _selectedModel.value.id) {
                 checkModelStatus(config)
@@ -305,6 +334,10 @@ class AiAssistantRepositoryImpl @Inject constructor(
         val conv = conversation
             ?: throw IllegalStateException("Modelo no cargado")
 
+        // Marca pesimista: solo un final limpio (al pie de este bloque) revalida la clave.
+        // Si la generación sale por las malas (parar, chat nuevo, error a mitad), la historia
+        // nativa ya no coincide con la sesión que ve el usuario, y el siguiente envío debe
+        // recrear la conversación desde la sesión persistida en vez de reutilizarla.
         conversationHistoryKey = null
 
         // Get the last USER message
@@ -312,6 +345,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
             .lastOrNull { it.role == MessageRole.User }
             ?.content ?: ""
 
+        // Solo la longitud: el contenido del mensaje es del usuario y no debe acabar en logcat.
         Log.d(tag, "Sending prompt to LiteRT-LM (${prompt.length} chars)")
 
         var emittedAny = false
@@ -323,9 +357,11 @@ class AiAssistantRepositoryImpl @Inject constructor(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            // Retries once with truncated history if prefill fails before first token.
+            // Fallo antes del primer token: el caso típico es que historia + prompt superen
+            // maxNumTokens (sesión larga). Se reintenta UNA vez con la historia recortada al
+            // mínimo; a mitad de respuesta no se reintenta (duplicaría texto ya mostrado).
             if (emittedAny) throw e
-            Log.w(tag, "Prefill failed; retrying with minimal history", e)
+            Log.w(tag, "Fallo en prefill; se reintenta con historia mínima", e)
             val retryConv = engineMutex.withLock {
                 recreateConversation(sessionNow, HISTORY_CHAR_BUDGET_RETRY)
                 conversation
@@ -338,7 +374,15 @@ class AiAssistantRepositoryImpl @Inject constructor(
     }.flowOn(Dispatchers.Default)
 
     /**
-     * Bridges [Conversation.sendMessageAsync] callbacks to Flow with cancellation handling.
+     * Puente propio sobre [Conversation.sendMessageAsync] con [MessageCallback], en lugar del
+     * Flow que trae litertlm 0.14.0. El de la librería tiene el `awaitClose` VACÍO: cancelar la
+     * colección (parar, chat nuevo, cambiar de modelo) no le dice NADA al motor y el decode
+     * huérfano sigue vivo hasta agotarse — cerrar o recrear la conversación mientras tanto
+     * bloquea el engine. Aquí la cancelación dispara [NativeGeneration.cancel] →
+     * `cancelProcess()` (el mismo API que usa el AI Edge Gallery en su botón de parar) y
+     * onDone/onError dejan constancia de la muerte real para que [awaitGenerationIdle] pueda
+     * esperarla. Buffer ilimitado: con el buffer por defecto (64) los `trySend` del callback
+     * nativo descartarían tokens si el colector va momentáneamente por detrás.
      */
     private fun streamGeneration(conv: Conversation, prompt: String): Flow<String> =
         callbackFlow {
@@ -368,18 +412,27 @@ class AiAssistantRepositoryImpl @Inject constructor(
             awaitClose { generation.cancel() }
         }.buffer(Channel.UNLIMITED)
 
-    /** Cancels native generation in flight and waits for engine confirmation. */
+    /**
+     * Cancela (si sigue viva) la generación nativa en vuelo y espera a que el motor confirme
+     * su muerte (onDone/onError llegan también tras `cancelProcess()`). OBLIGATORIO antes de
+     * cerrar/recrear una conversación o cerrar el engine. En [NonCancellable] porque casi
+     * siempre corre en la limpieza de un job ya cancelado (finally de las efímeras, recreate
+     * tras una parada); la espera está acotada para no encadenar bloqueos si el motor no
+     * llegara a confirmar.
+     */
     private suspend fun awaitGenerationIdle() {
         val generation = activeGeneration ?: return
         withContext(NonCancellable) {
             generation.cancel()
             if (!generation.awaitFinished(GENERATION_STOP_TIMEOUT_MS)) {
-                Log.w(tag, "Native generation stop unconfirmed; proceeding with close")
+                Log.w(tag, "La generación nativa no confirmó su parada; se continúa con el cierre")
+                // No volver a esperar por ella: la conversación a la que pertenece se cierra ya.
                 generation.markFinished()
             }
         }
     }
 
+    /** Cierra una conversación esperando antes a que el motor suelte su generación en vuelo. */
     private suspend fun closeConversationSafely(conv: Conversation) {
         awaitGenerationIdle()
         runCatching { conv.close() }
@@ -387,16 +440,25 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
     override suspend fun extractRoutines(sourceText: String): String =
         withContext(Dispatchers.Default) {
+            // La extracción puede pedirse sin haber pasado por el chat (texto compartido desde
+            // otra app), y ahí el engine todavía no está cargado.
             if (engine == null) loadModel(_activeSession.value)
+            // Preferimos function-calling con constrained decoding (estructura garantizada por el
+            // motor); si el modelo no lo soporta o falla en runtime, caemos al extractor por JSON.
             if (_selectedModel.value.supportsToolCalling) {
                 try {
                     val result = toolExtraction(sourceText)
+                    // Vacío también es sospechoso: el modo de fallo más común del field report
+                    // no es la excepción, es que el modelo responda prosa y no llame a la tool.
+                    // Como la puerta de intención ya dijo que el usuario quiere crear rutinas,
+                    // un vacío merece el reintento por JSON (si de verdad no hay rutinas, el
+                    // extractor JSON también devolverá vacío y no saldrá tarjeta).
                     if (result.isNotEmpty()) return@withContext result
-                    Log.w(tag, "Tool-calling produced empty result; falling back to JSON extraction")
+                    Log.w(tag, "Function-calling sin llamadas a la tool; se reintenta por JSON")
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    Log.w(tag, "Tool extraction failed; falling back to JSON extraction", e)
+                    Log.w(tag, "Extracción de rutinas por function-calling falló; se reintenta por JSON", e)
                 }
             }
             jsonExtraction(sourceText, ROUTINE_JSON_INSTRUCTION)
@@ -404,7 +466,10 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
     override suspend fun extractShopping(sourceText: String): String =
         withContext(Dispatchers.Default) {
+            // Igual que en extractRoutines: el texto compartido llega sin chat previo.
             if (engine == null) loadModel(_activeSession.value)
+            // La lista de la compra tiene 4 campos por ítem; el tool-calling con 4 args es poco
+            // fiable en E2B (field report), así que aquí usamos siempre el extractor por JSON.
             jsonExtraction(sourceText, SHOPPING_JSON_INSTRUCTION)
         }
 
@@ -440,6 +505,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
     override suspend fun summarizeConversation(sourceText: String): String =
         withContext(Dispatchers.Default) {
             if (sourceText.isBlank()) return@withContext ""
+            // Compactar puede pedirse sobre un chat recargado con el engine aún sin cargar.
             if (engine == null) loadModel(_activeSession.value)
             val eng = engine ?: return@withContext ""
             prepareForEphemeralConversation()
@@ -568,6 +634,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
     private suspend fun loadModel(session: AiChatSession? = null) {
         withContext(Dispatchers.IO) {
             engineMutex.withLock {
+                // Otra corrutina pudo cargarlo mientras esperábamos el mutex.
                 if (engine != null) return@withLock
                 loadModelLocked(session)
             }
@@ -586,16 +653,20 @@ class AiAssistantRepositoryImpl @Inject constructor(
             return
         }
 
+        // Puerta 2: ya se llevó el proceso por delante antes. `onLoadStarting` deja la marca en
+        // disco ANTES de tocar el motor, así que si esta llamada no vuelve, la siguiente lo sabrá.
         val failedAttempts = modelLoadWatchdog.onLoadStarting(config.id)
         if (failedAttempts >= MAX_LOAD_ATTEMPTS) {
-            Log.w(tag, "Load aborted after $failedAttempts failed attempts. ${modelLoadWatchdog.lastExitDiagnosis()}")
+            Log.w(tag, "Carga abandonada tras $failedAttempts intentos fallidos. ${modelLoadWatchdog.lastExitDiagnosis()}")
             _modelStatus.value = ModelStatus.LoadCrashed
             return
         }
 
+        // Un fallo previo (no dos) rebaja las pretensiones: CPU y la mitad de KV cache. Si el
+        // primer intento murió por memoria, repetirlo igual solo repite el cierre.
         val degraded = failedAttempts > 0
         if (degraded) {
-            Log.w(tag, "Degraded retry for ${config.id} (CPU, reduced context)")
+            Log.w(tag, "Reintento degradado de ${config.id} (CPU, contexto reducido)")
         }
 
         try {
@@ -605,35 +676,48 @@ class AiAssistantRepositoryImpl @Inject constructor(
             val maxTokens = if (degraded) config.maxTokens / 2 else config.maxTokens
 
             engine = if (!config.supportsGpu || degraded) {
+                // Hay modelos cuyo grafo los delegados de GPU no soportan (LFM2.5 y su conv
+                // híbrida). Ahí NO vale intentar y capturar: un delegado atragantándose con un
+                // grafo que no entiende puede irse por SIGSEGV, y eso no lo recoge ningún catch.
                 buildEngine(config, modelPath, Backend.CPU(), speculative = false, maxTokens = maxTokens)
             } else {
+                // GPU es mucho más rápida y es donde MTP (speculative decoding) aporta; si no
+                // está disponible, cae a CPU y desactiva MTP (en CPU no compensa).
                 try {
                     buildEngine(config, modelPath, Backend.GPU(), config.supportsSpeculativeDecoding, maxTokens)
                 } catch (e: Exception) {
-                    Log.w(tag, "GPU backend unavailable; falling back to CPU", e)
+                    Log.w(tag, "Backend GPU no disponible, se usa CPU", e)
                     buildEngine(config, modelPath, Backend.CPU(), speculative = false, maxTokens = maxTokens)
                 }
             }
 
             warmUp(engine!!)
             createConversation(session)
+            // Solo aquí se limpia la marca: el engine existe y ha generado su token de warmup.
             modelLoadWatchdog.onLoadSucceeded(config.id)
             Log.d(tag, "LiteRT-LM engine loaded from: $modelPath")
             _modelStatus.value = ModelStatus.Ready
         } catch (e: kotlinx.coroutines.CancellationException) {
+            // Cancelar el job que cargaba (chat nuevo, parar respuesta…) no es un error
+            // del modelo: se propaga sin pisar el estado con un Error falso. Y no cuenta como
+            // muerte silenciosa: el proceso sigue vivo, así que se retira la marca.
             modelLoadWatchdog.onLoadFailedGracefully(config.id)
             throw e
         } catch (e: Exception) {
+            // Falló, pero con excepción: seguimos vivos y esto no es el caso que vigila el
+            // watchdog. Se limpia la marca para no acusar de un cierre que no hubo.
             modelLoadWatchdog.onLoadFailedGracefully(config.id)
             Log.e(tag, "Error loading LiteRT-LM model", e)
             _modelStatus.value = ModelStatus.Error(
-                "Error loading model: ${e.message}"
+                "Error al cargar el modelo: ${e.message}"
             )
         }
     }
 
     /**
-     * Initializes engine with specified backend and speculative decoding flags.
+     * Construye e inicializa el engine con un backend concreto. MTP (speculative decoding) es un
+     * flag global de LiteRT-LM: se activa solo cuando [speculative] es cierto (GPU + modelo con
+     * drafter). Si la inicialización falla, cierra el engine antes de propagar para poder reintentar.
      */
     @OptIn(ExperimentalApi::class)
     private fun buildEngine(
@@ -660,7 +744,11 @@ class AiAssistantRepositoryImpl @Inject constructor(
         return eng
     }
 
-    /** Warmup single-token pass to compile GPU/JIT kernels. */
+    /**
+     * Genera un token de descarte tras cargar el engine para forzar la compilación de kernels
+     * (JIT/GPU) antes del primer mensaje real. Acotado por timeout y a prueba de fallos: nunca
+     * bloquea la carga del modelo.
+     */
     private suspend fun warmUp(eng: Engine) {
         try {
             withTimeoutOrNull(WARMUP_TIMEOUT_MS) {
@@ -670,13 +758,16 @@ class AiAssistantRepositoryImpl @Inject constructor(
                     )
                 )
                 try {
+                    // take(1) cancela el resto: con el puente propio, esa cancelación PARA el
+                    // decode nativo (antes seguía generando y el close se bloqueaba hasta que
+                    // terminara la respuesta entera a "Hola").
                     streamGeneration(conv, "Hola").take(1).collect { }
                 } finally {
                     closeConversationSafely(conv)
                 }
             }
         } catch (e: Exception) {
-            Log.w(tag, "Warmup failed (non-critical)", e)
+            Log.w(tag, "Warmup falló (no crítico)", e)
         }
     }
 
@@ -686,11 +777,13 @@ class AiAssistantRepositoryImpl @Inject constructor(
     ) {
         val eng = engine ?: return
 
+        // System prompt + (si la conversación se compactó) el resumen de la parte antigua,
+        // para que el modelo conserve el hilo aunque su historia empiece más adelante.
         val basePrompt = session?.systemPrompt?.takeIf { it.isNotBlank() }
         val summary = session?.contextSummary?.takeIf { it.isNotBlank() }
         val systemInstruction = listOfNotNull(
             basePrompt,
-            summary?.let { "[Summary of previous conversation]\n$it" }
+            summary?.let { "[Resumen de la conversación previa]\n$it" }
         ).joinToString("\n\n").takeIf { it.isNotBlank() }
         val history = buildHistory(session, historyCharBudget)
 
@@ -708,8 +801,17 @@ class AiAssistantRepositoryImpl @Inject constructor(
         Log.d(tag, "Conversation created. System prompt length: ${systemInstruction?.length ?: 0}. History size: ${history.size}")
     }
 
-    /** Truncates conversation history to fit KV cache budget. */
+    /**
+     * Historia para `initialMessages`, acotada: la KV cache ([AiModelConfig.maxTokens]) tiene
+     * que dar para system prompt + historia + prompt + respuesta, y una sesión larga sin tope
+     * acaba fallando en el prefill (además el field report desaconseja historias largas por
+     * `initialMessages`). Se recorta desde el final (lo reciente es lo relevante), con tope
+     * por mensaje, sin placeholders en blanco y sin el último turno de usuario: ese se envía
+     * como prompt en `sendMessageAsync` y con `dropLast(1)` a secas entraba DUPLICADO
+     * (una vez en la historia y otra como prompt).
+     */
     private fun buildHistory(session: AiChatSession?, charBudget: Int): List<Message> {
+        // Se ignoran los mensajes ya cubiertos por el resumen (van en el system prompt).
         val messages = session?.messages.orEmpty()
             .drop(session?.summarizedUpTo ?: 0)
             .filter { it.content.isNotBlank() }
@@ -741,6 +843,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
     }
 
     private suspend fun unload() {
+        // Un solo await cubre conversación y engine: la generación en vuelo es la misma.
         awaitGenerationIdle()
         conversation?.let { runCatching { it.close() } }
         engine?.let { runCatching { it.close() } }
@@ -748,6 +851,9 @@ class AiAssistantRepositoryImpl @Inject constructor(
         engine = null
     }
 
+    // Chat History
+    // El UID se lee al empezar cada colección/operación (no se captura una vez), de modo que
+    // tras un cambio de cuenta una nueva suscripción ya observa el historial correcto.
     override fun observeChatHistory(): Flow<List<AiChatSession>> = flow {
         val userId = currentUserId()
         if (userId == null) {
@@ -764,7 +870,9 @@ class AiAssistantRepositoryImpl @Inject constructor(
     override suspend fun saveSession(session: AiChatSession) {
         val userId = currentUserId()
         if (userId == null) {
-            Log.w(tag, "saveSession called without active user; ignoring")
+            // Sin cuenta activa no se puede atribuir la sesión; no se persiste (sería historial
+            // huérfano invisible). No debería ocurrir desde la pantalla del asistente.
+            Log.w(tag, "saveSession sin usuario activo; la sesión no se guarda")
             return
         }
         withContext(Dispatchers.IO) {
@@ -786,7 +894,13 @@ class AiAssistantRepositoryImpl @Inject constructor(
         }
     }
 
-    /** Manages active native generation lifecycle and cancellation signaling. */
+    /**
+     * Una generación nativa en vuelo. [cancel] señaliza la parada real (`cancelProcess()`,
+     * que NO espera) y [awaitFinished] espera la confirmación del motor: onDone/onError se
+     * invocan también cuando la generación muere por cancelación (el Gallery se apoya en el
+     * mismo contrato). Sin esta pieza, cerrar/recrear la conversación tras parar corre bajo
+     * una inferencia viva y bloquea el engine hasta que el decode huérfano se agota solo.
+     */
     private class NativeGeneration(private val conversation: Conversation) {
         private val finished = CompletableDeferred<Unit>()
 
@@ -796,6 +910,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
         fun cancel() {
             if (!finished.isCompleted) {
+                // cancelProcess lanza si la conversación ya está cerrada; aquí es benigno.
                 runCatching { conversation.cancelProcess() }
             }
         }
@@ -805,14 +920,38 @@ class AiAssistantRepositoryImpl @Inject constructor(
     }
 
     private companion object {
+        /**
+         * Intentos de carga que pueden morir sin volver antes de dejar de intentarlo. Con 2 se
+         * permite un reintento degradado (CPU + contexto reducido) por si el primero cayó por
+         * una punta de memoria puntual, y se para antes de convertirlo en un bucle de cierres.
+         */
         const val MAX_LOAD_ATTEMPTS = 2
+
+        /** Temperatura baja para el turno de extracción: prioriza fidelidad de formato. */
         const val EXTRACTION_TEMPERATURE = 0.15
+
+        /** Presupuesto de caracteres de la historia al reconstruir una conversación (~1.700
+         *  tokens): deja sitio en la KV cache para system prompt, prompt y respuesta. */
         const val HISTORY_CHAR_BUDGET = 6000
+
+        /** Presupuesto mínimo del reintento tras un fallo de prefill (contexto casi lleno). */
         const val HISTORY_CHAR_BUDGET_RETRY = 1500
+
+        /** Tope por mensaje dentro de la historia reconstruida. */
         const val HISTORY_MESSAGE_MAX_CHARS = 2000
+
+        /** Tope de tiempo del warmup para no bloquear la carga si el engine se atasca. */
         const val WARMUP_TIMEOUT_MS = 8000L
+
+        /** Espera máxima a que el motor confirme (onDone/onError) la muerte de una generación
+         *  cancelada antes de cerrar su conversación. Normalmente tarda ~un token; el margen
+         *  cubre prefills largos, y corre fuera del hilo principal. */
         const val GENERATION_STOP_TIMEOUT_MS = 10_000L
+
+        /** Caracteres de cada mensaje que se pasan al generador de títulos. */
         const val TITLE_SOURCE_MAX_CHARS = 300
+
+        /** Tope del título de sesión (el cajón del historial es estrecho). */
         const val MAX_SESSION_TITLE_CHARS = 40
 
         /** System prompt del generador de títulos de sesión. */

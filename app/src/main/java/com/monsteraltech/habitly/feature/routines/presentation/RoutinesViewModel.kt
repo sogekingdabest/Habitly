@@ -308,6 +308,7 @@ class RoutinesViewModel @Inject constructor(
     fun onDetailMonthShift(months: Long) {
         val detail = _uiState.value.routineDetail ?: return
         val target = detail.month.plusMonths(months)
+        // No dejamos avanzar más allá del mes en curso: no hay nada que enseñar.
         if (target.isAfter(YearMonth.now())) return
 
         _uiState.update {

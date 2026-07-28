@@ -109,6 +109,8 @@ class HouseholdViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         household = household,
+                        // Los perfiles salen del propio documento de la casa, así que llegan
+                        // en la misma emisión: ni carga aparte ni lecturas extra.
                         memberProfiles = household?.let(getMemberProfilesUseCase::invoke).orEmpty(),
                         isLoading = false
                     )
@@ -118,6 +120,12 @@ class HouseholdViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Reparto de las rutinas de casa. Se pide **una vez por casa**: el documento de la casa
+     * emite en cada cambio (nombre, código, nicknames) y volver a leer el historial de
+     * completados en cada emisión serían consultas de Firestore para nada. El panel es semanal,
+     * no un contador en vivo.
+     */
     private fun loadShare(householdId: String) {
         if (householdId.isBlank() || shareLoadedFor == householdId) return
         shareLoadedFor = householdId
@@ -126,6 +134,8 @@ class HouseholdViewModel @Inject constructor(
         shareJob = viewModelScope.launch {
             val result = getHouseholdShareUseCase(currentUserId, householdId)
             result.onSuccess { summary -> _uiState.update { it.copy(share = summary) } }
+            // Un fallo aquí no debe estropear la pantalla: el panel simplemente no aparece,
+            // pero se permite reintentar en la siguiente entrada.
             result.onFailure { shareLoadedFor = null }
         }
     }
@@ -166,6 +176,8 @@ class HouseholdViewModel @Inject constructor(
         if (currentUserId == "unknown_user") return
 
         viewModelScope.launch {
+            // El nickname se duplica en la casa para que lo vean los demás miembros; si el
+            // usuario aún no tiene casa, updateNickname omite esa parte.
             val householdId = _uiState.value.userProfile?.activeHouseholdId.orEmpty()
             val result = updateNicknameUseCase(currentUserId, householdId, newNickname)
             if (result.isFailure) {
@@ -178,6 +190,8 @@ class HouseholdViewModel @Inject constructor(
         val householdId = _uiState.value.userProfile?.activeHouseholdId ?: return
         if (currentUserId == "unknown_user" || householdId.isBlank()) return
         viewModelScope.launch {
+            // Al salir, activeHouseholdId queda vacío y el MainViewModel conmuta
+            // automáticamente al onboarding.
             val result = leaveHouseholdUseCase(currentUserId, householdId)
             if (result.isFailure) {
                 _uiState.update { it.copy(error = result.exceptionOrNull()?.message) }

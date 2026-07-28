@@ -143,6 +143,7 @@ private fun PantryCategoryCard(
             )
             val rowColor = MaterialTheme.colorScheme.surface
             items.forEach { item ->
+                // key por id: ata el estado del gesto al producto, no a su posición.
                 key(item.id) {
                     PantryItemRow(
                         item = item,
@@ -156,6 +157,12 @@ private fun PantryCategoryCard(
     }
 }
 
+/**
+ * Fila de la despensa. Mismo patrón que la lista de la compra: deslizar a la derecha gasta
+ * una unidad, deslizar a la izquierda saca el producto de casa (con deshacer). El botón de
+ * borrar sale de la fila: era la única diana destructiva pegada a los botones de cantidad,
+ * que son los que de verdad se usan.
+ */
 @Composable
 private fun PantryItemRow(
     item: PantryItem,
@@ -203,6 +210,7 @@ private fun PantryItemRow(
                 )
             }
 
+            // La cantidad ya la anuncian los botones; leerla otra vez sería ruido.
             Text(
                 text = quantityWithUnit(item.quantity, item.unit),
                 style = MaterialTheme.typography.labelLarge,
