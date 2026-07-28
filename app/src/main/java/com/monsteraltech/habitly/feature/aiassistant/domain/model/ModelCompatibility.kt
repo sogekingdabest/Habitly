@@ -1,35 +1,35 @@
 package com.monsteraltech.habitly.feature.aiassistant.domain.model
 
 /**
- * Encaje de un modelo en el dispositivo actual, decidido por RAM.
+ * How well a model fits the current device, decided on RAM.
  *
- * Existe porque quedarse sin memoria cargando un modelo NO es una excepción que podamos
- * capturar: el motor vive en código nativo y el kernel mata el proceso entero (o el runtime
- * aborta), así que la app desaparece de golpe sin pasar por ningún `catch`. La única defensa
- * es no llegar a intentarlo.
+ * This exists because running out of memory while loading a model is **not** a catchable exception:
+ * the engine lives in native code and the kernel kills the whole process (or the runtime aborts),
+ * so the app vanishes without passing through any `catch`. The only defence is never to try.
  */
 enum class ModelCompatibility {
-    /** El dispositivo va sobrado: se carga sin avisos. */
+    /** The device has room to spare: load it with no warnings. */
     Supported,
 
-    /** Justo de RAM: probablemente funcione, pero puede morir si hay otras apps abiertas. */
+    /** Tight on RAM: it will probably work, but may die with other apps open. */
     Tight,
 
-    /** Imposible: ni descargar. Descargar GB para un modelo que no arranca es doble castigo. */
+    /** Out of reach — not even downloadable. Spending GB on a model that cannot start is a
+     *  double punishment. */
     Unsupported;
 
     val canUse: Boolean get() = this != Unsupported
 }
 
 /**
- * Decide el encaje comparando la RAM del dispositivo con los umbrales del modelo.
+ * Decides the fit by comparing device RAM against the model's thresholds.
  *
- * [deviceRamBytes] debe venir ya redondeado al escalón comercial (ver `DeviceMemoryProbe`):
- * los umbrales están expresados en los GB de la ficha del móvil, no en los que reporta el
- * kernel, que siempre son menos.
+ * [deviceRamBytes] must already be rounded to its commercial tier (see `DeviceMemoryProbe`): the
+ * thresholds are written in the GB on the phone's spec sheet, not the smaller figure the kernel
+ * reports.
  *
- * Con [deviceRamBytes] a 0 (el sistema no supo responder) se devuelve [ModelCompatibility.Tight]:
- * ni bloqueamos por una lectura que falló ni damos vía libre en silencio.
+ * A [deviceRamBytes] of 0 — the system had no answer — yields [ModelCompatibility.Tight]: a failed
+ * reading neither blocks the user nor waves them silently through.
  */
 fun AiModelConfig.compatibilityWith(deviceRamBytes: Long): ModelCompatibility = when {
     deviceRamBytes <= 0L -> ModelCompatibility.Tight

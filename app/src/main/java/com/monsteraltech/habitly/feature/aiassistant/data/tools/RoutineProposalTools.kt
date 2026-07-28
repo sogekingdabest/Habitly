@@ -5,19 +5,21 @@ import com.google.ai.edge.litertlm.ToolParam
 import com.google.ai.edge.litertlm.ToolSet
 
 /**
- * Canal de salida estructurada del segundo turno vía function-calling. El modelo llama a
- * [addRoutine] una vez por rutina que propone crear y, con constrained decoding activado, el motor
- * garantiza que cada llamada sea estructuralmente válida (adiós al parseo frágil de JSON).
+ * Structured-output channel for the second turn, via function-calling. The model calls [addRoutine]
+ * once per routine it proposes and, with constrained decoding on, the engine guarantees every call
+ * is structurally valid — no more brittle JSON parsing.
  *
- * La tool **no crea nada**: solo recolecta las propuestas mediante [onRoutineProposed]; la creación
- * real la confirma el usuario desde la tarjeta. Sigue el mismo patrón que las tools de Mobile
- * Actions del Google AI Edge Gallery (constructor con callback + método `@Tool` que devuelve un
- * `Map`).
+ * The tool **creates nothing**: it only collects proposals through [onRoutineProposed], and the user
+ * confirms the actual creation from the card. Same shape as the Mobile Actions tools in Google's AI
+ * Edge Gallery: callback in the constructor, `@Tool` method returning a `Map`.
  *
- * Solo 2 parámetros y ambos String, a propósito: es el "punto dulce" de fiabilidad del
- * tool-calling en modelos on-device pequeños (Gemma 4 E2B) y evita la corrupción numérica en GPU.
- * Los días/intervalo no se piden aquí; se derivan después (una `semanal` sin días se degrada a
- * `diaria`, igual que en la vía por JSON).
+ * Two parameters, both String, on purpose: that is the reliability sweet spot for tool-calling on
+ * small on-device models (Gemma 4 E2B) and it sidesteps numeric corruption on GPU. Days and interval
+ * are not asked for here; they are derived afterwards, with a `semanal` lacking days degrading to
+ * `diaria` exactly as on the JSON path.
+ *
+ * The descriptions below stay in Spanish because they are prompt text the model reads, not
+ * user-facing strings — same contract as the markers in `AiStructuredBlocks`.
  */
 class RoutineProposalTools(
     private val onRoutineProposed: (title: String, frequency: String) -> Unit

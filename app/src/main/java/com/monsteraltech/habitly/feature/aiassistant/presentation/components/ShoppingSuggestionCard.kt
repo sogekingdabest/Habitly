@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.R
 
 /**
- * Tarjeta que aparece bajo un mensaje del asistente cuando este ha propuesto productos.
- * Ofrece un botón para añadirlos a la lista de la compra de la casa.
+ * Card shown under an assistant message that proposed items, with a button to add them to the
+ * household's shopping list.
  */
 @Composable
 fun ShoppingSuggestionCard(
@@ -58,8 +58,8 @@ fun ShoppingSuggestionCard(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            // El peso tiene que ir en el texto: sin él se mide primero, se queda con todo el
-            // ancho y el botón acaba partiéndose letra a letra en vertical.
+            // The weight has to go on the text: without it the text measures first, takes the whole
+            // width, and the button ends up broken one letter per line.
             Text(
                 text = pluralStringResource(R.plurals.ai_suggestion_count, count, count),
                 style = MaterialTheme.typography.bodyMedium,

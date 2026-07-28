@@ -12,55 +12,55 @@ data class AiAssistantUiState(
     val chatSession: AiChatSession = AiChatSession(),
     val currentInput: String = "",
     val isGenerating: Boolean = false,
-    /** El segundo turno (extracción de rutinas o de la compra) está en marcha: muestra "preparando". */
+    /** The second turn (routine or shopping extraction) is running: shows "preparing". */
     val isExtractingSuggestions: Boolean = false,
-    /** Mensaje de error dinámico (p. ej. el de una excepción). Para errores fijos, [errorRes]. */
+    /** Dynamic error message, e.g. from an exception. For fixed errors use [errorRes]. */
     val error: String? = null,
-    /** Error localizado por id de recurso; la pantalla lo resuelve con `stringResource`. */
+    /** Localised error by resource id; the screen resolves it with `stringResource`. */
     val errorRes: Int? = null,
-    /** Evento de un solo uso: nº de productos recién añadidos a la lista (para el snackbar). */
+    /** One-shot event: how many items were just added to the list, for the snackbar. */
     val addedToListCount: Int? = null,
     val modelStatus: ModelStatus = ModelStatus.NotDownloaded,
     val availableModels: List<AiModelConfig> = emptyList(),
     val selectedModel: AiModelConfig? = null,
     /**
-     * RAM del dispositivo en GB comerciales (bytes). La pantalla la cruza con los umbrales de
-     * cada modelo (`compatibilityWith`) para saber cuál ofrecer, cuál avisar y cuál bloquear.
+     * Device RAM in bytes, in commercial GB. The screen crosses it with each model's thresholds
+     * (`compatibilityWith`) to decide which to offer, which to warn about and which to block.
      */
     val deviceRamBytes: Long = 0L,
-    /** Modelo justo de RAM pendiente de que el usuario confirme la descarga, o `null`. */
+    /** Model that is tight on RAM awaiting the user's download confirmation, or `null`. */
     val pendingTightDownloadModel: AiModelConfig? = null,
-    /** Ids de los modelos del catálogo ya descargados (para el desplegable de modelos). */
+    /** Ids of the catalog models already downloaded, for the model dropdown. */
     val downloadedModelIds: Set<String> = emptySet(),
     val chatHistory: List<AiChatSession> = emptyList(),
     val quickPrompts: List<AiQuickPrompt> = emptyList(),
-    /** Destino del chip de seguimiento tras una propuesta sin tarjeta ("Sí, créalas" / "Sí, a la
-     *  lista"), o `null` si no hay chip. La etiqueta/prompt/"voy" los localiza la pantalla. */
+    /** Target of the follow-up chip after a proposal with no card ("Yes, create them" / "Yes, to
+     *  the list"), or `null` for no chip. The screen localises label, prompt and confirmation. */
     val followUpTarget: FollowUpTarget? = null,
-    /** Métricas de la última generación (solo builds debug): TTFT y velocidad de decode. */
+    /** Last generation's metrics (debug builds only): TTFT and decode speed. */
     val lastGenerationStats: String? = null,
-    /** Productos que la IA propone añadir a la lista, indexados por id de mensaje. */
+    /** Items the AI proposes adding to the list, keyed by message id. */
     val shoppingSuggestions: Map<String, List<AiShoppingSuggestion>> = emptyMap(),
-    /** Ids de mensajes cuyas sugerencias ya se añadieron a la lista. */
+    /** Ids of messages whose suggestions were already added to the list. */
     val addedSuggestionMessageIds: Set<String> = emptySet(),
-    /** Id de mensaje cuya lista se está añadiendo ahora (para el spinner del botón). */
+    /** Id of the message whose list is being added right now, for the button spinner. */
     val addingSuggestionMessageId: String? = null,
-    /** Rutinas que la IA propone crear, indexadas por id de mensaje. */
+    /** Routines the AI proposes creating, keyed by message id. */
     val routineSuggestions: Map<String, List<AiRoutineSuggestion>> = emptyMap(),
-    /** Ids de mensajes cuyas rutinas ya se crearon. */
+    /** Ids of messages whose routines were already created. */
     val addedRoutineMessageIds: Set<String> = emptySet(),
-    /** Id de mensaje cuyas rutinas se están creando ahora. */
+    /** Id of the message whose routines are being created right now. */
     val addingRoutineMessageId: String? = null,
-    /** Evento de un solo uso: nº de rutinas recién creadas (para el snackbar). */
+    /** One-shot event: how many routines were just created, for the snackbar. */
     val addedRoutinesCount: Int? = null,
-    /** Fracción del presupuesto de contexto ocupada `[0f, 1f]`: dispara el aviso de compactar. */
+    /** Fraction of the context budget in use `[0f, 1f]`: triggers the compaction hint. */
     val contextUsage: Float = 0f,
-    /** La compactación (resumen del contexto antiguo) está en marcha. */
+    /** Compaction (summarising the old context) is running. */
     val isCompacting: Boolean = false,
-    /** Evento de un solo uso: la conversación se acaba de compactar (para el snackbar). */
+    /** One-shot event: the conversation was just compacted, for the snackbar. */
     val contextCompacted: Boolean = false,
-    /** Evento de un solo uso: resultado del último reporte de respuesta (true = enviado). */
+    /** One-shot event: outcome of the last answer report (true = sent). */
     val reportResult: Boolean? = null,
-    /** Ids de mensajes del asistente ya reportados (desactiva su acción de reportar). */
+    /** Ids of assistant messages already reported, which disables their report action. */
     val reportedMessageIds: Set<String> = emptySet()
 )

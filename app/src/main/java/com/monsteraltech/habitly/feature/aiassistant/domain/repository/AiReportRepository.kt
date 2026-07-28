@@ -1,10 +1,10 @@
 package com.monsteraltech.habitly.feature.aiassistant.domain.repository
 
 /**
- * Reportes de respuestas del asistente marcadas por el usuario como ofensivas o inapropiadas.
- * La política de contenido generado por IA de Google Play exige poder reportarlas desde la app.
+ * Reports of assistant answers the user flagged as offensive or inappropriate. Google Play's
+ * AI-generated content policy requires them to be reportable from inside the app.
  */
 interface AiReportRepository {
-    /** Envía [content] (la respuesta reportada) y el [modelId] que la generó para su revisión. */
+    /** Sends [content] — the reported answer — and the [modelId] that produced it, for review. */
     suspend fun reportAssistantMessage(content: String, modelId: String): Result<Unit>
 }

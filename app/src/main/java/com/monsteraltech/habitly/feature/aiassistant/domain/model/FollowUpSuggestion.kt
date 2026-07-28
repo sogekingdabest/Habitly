@@ -1,11 +1,11 @@
 package com.monsteraltech.habitly.feature.aiassistant.domain.model
 
 /**
- * Qué extracción dispara el chip de seguimiento tras una propuesta sin tarjeta ("Sí, créalas",
- * "Sí, a la lista"). El destino se decide al detectar la propuesta (mirando QUÉ propone el
- * mensaje del asistente) y no se re-deriva del texto al pulsar el chip (eso ofrecía "crear
- * rutinas" tras una lista de la compra). La etiqueta, el prompt y el "voy" del chip los pone la
- * capa de presentación con `stringResource`, según este destino.
+ * Which extraction the follow-up chip triggers after a proposal that produced no card ("Yes, create
+ * them", "Yes, to the list"). The target is fixed when the proposal is detected, from *what* the
+ * assistant message proposes, and is never re-derived from the text when the chip is tapped — doing
+ * that offered "create routines" after a shopping list. The chip's label, prompt and confirmation
+ * come from the presentation layer based on this target.
  */
 enum class FollowUpTarget {
     ROUTINES, SHOPPING, BOTH;

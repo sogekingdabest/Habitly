@@ -10,10 +10,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
- * Añade a la lista de la compra de la casa activa los productos que ha propuesto la IA.
- * Resuelve internamente el usuario y su casa activa para no acoplar el ViewModel a Firebase.
+ * Adds the items the AI proposed to the active household's shopping list. It resolves the user and
+ * their active household internally so the ViewModel stays decoupled from Firebase.
  *
- * @return número de productos añadidos, o [Result.failure] si no hay sesión/casa o falla la escritura.
+ * @return how many items were added, or [Result.failure] if there is no session or household, or
+ *   the write fails.
  */
 class AddAiItemsToShoppingListUseCase @Inject constructor(
     private val authRepository: AuthRepository,

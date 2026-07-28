@@ -21,9 +21,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 /**
- * Callejón sin salida explicado: el modelo no cabe en el dispositivo, o cargarlo ya cerró la
- * app. Sustituye a la tarjeta de descarga para que el usuario entienda por qué no hay chat en
- * vez de encontrarse un botón que le gastaría los datos para nada.
+ * A dead end, explained: the model does not fit the device, or loading it has already taken the app
+ * down. It replaces the download card so the user understands why there is no chat, instead of
+ * finding a button that would spend their data for nothing.
  */
 @Composable
 fun ModelBlockedCard(

@@ -20,9 +20,9 @@ import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.R
 
 /**
- * Aviso de que el modelo está generando el bloque estructurado oculto (lista o rutinas).
- * Ocupa el sitio donde aparecerán las tarjetas: sin él, el texto deja de crecer mientras
- * llega el JSON y el spinner a secas parece un cuelgue.
+ * Notice that the model is generating the hidden structured block (list or routines). It holds the
+ * spot where the cards will appear: without it the text stops growing while the JSON streams in,
+ * and a bare spinner reads as a freeze.
  */
 @Composable
 fun SuggestionPreparingCard(modifier: Modifier = Modifier) {

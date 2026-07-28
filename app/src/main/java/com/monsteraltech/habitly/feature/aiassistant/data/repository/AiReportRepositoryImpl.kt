@@ -8,9 +8,9 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 /**
- * Guarda el reporte en la colección `ai_reports` de Firestore (solo creación; la lectura queda
- * para la consola del desarrollador). Es el único punto donde una respuesta del asistente sale
- * del dispositivo, y siempre a petición explícita del usuario.
+ * Stores the report in Firestore's `ai_reports` collection — creation only; reading it is the
+ * developer console's job. This is the only point where an assistant answer leaves the device, and
+ * always at the user's explicit request.
  */
 class AiReportRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
@@ -24,7 +24,7 @@ class AiReportRepositoryImpl @Inject constructor(
             val report = mapOf(
                 "userId" to uid,
                 "modelId" to modelId,
-                // Tope alineado con la validación de las reglas de Firestore.
+                // Cap kept in step with the Firestore rules' validation.
                 "content" to content.take(MAX_CONTENT_CHARS),
                 "createdAt" to FieldValue.serverTimestamp()
             )

@@ -13,9 +13,9 @@ abstract class AiAssistantDatabase : RoomDatabase() {
 
     companion object {
         /**
-         * v1 → v2: columnas de la compactación de contexto. Se añaden NOT NULL con DEFAULT
-         * (obligatorio en SQLite al añadir columnas NOT NULL a una tabla con filas). La entidad
-         * no declara defaults, así que Room omite su comparación al validar la migración.
+         * v1 → v2: context-compaction columns. Added NOT NULL with DEFAULT, which SQLite requires
+         * when adding NOT NULL columns to a table that already has rows. The entity declares no
+         * defaults, so Room skips comparing them when validating the migration.
          */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -25,13 +25,13 @@ abstract class AiAssistantDatabase : RoomDatabase() {
         }
 
         /**
-         * v2 → v3: aislamiento del historial por cuenta. Añade la columna `userId` y su índice.
+         * v2 → v3: per-account history isolation. Adds the `userId` column and its index.
          *
-         * Las filas ya existentes se crearon en una tabla compartida sin dueño atribuible (el
-         * bug que esta migración corrige), así que se ELIMINAN: en pre-beta es preferible perder
-         * historial local no atribuible a arriesgarse a mostrar conversaciones de una cuenta a
-         * otra. El índice se nombra igual que el que genera Room (`index_<tabla>_<columna>`)
-         * para que la validación de esquema en tiempo de ejecución no detecte discrepancias.
+         * Existing rows were written to a shared table with no attributable owner — the very bug
+         * this migration fixes — so they are **deleted**: pre-beta, losing unattributable local
+         * history beats risking one account's conversations showing up in another. The index is
+         * named exactly as Room generates it (`index_<table>_<column>`) so runtime schema
+         * validation finds no discrepancy.
          */
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {

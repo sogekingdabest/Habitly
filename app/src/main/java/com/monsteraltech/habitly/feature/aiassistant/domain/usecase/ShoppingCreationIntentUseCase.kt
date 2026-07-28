@@ -4,13 +4,13 @@ import java.text.Normalizer
 import javax.inject.Inject
 
 /**
- * Decide si el mensaje del usuario abre la puerta a proponer productos para la lista de la compra
- * (recetas, menús, cenas o compra en sí). Es la "puerta de intención" del segundo turno de la
- * lista: si devuelve `false`, no se lanza la extracción y no aparece tarjeta de compra.
+ * Decides whether the user's message opens the door to proposing shopping-list items — recipes,
+ * menus, dinners or the shopping itself. This is the shopping second turn's intent gate: on `false`
+ * no extraction runs and no shopping card appears.
  *
- * A diferencia de la de rutinas, aquí basta con detectar contexto de comida/compra: el propio
- * extractor devuelve una lista vacía si el texto no recomienda comprar nada, así que la puerta solo
- * evita lanzar la extracción en mensajes claramente ajenos (limpieza, rutinas, dudas generales).
+ * Unlike the routine gate, detecting a food or shopping context is enough here: the extractor itself
+ * returns an empty list when the text recommends buying nothing, so the gate only has to keep the
+ * extraction from running on clearly unrelated messages — cleaning, routines, general questions.
  */
 class ShoppingCreationIntentUseCase @Inject constructor() {
 
@@ -21,10 +21,10 @@ class ShoppingCreationIntentUseCase @Inject constructor() {
     }
 
     /**
-     * Heurística de "el asistente acaba de proponer productos o una lista": o dice "lista de
-     * la compra" tal cual, o usa lenguaje de propuesta cerca (misma frase) de un término de
-     * comida/compra. La cercanía sigue el mismo criterio que la propuesta de rutinas: una
-     * palabra suelta en otra frase no dispara el chip de seguimiento.
+     * Heuristic for "the assistant just proposed items or a list": either it says "lista de la
+     * compra" verbatim, or it uses proposal language near a food/shopping term in the same sentence.
+     * Proximity follows the same rule as the routine proposal: a stray word in another sentence does
+     * not raise the follow-up chip.
      */
     fun looksLikeShoppingProposal(assistantText: String): Boolean {
         val text = assistantText.normalizeForMatch()
@@ -33,7 +33,7 @@ class ShoppingCreationIntentUseCase @Inject constructor() {
         return PROPOSAL_NEAR_KEYWORD_REGEX.containsMatchIn(text)
     }
 
-    /** Minúsculas y sin tildes, para comparar sin depender de acentos ni mayúsculas. */
+    /** Lowercased and unaccented, so matching depends on neither accents nor case. */
     private fun String.normalizeForMatch(): String =
         Normalizer.normalize(trim().lowercase(), Normalizer.Form.NFD)
             .replace(DIACRITICS_REGEX, "")
@@ -41,25 +41,25 @@ class ShoppingCreationIntentUseCase @Inject constructor() {
     private companion object {
         val DIACRITICS_REGEX = Regex("\\p{Mn}+")
 
-        /** Términos de comida/cocina/compra donde tiene sentido proponer productos (sin tildes).
-         *  "lista" cubre "añade eso a la lista" (el extractor filtra si no hay nada que comprar). */
+        /** Unaccented food/cooking/shopping terms where proposing items makes sense. "lista" covers
+         *  "añade eso a la lista"; the extractor filters out messages with nothing to buy. */
         val KEYWORDS = listOf(
             "receta", "menu", "cena", "comida", "desayuno", "almuerzo", "merienda",
             "plato", "ingrediente", "cocinar", "cocino", "guiso", "compra", "lista"
         )
 
-        /** Frase que identifica una lista de la compra sin ambigüedad (sin tildes). */
+        /** Unambiguous phrase for a shopping list, unaccented. */
         const val SHOPPING_LIST_PHRASE = "lista de la compra"
 
-        /** Lenguaje de propuesta del asistente (sin tildes; prefijos de conjugación). */
+        /** The assistant's proposal language, unaccented (conjugation prefixes). */
         val PROPOSAL_MARKERS = listOf(
             "propong", "sugier", "recomiend", "recomendar", "aqui tienes", "necesitas comprar"
         )
 
-        /** Ventana marcador↔término dentro de la misma frase (en caracteres). */
+        /** Marker-to-term window within the same sentence, in characters. */
         const val PROPOSAL_WINDOW_CHARS = 80
 
-        /** Marcador de propuesta y término de comida/compra cerca y sin cruzar `.!?` ni salto. */
+        /** Proposal marker and food/shopping term close together, without crossing `.!?` or a newline. */
         val PROPOSAL_NEAR_KEYWORD_REGEX = run {
             val marker = "(?:${PROPOSAL_MARKERS.joinToString("|")})"
             val keyword = "(?:${KEYWORDS.joinToString("|")})"

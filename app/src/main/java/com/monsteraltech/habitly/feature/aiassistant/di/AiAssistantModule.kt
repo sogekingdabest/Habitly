@@ -34,7 +34,7 @@ abstract class AiAssistantModule {
         repositoryImpl: AiReportRepositoryImpl
     ): AiReportRepository
 
-    /** Limpieza del historial/prefs del asistente al borrar la cuenta (no en el logout). */
+    /** Wipes the assistant's history and prefs on account deletion, not on logout. */
     @Binds
     @IntoSet
     abstract fun bindAiAccountDataCleaner(

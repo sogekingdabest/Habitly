@@ -78,7 +78,7 @@ fun ModelDownloadCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    // Al cancelar se conserva lo descargado: si vuelve a darle, reanuda.
+                    // Cancelling keeps what was downloaded: tapping again resumes.
                     TextButton(onClick = onCancel) {
                         Text(stringResource(R.string.ai_cancel_download))
                     }

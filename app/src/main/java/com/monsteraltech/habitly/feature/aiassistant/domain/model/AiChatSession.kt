@@ -9,9 +9,9 @@ data class AiChatSession(
     val modelId: String = AvailableAiModels.Gemma4_E2B_IT.id,
     val timestamp: Long = System.currentTimeMillis(),
     val messages: List<AiMessage> = emptyList(),
-    /** Resumen de la parte antigua de la conversación tras compactar. Vacío = sin compactar. */
+    /** Summary of the conversation's older part after compaction. Empty means not compacted. */
     val contextSummary: String = "",
-    /** Nº de mensajes (desde el principio) ya cubiertos por [contextSummary]. */
+    /** How many messages, counting from the start, are already covered by [contextSummary]. */
     val summarizedUpTo: Int = 0
 ) {
     fun addUserMessage(content: String): AiChatSession {

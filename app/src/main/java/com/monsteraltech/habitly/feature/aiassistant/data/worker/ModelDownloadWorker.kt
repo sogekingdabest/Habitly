@@ -18,9 +18,8 @@ import com.monsteraltech.habitly.feature.settings.data.LocaleHelper
 import kotlinx.coroutines.CancellationException
 
 /**
- * Descarga un modelo de IA en segundo plano. Al ejecutarse dentro de WorkManager
- * como trabajo de larga duración con notificación foreground, la descarga
- * sobrevive a la navegación entre pestañas e incluso a que el proceso se reinicie.
+ * Downloads an AI model in the background. Running inside WorkManager as a long-running job with a
+ * foreground notification, the download survives navigating between tabs and even a process restart.
  */
 class ModelDownloadWorker(
     appContext: Context,
@@ -29,8 +28,8 @@ class ModelDownloadWorker(
 
     private val modelManager = LocalModelManager(appContext)
 
-    // Contexto con el idioma elegido en Ajustes (el applicationContext no lo refleja). `lazy`
-    // para no reconstruirlo en cada refresco de progreso durante la descarga.
+    // Context carrying the language chosen in Settings, which applicationContext does not reflect.
+    // `lazy` so it is not rebuilt on every progress refresh during the download.
     private val localizedContext by lazy { LocaleHelper.wrap(applicationContext) }
 
     override suspend fun doWork(): Result {
@@ -45,7 +44,7 @@ class ModelDownloadWorker(
             var lastPercent = -1
             modelManager.downloadModel(config) { progress ->
                 val percent = (progress * 100).toInt().coerceIn(0, 100)
-                // Throttle: solo notificamos cuando cambia el porcentaje entero.
+                // Throttle: notify only when the whole percentage changes.
                 if (percent != lastPercent) {
                     lastPercent = percent
                     setProgressAsync(workDataOf(KEY_MODEL_ID to modelId, KEY_PROGRESS to progress))
@@ -56,11 +55,11 @@ class ModelDownloadWorker(
         } catch (e: CancellationException) {
             throw e
         } catch (e: NonRetryableDownloadException) {
-            // 4xx, integridad, espacio…: reintentar no lo arregla; se muestra el error.
+            // 4xx, integrity, disk space…: retrying will not fix it, so surface the error.
             Result.failure(workDataOf(KEY_ERROR to (e.message ?: "Error de descarga")))
         } catch (e: Exception) {
-            // Error transitorio (red): reintento con backoff. El .tmp se conserva, así que
-            // el siguiente intento reanuda con Range donde se quedó.
+            // Transient error (network): retry with backoff. The .tmp is kept, so the next attempt
+            // resumes with Range where this one stopped.
             if (runAttemptCount < MAX_ATTEMPTS - 1) {
                 Result.retry()
             } else {
@@ -110,17 +109,17 @@ class ModelDownloadWorker(
     }
 
     companion object {
-        /** Nombre único de descarga por modelo: así descargar un modelo no descarta el otro. */
+        /** Unique work name per model, so downloading one does not cancel the other. */
         fun workNameFor(modelId: String): String = "ai_model_download_$modelId"
 
-        /** Nombre único compartido de versiones anteriores; se cancela al arrancar. */
+        /** The shared unique name from earlier versions; cancelled on startup. */
         const val LEGACY_WORK_NAME = "ai_model_download"
 
         const val KEY_MODEL_ID = "model_id"
         const val KEY_PROGRESS = "progress"
         const val KEY_ERROR = "error"
 
-        /** Intentos totales (1 inicial + reintentos) antes de rendirse con un error de red. */
+        /** Total attempts (1 initial + retries) before giving up on a network error. */
         const val MAX_ATTEMPTS = 4
 
         private const val CHANNEL_ID = "model_download"

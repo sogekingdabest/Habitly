@@ -14,17 +14,14 @@ import java.util.Calendar
 import javax.inject.Inject
 
 /**
- * Extrae rutinas estructuradas de una respuesta del asistente.
+ * Extracts structured routines from an assistant answer — see [AiStructuredBlocks] for the block
+ * format the model is prompted to emit.
  *
- * El modelo, siguiendo la instrucción del system prompt, termina con un marcador seguido de
- * un JSON: `@@RUTINA@@ {"routines":[{"title":"Fregar","frequency":"semanal","days":["lunes"]}]}`.
+ * Deliberately tolerant, because small on-device models produce imperfect JSON. Unlike the shopping
+ * parser, this one **requires its own marker or key**: without one it parses nothing, so a shopping
+ * block (which also uses "name") is never mistaken for a list of routines.
  *
- * Igual que el parser de la lista de la compra, es deliberadamente tolerante porque los modelos
- * on-device pequeños generan JSON imperfecto. La diferencia es que aquí **exigimos marcador o
- * clave propia**: sin eso no parseamos nada, para no confundir el bloque de la compra (que
- * también usa "name") con una lista de rutinas.
- *
- * Si nada parsea, devuelve lista vacía (la UI no muestra el botón).
+ * When nothing parses it returns an empty list and the UI shows no button.
  */
 class ParseAiRoutinesUseCase @Inject constructor() {
 
@@ -59,7 +56,7 @@ class ParseAiRoutinesUseCase @Inject constructor() {
         }
     }
 
-    @Suppress("DEPRECATION") // setStrictness(LENIENT) no existe en Gson 2.10.1; isLenient es la API válida.
+    @Suppress("DEPRECATION") // setStrictness(LENIENT) does not exist in Gson 2.10.1; isLenient is the valid API.
     private fun parseLenient(region: String): JsonElement? {
         return try {
             val reader = JsonReader(StringReader(region))
@@ -97,10 +94,9 @@ class ParseAiRoutinesUseCase @Inject constructor() {
     }
 
     /**
-     * Último recurso: extrae los campos con regex sobre cada objeto `{ ... }`. Además intenta
-     * recuperar un último objeto **truncado** (sin llave de cierre): es lo que ocurre cuando el
-     * modelo se queda sin presupuesto de tokens generando el JSON, y sin esto la última rutina
-     * se perdía.
+     * Last resort: pulls the fields out of each `{ ... }` object with regexes. It also recovers a
+     * final **truncated** object with no closing brace, which is what a model running out of token
+     * budget mid-JSON leaves behind; without this the last routine was lost.
      */
     private fun regexFallback(region: String): List<AiRoutineSuggestion> {
         val byTitle = LinkedHashMap<String, AiRoutineSuggestion>()
@@ -109,7 +105,7 @@ class ParseAiRoutinesUseCase @Inject constructor() {
             if (byTitle.size >= MAX_ROUTINES) break
         }
 
-        // Objeto final sin cerrar: lo que quede tras la última '}' y contenga un '{'.
+        // Unclosed final object: whatever follows the last '}' and contains a '{'.
         val lastClose = region.lastIndexOf('}')
         val tail = if (lastClose == -1) region else region.substring(lastClose + 1)
         val open = tail.indexOf('{')
@@ -118,7 +114,7 @@ class ParseAiRoutinesUseCase @Inject constructor() {
         return byTitle.values.toList()
     }
 
-    /** Construye una sugerencia desde el cuerpo de un objeto (cerrado o truncado) y la añade. */
+    /** Builds a suggestion from an object body (closed or truncated) and adds it. */
     private fun addFromBody(body: String, byTitle: LinkedHashMap<String, AiRoutineSuggestion>) {
         if (byTitle.size >= MAX_ROUTINES) return
         val title = TITLE_REGEX.find(body)?.groupValues?.get(1)?.cleanTitle() ?: return
@@ -143,9 +139,8 @@ class ParseAiRoutinesUseCase @Inject constructor() {
     }
 
     /**
-     * Aplica las coherencias que el modelo se salta a menudo: una semanal sin días válidos
-     * no llegaría a tocar nunca, así que la degradamos a diaria; y solo las de intervalo
-     * conservan `intervalDays`.
+     * Applies the consistency rules the model often skips: a weekly routine with no valid days
+     * would never come due, so it degrades to daily; and only interval routines keep `intervalDays`.
      */
     private fun buildSuggestion(
         title: String,
@@ -181,7 +176,7 @@ class ParseAiRoutinesUseCase @Inject constructor() {
                     runCatching { item.asString }.getOrNull()?.toCalendarDay()
                 }.distinct()
             }
-            // Algunos modelos devuelven "lunes, jueves" en vez de un array.
+            // Some models return "lunes, jueves" instead of an array.
             runCatching { element.asString }.getOrNull()?.let { raw ->
                 return raw.split(',', ';').mapNotNull { it.toCalendarDay() }.distinct()
             }
@@ -222,7 +217,7 @@ class ParseAiRoutinesUseCase @Inject constructor() {
         }
     }
 
-    /** Nombres de día en español o inglés, sin depender de tildes ni mayúsculas. */
+    /** Day names in Spanish or English, independent of accents and case. */
     private fun String.toCalendarDay(): Int? {
         val value = normalizeKey()
         return DAY_NAMES.entries.firstOrNull { (prefix, _) -> value.startsWith(prefix) }?.value
@@ -231,7 +226,7 @@ class ParseAiRoutinesUseCase @Inject constructor() {
     private fun String.cleanTitle(): String? =
         trim().take(MAX_TITLE_LENGTH).takeIf { it.isNotBlank() }
 
-    /** Minúsculas y sin tildes, para comparar y deduplicar. */
+    /** Lowercased and unaccented, for comparing and deduplicating. */
     private fun String.normalizeKey(): String =
         Normalizer.normalize(trim().lowercase(), Normalizer.Form.NFD)
             .replace(DIACRITICS_REGEX, "")
@@ -244,7 +239,7 @@ class ParseAiRoutinesUseCase @Inject constructor() {
         const val MAX_INTERVAL = 365
 
         val DIACRITICS_REGEX = Regex("\\p{Mn}+")
-        // Llaves literales siempre escapadas: el motor ICU de Android 16+ rechaza una `}` suelta.
+        // Literal braces always escaped: the ICU engine on Android 16+ rejects a bare `}`.
         val OBJECT_REGEX = Regex("\\{[^\\{\\}]*\\}")
         val DIGITS_REGEX = Regex("\\d+")
 
@@ -255,8 +250,8 @@ class ParseAiRoutinesUseCase @Inject constructor() {
         val INTERVAL_REGEX = Regex("\"(?:interval_days|intervalo|cada|interval)\"\\s*:\\s*\"?(\\d+)", RegexOption.IGNORE_CASE)
 
         val ARRAY_KEYS = listOf("routines", "rutinas", "habits", "habitos")
-        // Clave en forma JSON (p. ej. `"routines": [`), no la palabra suelta: evita disparar el
-        // parseo solo porque el texto mencione "rutinas" en prosa normal.
+        // The key in JSON form (e.g. `"routines": [`), not the bare word: stops the parser firing
+        // just because the text happens to mention "rutinas" in ordinary prose.
         val ARRAY_KEY_JSON = Regex("\"(?:routines|rutinas|habits|habitos)\"\\s*:\\s*\\[", RegexOption.IGNORE_CASE)
         val TITLE_KEYS = listOf("title", "titulo", "título", "nombre")
         val DESCRIPTION_KEYS = listOf("description", "descripcion", "descripción", "desc")
@@ -264,7 +259,7 @@ class ParseAiRoutinesUseCase @Inject constructor() {
         val DAYS_KEYS = listOf("days", "dias", "días", "scheduled_days")
         val INTERVAL_KEYS = listOf("interval_days", "intervalo", "cada", "interval")
 
-        /** Prefijos suficientes para distinguir cada día en español e inglés. */
+        /** Prefixes long enough to tell each day apart in Spanish and English. */
         val DAY_NAMES = linkedMapOf(
             "lun" to Calendar.MONDAY,
             "mon" to Calendar.MONDAY,

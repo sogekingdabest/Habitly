@@ -11,19 +11,14 @@ import java.io.StringReader
 import javax.inject.Inject
 
 /**
- * Extrae una lista de la compra estructurada de una respuesta del asistente.
+ * Extracts a structured shopping list from an assistant answer — see [AiStructuredBlocks] for the
+ * block format the model is prompted to emit.
  *
- * El modelo, siguiendo la instrucción del system prompt, termina con un marcador
- * seguido de un JSON: `@@LISTA@@ {"shopping_list":[{"name":..,"quantity":..}]}`.
+ * Deliberately tolerant, because small on-device models produce imperfect JSON: the block is taken
+ * with or without ```fences``` and with or without its marker, as a bare array or wrapped in an
+ * object, with field names in Spanish or English; and malformed JSON falls back to regex extraction.
  *
- * El parser es deliberadamente tolerante porque los modelos on-device pequeños
- * generan JSON imperfecto:
- *  - acepta el bloque con o sin ```fences``` y con o sin el marcador,
- *  - acepta un array suelto o un objeto contenedor,
- *  - acepta nombres de campo en español o inglés,
- *  - si el JSON está mal formado, cae a una extracción por regex.
- *
- * Si nada parsea, devuelve lista vacía (la UI no muestra el botón).
+ * When nothing parses it returns an empty list and the UI shows no button.
  */
 class ParseAiShoppingListUseCase @Inject constructor() {
 
@@ -52,7 +47,7 @@ class ParseAiShoppingListUseCase @Inject constructor() {
         }
     }
 
-    @Suppress("DEPRECATION") // setStrictness(LENIENT) no existe en Gson 2.10.1; isLenient es la API válida.
+    @Suppress("DEPRECATION") // setStrictness(LENIENT) does not exist in Gson 2.10.1; isLenient is the valid API.
     private fun parseLenient(region: String): JsonElement? {
         return try {
             val reader = JsonReader(StringReader(region))
@@ -82,7 +77,7 @@ class ParseAiShoppingListUseCase @Inject constructor() {
         return byName.values.toList()
     }
 
-    /** Último recurso: extrae los campos con regex sobre cada objeto `{ ... }`. */
+    /** Last resort: pulls the fields out of each `{ ... }` object with regexes. */
     private fun regexFallback(region: String): List<AiShoppingSuggestion> {
         val byName = LinkedHashMap<String, AiShoppingSuggestion>()
         for (match in OBJECT_REGEX.findAll(region)) {
@@ -115,7 +110,7 @@ class ParseAiShoppingListUseCase @Inject constructor() {
             val element = get(key) ?: continue
             if (element.isJsonNull || !element.isJsonPrimitive) continue
             runCatching { return element.asInt }
-            // "2 kg" u otros valores textuales: extraemos el primer número.
+            // "2 kg" and other textual values: take the first number.
             runCatching {
                 DIGITS_REGEX.find(element.asString)?.value?.toIntOrNull()?.let { return it }
             }
@@ -129,7 +124,7 @@ class ParseAiShoppingListUseCase @Inject constructor() {
     }
 
     private companion object {
-        // Llaves literales siempre escapadas: el motor ICU de Android 16+ rechaza una `}` suelta.
+        // Literal braces always escaped: the ICU engine on Android 16+ rejects a bare `}`.
         val OBJECT_REGEX = Regex("\\{[^\\{\\}]*\\}")
         val DIGITS_REGEX = Regex("\\d+")
 

@@ -1,14 +1,13 @@
 package com.monsteraltech.habitly.feature.aiassistant.domain.util
 
 /**
- * Trocea el markdown de una respuesta en segmentos de texto y de tabla, para que la UI
- * pueda renderizar cada tabla aparte (a su ancho natural, con scroll horizontal) en vez
- * de estrujarla al ancho de la burbuja partiendo palabras.
+ * Splits an answer's markdown into text and table segments, so the UI can render each table on its
+ * own — at its natural width, with horizontal scroll — instead of squeezing it into the bubble's
+ * width and breaking words apart.
  *
- * Se considera tabla un grupo de líneas consecutivas que empiezan por `|` cuya segunda
- * línea es el separador de cabecera GFM (`|---|---|`). Un grupo de líneas con `|` sin
- * ese separador se deja como texto normal: así ni el streaming (tabla a medio llegar)
- * ni un uso suelto del carácter se tratan como tabla.
+ * A table is a run of consecutive lines starting with `|` whose second line is the GFM header
+ * separator (`|---|---|`). A run of `|` lines without that separator stays plain text, so neither
+ * a half-streamed table nor a stray pipe character is treated as one.
  */
 object MarkdownTableSegments {
 
@@ -19,7 +18,7 @@ object MarkdownTableSegments {
         data class Table(override val content: String, val columnCount: Int) : Segment
     }
 
-    /** Fila hecha solo de `|`, `-`, `:` y espacios (el subrayado de la cabecera). */
+    /** A row made only of `|`, `-`, `:` and spaces — the header underline. */
     private val SEPARATOR_ROW = Regex("""^\|[\s:\-|]+\|?$""")
 
     fun split(markdown: String): List<Segment> {

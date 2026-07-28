@@ -10,13 +10,14 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
- * Crea en la casa activa las rutinas que ha propuesto la IA.
- * Resuelve internamente el usuario y su casa para no acoplar el ViewModel a Firebase.
+ * Creates the routines the AI proposed in the active household. It resolves the user and their
+ * household internally so the ViewModel stays decoupled from Firebase.
  *
- * Las rutinas nacen sin recordatorio: ponerle hora a cinco rutinas de golpe sin preguntar
- * sería invasivo, y el usuario puede añadirlo al editarlas.
+ * Routines are born without a reminder: putting a time on five routines at once without asking
+ * would be intrusive, and the user can add one while editing them.
  *
- * @return número de rutinas creadas, o [Result.failure] si no hay sesión/casa o fallan todas.
+ * @return how many routines were created, or [Result.failure] if there is no session or household,
+ *   or every creation failed.
  */
 class AddAiRoutinesUseCase @Inject constructor(
     private val authRepository: AuthRepository,
@@ -41,8 +42,8 @@ class AddAiRoutinesUseCase @Inject constructor(
         var created = 0
         var lastError: Throwable? = null
 
-        // No hay batch para rutinas (personales y de casa viven en colecciones distintas),
-        // así que se crean una a una y se informa de cuántas entraron.
+        // There is no batch path for routines — personal and household ones live in different
+        // collections — so they are created one by one and the count is reported back.
         for (suggestion in routines) {
             addRoutineUseCase(
                 userId = user.uid,
@@ -60,7 +61,7 @@ class AddAiRoutinesUseCase @Inject constructor(
             )
         }
 
-        // Solo es un fallo si no entró ninguna: con algunas creadas, informamos del número.
+        // Only a failure if none got through: with some created, report the number.
         return if (created == 0 && lastError != null) {
             Result.failure(lastError)
         } else {

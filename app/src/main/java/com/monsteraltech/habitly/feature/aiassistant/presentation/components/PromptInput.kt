@@ -27,8 +27,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.R
 
-/** Chip de sugerencia ya localizado: etiqueta visible + acción al pulsarlo. La pantalla lo
- *  construye resolviendo los textos con `stringResource`, para respetar el idioma de Ajustes. */
+/** An already-localised suggestion chip: visible label plus its tap action. The screen builds it by
+ *  resolving the texts with `stringResource`, so it honours the language set in Settings. */
 data class QuickPromptChip(
     val label: String,
     val onClick: () -> Unit
@@ -46,11 +46,11 @@ fun PromptInput(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        // Los chips se van en cuanto empiezas a escribir: ya has decidido qué preguntar, y esa
-        // fila es altura que le hace más falta a la conversación.
+        // The chips leave as soon as you start typing: you have already decided what to ask, and
+        // that row is height the conversation needs more.
         if (quickPrompts.isNotEmpty() && input.isBlank()) {
-            // El padding va en el contenido y no en la fila para que los chips se deslicen
-            // hasta el borde de la pantalla en vez de cortarse en seco a 16dp.
+            // Padding on the content rather than the row, so the chips scroll all the way to the
+            // screen edge instead of being cut dead at 16dp.
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 16.dp),
@@ -76,12 +76,12 @@ fun PromptInput(
                 value = input,
                 onValueChange = onInputChange,
                 modifier = Modifier.weight(1f),
-                // Placeholder y no label: el label flotante reserva altura permanente para
-                // repetir algo que en un chat ya se da por sabido.
+                // Placeholder, not label: a floating label permanently reserves height to repeat
+                // something a chat already makes obvious.
                 placeholder = { Text(stringResource(R.string.ai_input_hint)) },
                 shape = RoundedCornerShape(24.dp),
                 maxLines = 4,
-                // El micro se retira en cuanto hay texto: ahí el hueco es del contenido.
+                // The mic withdraws once there is text: that space belongs to the content.
                 trailingIcon = if (onVoiceInput != null && input.isBlank()) {
                     {
                         IconButton(onClick = onVoiceInput) {
@@ -95,8 +95,8 @@ fun PromptInput(
                     null
                 }
             )
-            // Mientras el modelo genera, el botón pasa a "detener": enviar ya no procede
-            // (el ViewModel lo ignora) y así siempre hay una acción útil disponible.
+            // While the model generates, the button becomes "stop": sending no longer applies (the
+            // ViewModel ignores it) and this way there is always a useful action available.
             if (isGenerating) {
                 FilledIconButton(
                     onClick = onStop,

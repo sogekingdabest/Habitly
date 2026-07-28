@@ -15,8 +15,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 /**
- * Estado "ya hecho" de las tarjetas de sugerencia. Va sin forma de botón a propósito:
- * un botón deshabilitado se lee como algo roto, no como una acción completada.
+ * The "already done" state of the suggestion cards. It deliberately takes no button shape: a
+ * disabled button reads as something broken, not as a completed action.
  */
 @Composable
 fun SuggestionDoneLabel(

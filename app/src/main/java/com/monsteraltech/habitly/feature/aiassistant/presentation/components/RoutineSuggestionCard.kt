@@ -36,12 +36,12 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiRoutineSuggestion
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 
-/** Cuántas rutinas se listan antes de resumir el resto en una línea. */
+/** How many routines are listed before the rest are summed up in one line. */
 private const val MAX_PREVIEW_ROUTINES = 4
 
 /**
- * Tarjeta que aparece bajo un mensaje del asistente cuando este ha propuesto rutinas.
- * Deja elegir si van a las personales o a las de la casa antes de crearlas.
+ * Card shown under an assistant message that proposed routines. It lets the user pick whether they
+ * go to their personal routines or the household's before creating them.
  */
 @Composable
 fun RoutineSuggestionCard(
@@ -86,8 +86,8 @@ fun RoutineSuggestionCard(
                 )
             }
 
-            // Un vistazo a lo que se va a crear: crear cosas a ciegas da mal cuerpo. Se recorta
-            // la lista para que una tanda larga no convierta la tarjeta en media pantalla.
+            // A glance at what is about to be created: creating things blind feels wrong. The list
+            // is trimmed so a long batch does not turn the card into half a screen.
             routines.take(MAX_PREVIEW_ROUTINES).forEach { routine ->
                 Text(
                     text = "• ${routine.title}",
@@ -114,8 +114,8 @@ fun RoutineSuggestionCard(
                     modifier = Modifier.align(Alignment.End)
                 )
             } else {
-                // FlowRow y no Row: con fuente grande los dos chips no caben en el ancho
-                // de la tarjeta y tienen que poder pasar a la línea siguiente.
+                // FlowRow rather than Row: at large font sizes the two chips do not fit the card's
+                // width and have to be able to wrap.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     RoutineTypeChip(
                         selected = type == RoutineType.PERSONAL,
@@ -150,9 +150,9 @@ fun RoutineSuggestionCard(
 }
 
 /**
- * Chip de destino de las rutinas. Lleva colores propios porque los del tema salen de la
- * paleta secundaria y sobre el fondo terciario de la tarjeta el estado activo se confundía
- * con el inactivo; el check deja la selección clara aunque el color no se aprecie.
+ * Destination chip for the routines. It carries its own colours because the theme's come from the
+ * secondary palette, and against the card's tertiary background the selected state was hard to tell
+ * from the unselected one; the check mark keeps the selection legible even when the colour is not.
  */
 @Composable
 private fun RoutineTypeChip(

@@ -22,9 +22,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 
 /**
- * Tres puntos "respirando" desfasados: el indicador de que el modelo está por empezar a
- * responder, mientras la burbuja aún no tiene texto que enseñar (como el "···" de ChatGPT
- * o Claude). En cuanto llega el primer token, la pantalla lo sustituye por el markdown.
+ * Three dots "breathing" out of phase: the sign that the model is about to start answering while
+ * the bubble has no text to show yet, like the "···" in ChatGPT or Claude. The screen replaces it
+ * with the markdown as soon as the first token arrives.
  */
 @Composable
 fun TypingIndicator(modifier: Modifier = Modifier) {
@@ -40,7 +40,7 @@ fun TypingIndicator(modifier: Modifier = Modifier) {
                 animationSpec = infiniteRepeatable(
                     animation = tween(DOT_DURATION_MS, easing = LinearEasing),
                     repeatMode = RepeatMode.Reverse,
-                    // Cada punto arranca un poco más tarde: así la onda recorre los tres.
+                    // Each dot starts slightly later, so the wave travels across all three.
                     initialStartOffset = StartOffset(index * DOT_STAGGER_MS)
                 ),
                 label = "typing-dot-$index"

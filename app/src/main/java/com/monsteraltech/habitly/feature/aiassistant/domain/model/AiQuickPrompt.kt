@@ -1,7 +1,7 @@
 package com.monsteraltech.habitly.feature.aiassistant.domain.model
 
-/** Identidad estable de cada chip de sugerencia. El texto (label y prompt) se resuelve en la
- *  capa de presentación con `stringResource`, para que respete el idioma elegido en Ajustes. */
+/** Stable identity of each suggestion chip. The text (label and prompt) is resolved in the
+ *  presentation layer with `stringResource`, so it honours the language chosen in Settings. */
 enum class QuickPromptId {
     WEEKLY_MENU,
     COOK_FROM_PANTRY,
@@ -15,13 +15,13 @@ enum class QuickPromptId {
 }
 
 /**
- * Sugerencia que se ofrece como chip encima del input del chat.
+ * A suggestion offered as a chip above the chat input.
  *
- * Vive en domain porque las construye
+ * It lives in domain because
  * [com.monsteraltech.habitly.feature.aiassistant.domain.usecase.GetContextualQuickPromptsUseCase]
- * a partir del estado real de la casa. Solo lleva el [id] (y, para el menú semanal, el
- * [memberCount] que necesita el prompt); la etiqueta y el prompt localizados los pone la capa
- * de presentación con `stringResource`.
+ * builds them from the household's actual state. It carries only the [id] — plus, for the weekly
+ * menu, the [memberCount] the prompt needs; the localised label and prompt come from the
+ * presentation layer.
  */
 data class AiQuickPrompt(
     val id: QuickPromptId,

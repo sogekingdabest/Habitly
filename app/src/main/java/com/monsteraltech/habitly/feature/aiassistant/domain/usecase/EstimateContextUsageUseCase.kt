@@ -4,14 +4,14 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiChatSession
 import javax.inject.Inject
 
 /**
- * Estima cuánto del presupuesto de contexto del modelo lleva ocupado la sesión, en `[0f, 1f]`.
- * Sirve para avisar (banner) de que conviene compactar antes de que el prefill empiece a
- * fallar. Es una estimación por caracteres (los modelos on-device no exponen un contador de
- * tokens barato): ~[CHARS_PER_TOKEN] caracteres por token en español, reservando para la
- * respuesta lo que diga [responseReserveFor].
+ * Estimates how much of the model's context budget the session takes up, in `[0f, 1f]`, so a banner
+ * can suggest compacting before prefill starts failing. It counts characters because on-device
+ * models expose no cheap token counter: roughly [CHARS_PER_TOKEN] characters per token in Spanish,
+ * minus whatever [responseReserveFor] holds back for the answer.
  *
- * No cuenta lo ya compactado: [AiChatSession.summarizedUpTo] mensajes del principio están
- * cubiertos por [AiChatSession.contextSummary], que sí se cuenta (viaja en el system prompt).
+ * Already-compacted text is not double counted: the first [AiChatSession.summarizedUpTo] messages
+ * are covered by [AiChatSession.contextSummary], which *is* counted since it rides in the system
+ * prompt.
  */
 class EstimateContextUsageUseCase @Inject constructor() {
 
@@ -26,20 +26,19 @@ class EstimateContextUsageUseCase @Inject constructor() {
     }
 
     companion object {
-        /** Caracteres por token (aproximación para español). */
+        /** Characters per token, approximated for Spanish. */
         const val CHARS_PER_TOKEN = 3.5f
 
-        /** Tope de tokens reservados para la respuesta. */
+        /** Ceiling on tokens reserved for the answer. */
         const val MAX_RESPONSE_RESERVE_TOKENS = 1000
 
-        /** Fracción de la ventana que como mucho se reserva para la respuesta. */
+        /** Largest share of the window that may be reserved for the answer. */
         const val RESPONSE_RESERVE_FRACTION = 4
 
         /**
-         * Tokens que se dejan libres para la respuesta. Es proporcional a propósito: como
-         * constante fija (1000) se comía media ventana en un modelo de 2048 y la sesión salía
-         * al 100% en el primer intercambio, con el system prompt ocupando ya 650 tokens. Nunca
-         * pasa de un cuarto del presupuesto.
+         * Tokens left free for the answer. Proportional on purpose: as a flat 1000 it ate half the
+         * window on a 2048-token model, and with the system prompt already taking 650 the session
+         * read 100% after the first exchange. Never more than a quarter of the budget.
          */
         fun responseReserveFor(maxTokens: Int): Int =
             minOf(MAX_RESPONSE_RESERVE_TOKENS, maxTokens / RESPONSE_RESERVE_FRACTION)

@@ -43,16 +43,16 @@ import java.time.format.DateTimeFormatter
 fun ChatMessageItem(
     message: AiMessage,
     modifier: Modifier = Modifier,
-    /** Último mensaje del asistente aún generándose: sin botón de copiar y, si sigue vacío, con puntos. */
+    /** Assistant's last message still generating: no copy button, and dots while it stays empty. */
     isStreaming: Boolean = false,
     onCopy: (String) -> Unit = {},
-    /** Ya reportado: oculta la acción de reportar para no duplicar envíos. */
+    /** Already reported: hides the report action so nothing is sent twice. */
     isReported: Boolean = false,
     onReport: () -> Unit = {}
 ) {
     val isUser = message.role is MessageRole.User
-    // Texto que se muestra y se copia: el del usuario tal cual; el del asistente sin el
-    // bloque estructurado @@…@@ (metadato que la UI oculta).
+    // Text shown and copied: the user's verbatim, the assistant's without its @@…@@ structured
+    // block, which is metadata the UI hides.
     val displayText = if (isUser) message.content
         else AiStructuredBlocks.stripFromDisplay(message.content)
     val isAwaitingFirstToken = isStreaming && displayText.isBlank()
@@ -62,10 +62,10 @@ fun ChatMessageItem(
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
         Card(
-            // Sin margen en el lado propio: la burbuja apura hasta el borde (el aire que
-            // queda lo pone el contentPadding de la lista). Enfrente queda solo el offset
-            // justo para leer de qué lado viene cada mensaje: al asistente se le da casi
-            // todo el ancho porque es quien manda tablas y listas largas.
+            // No margin on the bubble's own side: it runs to the edge and the list's contentPadding
+            // supplies the air. The opposite side keeps just enough offset to read which side a
+            // message came from — the assistant gets nearly the full width, since it is the one
+            // sending tables and long lists.
             modifier = Modifier.padding(
                 start = if (isUser) 32.dp else 0.dp,
                 end = if (isUser) 0.dp else 16.dp,
@@ -89,7 +89,7 @@ fun ChatMessageItem(
                 modifier = Modifier.padding(12.dp)
             ) {
                 if (isUser) {
-                    // SelectionContainer: el Text plano del usuario no era seleccionable.
+                    // SelectionContainer: the user's plain Text was not selectable.
                     SelectionContainer {
                         Text(
                             text = message.content,
@@ -112,8 +112,8 @@ fun ChatMessageItem(
                                 markdown = segment.content,
                                 style = markdownStyle,
                                 linkColor = MaterialTheme.colorScheme.primary,
-                                // SelectionContainer no llega al TextView de la librería:
-                                // hay que activar su selección explícitamente.
+                                // SelectionContainer does not reach the library's TextView: its
+                                // selection has to be switched on explicitly.
                                 isTextSelectable = true
                             )
 
@@ -138,9 +138,9 @@ fun ChatMessageItem(
             }
         }
 
-        // Acciones bajo la burbuja: copiar (prompt propio y respuestas terminadas) y, solo en
-        // respuestas del asistente, reportar (requisito de la política de IA de Google Play).
-        // Durante el streaming se ocultan (copiar/reportar a medias no aporta).
+        // Actions under the bubble: copy (own prompt and finished answers) and, on assistant
+        // answers only, report — required by Google Play's AI policy. Both hide while streaming,
+        // since copying or reporting half an answer is no use.
         if (!isStreaming && displayText.isNotBlank()) {
             Row {
                 IconButton(
@@ -173,8 +173,8 @@ fun ChatMessageItem(
 }
 
 /**
- * Tabla del asistente a su ancho natural con scroll horizontal (como ChatGPT o Gemini):
- * mejor deslizar que estrujar cuatro columnas en el ancho de un móvil partiendo palabras.
+ * Assistant table at its natural width with horizontal scroll, the way ChatGPT and Gemini do it:
+ * swiping beats squeezing four columns into a phone's width and breaking words apart.
  */
 @Composable
 private fun AssistantTable(
@@ -199,7 +199,7 @@ private fun AssistantTable(
     }
 }
 
-/** Ancho holgado por columna; con él las celdas respiran y el sobrante se desliza. */
+/** Generous per-column width: cells breathe and the overflow scrolls. */
 private const val TABLE_COLUMN_WIDTH_DP = 140
 
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")

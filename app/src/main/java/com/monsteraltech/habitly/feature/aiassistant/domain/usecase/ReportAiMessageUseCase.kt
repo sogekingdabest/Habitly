@@ -6,10 +6,9 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiReportR
 import javax.inject.Inject
 
 /**
- * Reporta una respuesta del asistente como ofensiva o inapropiada (requisito de la política
- * de contenido generado por IA de Google Play). Solo aplican mensajes del asistente con
- * contenido; se envía el texto completo, incluido el bloque estructurado oculto, porque es
- * lo que el modelo generó realmente.
+ * Reports an assistant answer as offensive or inappropriate, as Google Play's AI-generated content
+ * policy requires. Only assistant messages with content qualify, and the full text is sent —
+ * including the hidden structured block — because that is what the model actually generated.
  */
 class ReportAiMessageUseCase @Inject constructor(
     private val reportRepository: AiReportRepository

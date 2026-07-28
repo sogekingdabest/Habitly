@@ -17,14 +17,14 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 /**
- * Decide qué chips de sugerencia se muestran encima del input del chat según el momento
- * y el estado real de la casa: el fin de semana se planifica, con la lista llena interesa
- * cocinar con lo que ya hay, y con la lista vacía interesa llenarla.
+ * Decides which suggestion chips appear above the chat input, from the moment and the household's
+ * actual state: weekends are for planning, a full pantry calls for cooking with what is there, and
+ * an empty list calls for filling it.
  *
- * Devuelve solo el [QuickPromptId] de cada chip (más el número de personas para el menú
- * semanal); la etiqueta y el prompt localizados los pone la capa de presentación. Si no hay
- * sesión, casa o datos, degrada a [staticPrompts] sin fallar nunca: los chips son un extra de
- * la UI, no deben romper la pantalla.
+ * It returns only each chip's [QuickPromptId] (plus the member count for the weekly menu); the
+ * localised label and prompt are the presentation layer's job. With no session, household or data
+ * it degrades to [staticPrompts] and never fails: the chips are a UI extra and must not take the
+ * screen down with them.
  */
 class GetContextualQuickPromptsUseCase @Inject constructor(
     private val authRepository: AuthRepository,
@@ -45,8 +45,8 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
         val householdId = profile?.activeHouseholdId?.takeIf { it.isNotBlank() }
             ?: return build(today, null)
 
-        // Mismas lecturas que el contexto del chat: independientes → en paralelo, un solo
-        // timeout de peor caso en vez de cuatro encadenados.
+        // Same reads as the chat context: independent, so run them in parallel for a single
+        // worst-case timeout instead of four chained ones.
         return coroutineScope {
             val pendingItems = async {
                 withTimeoutOrNull(timeoutMs) {
@@ -68,7 +68,7 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
                     pantryRepository.observePantry(householdId).firstOrNull()
                 }?.size ?: 0
             }
-            // Nº de personas de la casa: el menú semanal pide cantidades para todas.
+            // Household size: the weekly menu asks for quantities for everyone.
             val memberCount = async {
                 withTimeoutOrNull(timeoutMs) {
                     householdRepository.observeHousehold(householdId).firstOrNull()
@@ -86,7 +86,7 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
         }
     }
 
-    /** Estado de la casa que influye en los chips. Nulo cuando no se pudo leer. */
+    /** The household state that drives the chips. Null when it could not be read. */
     private data class Snapshot(
         val pendingItems: Int?,
         val pendingRoutinesToday: Int,
@@ -97,18 +97,19 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
     private fun build(today: LocalDate, snapshot: Snapshot?, memberCount: Int = 1): List<AiQuickPrompt> {
         val contextual = mutableListOf<AiQuickPrompt>()
 
-        // Fin de semana y lunes: es cuando se planifica la semana.
+        // Weekend and Monday: when people plan the week.
         if (today.dayOfWeek in PLANNING_DAYS) {
             contextual += AiQuickPrompt(QuickPromptId.WEEKLY_MENU, memberCount)
         }
 
         if (snapshot != null) {
-            // Con la despensa llena, lo más útil que sabe hacer el asistente es cocinar con ella.
+            // With a full pantry, the most useful thing the assistant does is cook from it.
             if (snapshot.pantrySize >= ENOUGH_PANTRY) {
                 contextual += AiQuickPrompt(QuickPromptId.COOK_FROM_PANTRY)
             }
 
-            // Con pocas rutinas, lo útil es ayudar a montarlas: el asistente las crea de una tacada.
+            // With few routines, the useful thing is help building them: the assistant creates a
+            // whole set in one go.
             if (snapshot.totalRoutines < FEW_ROUTINES) {
                 contextual += AiQuickPrompt(QuickPromptId.CLEANING_PLAN)
             }
@@ -126,15 +127,15 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
             }
         }
 
-        // Se rellena con los de siempre hasta el tope, sin repetir chip.
+        // Padded with the standard ones up to the cap, without repeating a chip.
         val byId = LinkedHashMap<QuickPromptId, AiQuickPrompt>()
         (contextual + staticPrompts(memberCount)).forEach { byId.putIfAbsent(it.id, it) }
         return byId.values.take(MAX_PROMPTS)
     }
 
     /**
-     * Relleno de siempre. [QuickPromptId.WEEKLY_MENU] va el último a propósito: sigue estando
-     * siempre disponible, pero solo sube al primer puesto cuando toca planificar ([PLANNING_DAYS]).
+     * The standard padding. [QuickPromptId.WEEKLY_MENU] comes last on purpose: it stays always
+     * available, but only climbs to first place on the planning days ([PLANNING_DAYS]).
      */
     private fun staticPrompts(memberCount: Int = 1): List<AiQuickPrompt> = listOf(
         AiQuickPrompt(QuickPromptId.QUICK_DINNER),
@@ -146,16 +147,16 @@ class GetContextualQuickPromptsUseCase @Inject constructor(
     companion object {
         const val DEFAULT_TIMEOUT_MS = 2000L
 
-        /** Máximo de chips en pantalla: más no caben y saturan la vista. */
+        /** Cap on chips shown: more do not fit and clutter the view. */
         const val MAX_PROMPTS = 5
 
-        /** A partir de estos productos pendientes, la lista da para planificar recetas. */
+        /** From this many pending items on, the list is enough to plan recipes around. */
         const val MANY_ITEMS = 8
 
-        /** Por debajo de estas rutinas, se ofrece montar un plan de limpieza de golpe. */
+        /** Below this many routines, offer to build a cleaning plan in one go. */
         const val FEW_ROUTINES = 3
 
-        /** A partir de estos productos en casa, la despensa da para proponer recetas. */
+        /** From this many items at home on, the pantry is enough to suggest recipes from. */
         const val ENOUGH_PANTRY = 3
 
         private val PLANNING_DAYS = setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY, DayOfWeek.MONDAY)
