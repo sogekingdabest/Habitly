@@ -19,8 +19,8 @@ import javax.inject.Inject
 
 class ShoppingRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
-    // El widget lista los productos pendientes: si se tacha uno desde la app, tiene que
-    // enterarse. Se avisa aquí, donde se confirma la escritura, y no desde cada pantalla.
+    // The widget lists the pending products, so it has to hear about anything ticked off inside the
+    // app. It is notified here, where the write is confirmed, rather than from each screen.
     private val widgetRefresher: WidgetRefresher
 ) : ShoppingRepository {
 
@@ -39,7 +39,7 @@ class ShoppingRepositoryImpl @Inject constructor(
                 val items = snapshot.documents.mapNotNull { doc ->
                     doc.toObject(ShoppingItem::class.java)?.copy(id = doc.id)
                 }
-                // Separamos los items marcados de los no marcados para mandarlos ordenados
+                // Checked and unchecked are separated so they go out in order.
                 val unChecked = items.filter { !it.isChecked }
                 val checked = items.filter { it.isChecked }
                 trySend(unChecked + checked)
@@ -90,7 +90,7 @@ class ShoppingRepositoryImpl @Inject constructor(
             val now = System.currentTimeMillis()
             items.forEachIndexed { index, raw ->
                 val id = UUID.randomUUID().toString()
-                // Preservamos el orden de inserción sumando el índice a createdAt.
+                // Insertion order is preserved by adding the index to createdAt.
                 val item = raw.copy(id = id, isChecked = false, createdAt = now + index)
                 batch.set(collection.document(id), item)
             }
@@ -138,14 +138,14 @@ class ShoppingRepositoryImpl @Inject constructor(
                 .document(householdId)
                 .collection("shopping_items")
 
-            // Obtenemos todos los items actuales
+            // Fetch every current item.
             val snapshot = collectionRef.get().await()
             val items = snapshot.documents.mapNotNull { doc -> doc.toObject(ShoppingItem::class.java)?.copy(id = doc.id) }
 
             if (items.isEmpty()) return Result.success(Unit)
 
-            // Lo que se guarda en la despensa se calcula antes de abrir el batch, porque
-            // hay que leer lo que ya había para poder sumar cantidades.
+            // What goes into the pantry is computed before opening the batch, because adding up
+            // quantities means reading what was already there.
             val pantryWrites = if (stockPantry) {
                 val bought = items.filter { it.isChecked }
                 if (bought.isEmpty()) {
@@ -165,7 +165,7 @@ class ShoppingRepositoryImpl @Inject constructor(
 
             val batch = firestore.batch()
 
-            // 1. Guardamos el historial en otra colección usando un data class para evitar fallos de mapeo
+            // 1. File the history into another collection, through a data class to avoid mapping slips.
             val historyId = UUID.randomUUID().toString()
             val historyData = ShoppingHistory(
                 id = historyId,
@@ -180,12 +180,12 @@ class ShoppingRepositoryImpl @Inject constructor(
                 
             batch.set(historyRef, historyData)
 
-            // 2. Borramos los items de la lista activa
+            // 2. Clear the items from the active list.
             for (doc in snapshot.documents) {
                 batch.delete(doc.reference)
             }
 
-            // 3. Lo comprado pasa a la despensa
+            // 3. What was bought moves into the pantry.
             if (pantryWrites.isNotEmpty()) {
                 val pantryRef = firestore.collection("households")
                     .document(householdId)
@@ -195,7 +195,7 @@ class ShoppingRepositoryImpl @Inject constructor(
                 }
             }
 
-            // 4. Ejecutamos todo de forma 100% atómica
+            // 4. Commit the lot atomically.
             batch.commit().await()
 
             widgetRefresher.refresh()

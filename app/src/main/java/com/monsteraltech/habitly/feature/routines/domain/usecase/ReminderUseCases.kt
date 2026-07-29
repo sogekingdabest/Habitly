@@ -18,9 +18,8 @@ class ScheduleReminderUseCase @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     /**
-     * [userId] y [householdId] viajan en el trabajo para que el worker pueda releer la rutina
-     * al dispararse: su frecuencia, su pausa o su última vez pueden haber cambiado desde que
-     * se programó el recordatorio.
+     * [userId] and [householdId] travel in the work so the worker can re-read the routine when it
+     * fires: its frequency, pause or last time may have changed since the reminder was scheduled.
      */
     operator fun invoke(routine: Routine, userId: String, householdId: String) {
         val workManager = WorkManager.getInstance(context)

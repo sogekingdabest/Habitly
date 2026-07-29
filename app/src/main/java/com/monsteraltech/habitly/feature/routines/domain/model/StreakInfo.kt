@@ -1,15 +1,15 @@
 package com.monsteraltech.habitly.feature.routines.domain.model
 
 /**
- * Resumen de cumplimiento de una rutina calculado a partir de su historial de completados.
+ * A routine's completion summary, computed from its completion history.
  *
- * Las rachas se cuentan en **ocurrencias programadas**, no en días naturales: para una rutina
- * de los lunes, dos lunes seguidos son racha 2 aunque entre medias haya seis días sin tocar.
+ * Streaks are counted in **scheduled occurrences**, not calendar days: for a Monday routine, two
+ * Mondays running are a streak of 2 even with six not-due days in between.
  *
- * @param current ocurrencias consecutivas cumplidas que llegan hasta hoy (0 si la racha se rompió).
- * @param best mejor racha histórica.
- * @param total número total de días completados.
- * @param graceUsed la racha actual sigue viva porque el protector perdonó un fallo.
+ * @param current consecutive completed occurrences reaching up to today (0 if the streak broke).
+ * @param best best streak ever.
+ * @param total total number of completed days.
+ * @param graceUsed the current streak is still alive because the protector forgave a miss.
  */
 data class StreakInfo(
     val current: Int = 0,

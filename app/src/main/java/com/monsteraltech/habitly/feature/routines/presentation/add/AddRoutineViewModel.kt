@@ -32,7 +32,7 @@ data class AddRoutineUiState(
     val selectedDays: List<Int> = emptyList(),
     val intervalDays: Int = DEFAULT_INTERVAL_DAYS,
     val reminderEnabled: Boolean = false,
-    /** Hora del aviso en minutos desde medianoche; solo cuenta con [reminderEnabled]. */
+    /** Reminder time in minutes from midnight; only counts with [reminderEnabled]. */
     val reminderMinutes: Int = DEFAULT_REMINDER_MINUTES,
     val rotationEnabled: Boolean = false,
     val assignedTo: String? = null,
@@ -45,11 +45,11 @@ data class AddRoutineUiState(
     val needsDays: Boolean
         get() = frequency == RoutineFrequency.WEEKLY || frequency == RoutineFrequency.CUSTOM
 
-    /** La rotación solo tiene sentido en una casa con más de un miembro. */
+    /** Rotation only makes sense in a household with more than one member. */
     val canRotate: Boolean
         get() = type == RoutineType.HOUSEHOLD && householdMembers.size > 1
 
-    // Una semanal sin días no tocaría nunca; una personalizada sin días cuenta a diario.
+    // A weekly with no days would never be due; a custom with no days counts daily.
     val canSave: Boolean
         get() = title.isNotBlank() &&
             (frequency != RoutineFrequency.WEEKLY || selectedDays.isNotEmpty())
@@ -68,7 +68,7 @@ class AddRoutineViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(
         AddRoutineUiState(
-            // La pestaña desde la que se abrió preselecciona el tipo.
+            // The tab it was opened from preselects the type.
             type = savedStateHandle.get<String>(TYPE_ARG)
                 ?.let { name -> RoutineType.entries.find { it.name == name } }
                 ?: RoutineType.PERSONAL
@@ -94,8 +94,8 @@ class AddRoutineViewModel @Inject constructor(
     private suspend fun observeMembers(householdId: String) {
         observeHouseholdUseCase(householdId).collectLatest { household ->
             if (household == null) return@collectLatest
-            // Los nombres viajan dentro del documento de la casa; no hace falta leer
-            // /users de cada miembro (que además ya no es legible por terceros).
+            // The names travel inside the household document; no need to read each member's
+            // /users doc (which is no longer readable by third parties anyway).
             val nicknames = getMemberProfilesUseCase(household)
                 .filter { it.nickname.isNotBlank() || it.displayName.isNotBlank() }
                 .associate { it.id to it.nickname.ifBlank { it.displayName } }
@@ -141,7 +141,7 @@ class AddRoutineViewModel @Inject constructor(
     fun onRotationToggle(enabled: Boolean) = _uiState.update {
         it.copy(
             rotationEnabled = enabled,
-            // Al activarla hay que empezar por alguien.
+            // Turning it on has to start with someone.
             assignedTo = when {
                 enabled && it.assignedTo == null -> it.householdMembers.firstOrNull()
                 !enabled -> null
@@ -195,5 +195,5 @@ private const val DEFAULT_INTERVAL_DAYS = 3
 private const val MIN_INTERVAL_DAYS = 1
 private const val MAX_INTERVAL_DAYS = 365
 
-/** Las 09:00, una hora de aviso razonable por defecto. */
+/** 09:00, a reasonable default reminder time. */
 private const val DEFAULT_REMINDER_MINUTES = 9 * 60

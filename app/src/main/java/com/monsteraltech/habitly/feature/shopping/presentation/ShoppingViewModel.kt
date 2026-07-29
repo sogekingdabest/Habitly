@@ -26,20 +26,20 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Pestañas de la pantalla: la lista de la compra y lo que ya hay en casa. */
+/** The screen's tabs: the shopping list, and what is already at home. */
 enum class ShoppingTab { LIST, PANTRY }
 
-/** Tienda comodín: no filtra, y es el valor por defecto de un producto nuevo. */
+/** Wildcard store: filters nothing, and is the default for a new product. */
 const val ANY_STORE = "Cualquiera"
 
-/** Supermercados que trae la app de fábrica, antes de los que añada cada casa. */
+/** Supermarkets the app ships with, ahead of whatever each household adds. */
 val DEFAULT_STORES = listOf("Mercadona", "Lidl", "Carrefour", ANY_STORE)
 
 /**
- * Estado de la hoja de alta rápida.
+ * State of the quick-add sheet.
  *
- * Un producto solo necesita nombre; el resto de campos viven plegados tras "Más opciones"
- * con los mismos valores por defecto que tenía la pantalla completa.
+ * A product only needs a name; the remaining fields live folded away behind "More options" with the
+ * same defaults the full screen used to have.
  */
 data class QuickAddState(
     val isOpen: Boolean = false,
@@ -51,7 +51,7 @@ data class QuickAddState(
     val notes: String = "",
     val showMoreOptions: Boolean = false,
     val isSaving: Boolean = false,
-    /** Cuántos se llevan añadidos sin cerrar la hoja. */
+    /** How many have been added without closing the sheet. */
     val savedCount: Int = 0
 ) {
     val canSave: Boolean
@@ -69,13 +69,13 @@ data class ShoppingUiState(
     val error: String? = null,
     @StringRes val errorRes: Int? = null,
     val recentlyDeletedName: String? = null,
-    /** Producto recién sacado de la despensa, para ofrecer "Deshacer" tras el gesto. */
+    /** Product just taken out of the pantry, so the gesture can offer "Undo". */
     val recentlyDeletedPantryName: String? = null,
     val showCompletedSection: Boolean = false,
     val frequentItems: List<String> = emptyList(),
     val isLoadingFrequent: Boolean = false,
     val quickAdd: QuickAddState = QuickAddState(),
-    /** Productos añadidos por voz en la última tanda, para confirmarlo con un snackbar. */
+    /** Products added by voice in the last batch, to confirm with a snackbar. */
     val voiceAddedCount: Int? = null
 ) {
     val pendingItems: List<ShoppingItem>
@@ -100,8 +100,8 @@ data class ShoppingUiState(
         get() = filteredCompletedItems.groupBy { it.store }.toSortedMap()
 
     /**
-     * Con una búsqueda activa lo completado se despliega solo: tenerlo escondido es
-     * precisamente lo que hace que se dupliquen productos ya comprados.
+     * With a search active the completed section unfolds itself: keeping it hidden is exactly what
+     * makes people re-add products they have already bought.
      */
     val isCompletedSectionExpanded: Boolean
         get() = showCompletedSection || isSearching
@@ -118,26 +118,26 @@ data class ShoppingUiState(
     val pantryByCategory: Map<String, List<PantryItem>>
         get() = pantryItems.groupBy { it.category.ifBlank { OTHER_CATEGORY } }.toSortedMap()
 
-    /** Lo que ya hay en casa de lo que se está escribiendo en el alta rápida. */
+    /** How much of what is being typed into quick-add is already at home. */
     val quickAddPantryMatch: PantryItem?
         get() {
             val id = ProductNameNormalizer.toDocumentId(quickAdd.name) ?: return null
             return pantryItems.find { it.id == id }
         }
 
-    /** Producto que ya está apuntado con ese mismo nombre, pendiente o comprado. */
+    /** A product already on the list under that same name, pending or bought. */
     val quickAddDuplicate: ShoppingItem?
         get() = allItems.find { ProductNameNormalizer.isSameProduct(it.name, quickAdd.name) }
 
-    /** Cuánto hay en casa de un producto, buscándolo por nombre normalizado. */
+    /** How much of a product is at home, looked up by normalised name. */
     fun pantryQuantityOf(name: String): Int? {
         val id = ProductNameNormalizer.toDocumentId(name) ?: return null
         return pantryItems.find { it.id == id }?.quantity
     }
 
     /**
-     * Tienda y búsqueda. Buscar manda sobre el filtro de tienda a propósito: si preguntas
-     * "¿está el arroz?" quieres saberlo esté donde esté, no solo en la tienda seleccionada.
+     * Store and search. Search deliberately overrides the store filter: if you ask "is the rice on
+     * the list?" you want to know wherever it is, not only in the selected store.
      */
     private fun List<ShoppingItem>.applyFilters(): List<ShoppingItem> = when {
         isSearching -> {
@@ -186,10 +186,10 @@ class ShoppingViewModel @Inject constructor(
     private var observeStoresJob: Job? = null
     private var observePantryJob: Job? = null
 
-    // Último producto borrado, guardado en memoria para poder deshacer (re-añadir).
+    // Last deleted product, held in memory so it can be undone by re-adding it.
     private var lastDeletedItem: ShoppingItem? = null
 
-    // Lo mismo para la despensa: el gesto de sacar un producto también se puede deshacer.
+    // Same for the pantry: taking a product out is undoable too.
     private var lastDeletedPantryItem: PantryItem? = null
 
     init {
@@ -415,15 +415,15 @@ class ShoppingViewModel @Inject constructor(
         onAddItem(itemName)
     }
 
-    // ---------- Añadir por voz ----------
+    // ---------- Add by voice ----------
 
     /**
-     * Alta desde el dictado de la cabecera: "leche, huevos y pan" son tres productos.
+     * Adding from the header's dictation: "leche, huevos y pan" is three products.
      *
-     * El texto se lee con [PlainListParser], que resuelve cantidad y unidad ("dos litros de
-     * leche" → 2 L) al instante. **No pasa por el modelo local a propósito**: cargar un modelo
-     * de gigabytes y esperar una inferencia para tres palabras dichas en la cocina es
-     * exactamente el problema que esta función viene a resolver.
+     * The text goes through [PlainListParser], which resolves quantity and unit ("dos litros de
+     * leche" → 2 L) instantly. It **deliberately skips the local model**: loading a gigabyte-sized
+     * model and waiting on inference for three words said in the kitchen is precisely the problem
+     * this function exists to solve.
      */
     fun onVoiceProducts(spokenText: String) {
         val householdId = currentHouseholdId ?: return
@@ -456,9 +456,9 @@ class ShoppingViewModel @Inject constructor(
     }
 
     /**
-     * Dictado dentro de la hoja de alta rápida: rellena el formulario con lo dicho en vez de
-     * guardar. Aquí el usuario está delante del formulario, así que lo natural es que vea la
-     * cantidad y la unidad reconocidas y pulse él el botón.
+     * Dictation inside the quick-add sheet: it fills the form rather than saving. The user is
+     * looking at the form here, so the natural thing is for them to see the recognised quantity and
+     * unit and press the button themselves.
      */
     fun onQuickAddVoice(spokenText: String) {
         val product = PlainListParser.fromSpeech(spokenText, limit = 1).firstOrNull()
@@ -471,9 +471,9 @@ class ShoppingViewModel @Inject constructor(
         }
     }
 
-    // ---------- Alta rápida (hoja inferior) ----------
+    // ---------- Quick add (bottom sheet) ----------
 
-    /** Abre la hoja heredando la tienda que esté filtrada, que es casi siempre la buena. */
+    /** Opens the sheet inheriting whichever store is filtered, which is almost always the right one. */
     fun onOpenQuickAdd() {
         val store = _uiState.value.selectedStore
         _uiState.update { it.copy(quickAdd = QuickAddState(isOpen = true, store = store)) }
@@ -499,9 +499,9 @@ class ShoppingViewModel @Inject constructor(
     fun onToggleQuickAddOptions() = updateQuickAdd { it.copy(showMoreOptions = !it.showMoreOptions) }
 
     /**
-     * Guarda y **deja la hoja abierta**: vacía el nombre y conserva el resto de opciones.
-     * Apuntar diez cosas seguidas era antes diez viajes de ida y vuelta a una pantalla
-     * completa, con el teclado abriéndose y cerrándose en cada una.
+     * Saves and **leaves the sheet open**: it clears the name and keeps the other options. Jotting
+     * down ten things in a row used to mean ten round trips to a full screen, with the keyboard
+     * opening and closing each time.
      */
     fun onQuickAddSave() {
         val householdId = currentHouseholdId ?: return

@@ -25,11 +25,11 @@ import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.R
 
 /**
- * Reparto de las rutinas de casa completadas esta semana.
+ * The share-out of household routines completed this week.
  *
- * A propósito **no es un ranking**: no ordena por "ganador" ni pinta posiciones. Los
- * leaderboards motivan a unos y queman a otros, y esto es una casa, no una competición.
- * Se enseña el reparto y un total cooperativo.
+ * Deliberately **not a ranking**: it does not sort by "winner" or paint positions. Leaderboards
+ * motivate some and burn out others, and this is a home, not a competition. It shows the split and
+ * a cooperative total.
  */
 @Composable
 fun HouseholdBalanceCard(
@@ -42,7 +42,7 @@ fun HouseholdBalanceCard(
     val total = balance.values.sum()
     if (total == 0) return
 
-    // Se mantiene el orden de los miembros de la casa, no el del recuento.
+    // The household members' order is kept, not the count's.
     val rows = members.ifEmpty { balance.keys.toList() }
     val max = balance.values.maxOrNull() ?: 0
 

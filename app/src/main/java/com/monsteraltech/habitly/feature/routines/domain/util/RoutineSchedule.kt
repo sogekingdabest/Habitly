@@ -8,17 +8,17 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 /**
- * Punto único de verdad para responder "¿esta rutina toca hoy?" y "¿ya está hecha hoy?".
+ * Single source of truth for "is this routine due today?" and "is it already done today?".
  *
- * Funciones puras (sin Android ni Firestore) para poder testearlas con JUnit y para que
- * la pantalla de rutinas, el dashboard, el widget y el worker de recordatorios respondan
- * exactamente lo mismo en lugar de duplicar la lógica cada uno por su lado.
+ * Pure functions with no Android or Firestore dependency, so they are testable under JUnit and so
+ * the routines screen, the dashboard, the widget and the reminder worker all answer exactly the
+ * same rather than each duplicating the logic.
  */
 object RoutineSchedule {
 
     /**
-     * ¿Toca hacerla el día [date]? Tiene en cuenta la pausa, el calendario semanal y,
-     * en las rutinas por intervalo, cuánto ha pasado desde la última vez.
+     * Is it due on [date]? Accounts for the pause, the weekly calendar and, for interval routines,
+     * how long it has been since the last time.
      */
     fun isDueOn(
         routine: Routine,
@@ -33,9 +33,8 @@ object RoutineSchedule {
     }
 
     /**
-     * Solo la parte de calendario semanal, sin pausa ni intervalo. La usa el cálculo de
-     * rachas, que necesita saber en qué días del pasado tocaba sin arrastrar el estado
-     * actual de la rutina.
+     * The weekly-calendar part only, with no pause or interval. Used by the streak calculation,
+     * which needs to know which past days were due without dragging in the routine's current state.
      */
     fun matchesDayOfWeek(routine: Routine, date: LocalDate): Boolean {
         val dayOfWeek = date.toCalendarDayOfWeek()
@@ -44,12 +43,12 @@ object RoutineSchedule {
             RoutineFrequency.WEEKLY -> routine.scheduledDays.contains(dayOfWeek)
             RoutineFrequency.CUSTOM ->
                 routine.scheduledDays.isEmpty() || routine.scheduledDays.contains(dayOfWeek)
-            // El día de la semana no restringe a las rutinas por intervalo.
+            // The day of the week does not constrain interval routines.
             RoutineFrequency.EVERY_N_DAYS -> true
         }
     }
 
-    /** ¿Está en modo vacaciones el día [date]? */
+    /** Is it in holiday mode on [date]? */
     fun isPausedOn(
         routine: Routine,
         date: LocalDate,
@@ -60,7 +59,7 @@ object RoutineSchedule {
         return !date.isAfter(until)
     }
 
-    /** ¿La rutina se marcó como completada el día [date]? */
+    /** Was the routine marked completed on [date]? */
     fun isCompletedOn(
         routine: Routine,
         date: LocalDate,
@@ -70,7 +69,7 @@ object RoutineSchedule {
         return Instant.ofEpochMilli(lastCompletedAt).atZone(zone).toLocalDate() == date
     }
 
-    /** ¿Toca hacerla el día [date] y sigue sin hacerse? */
+    /** Is it due on [date] and still not done? */
     fun isPendingOn(
         routine: Routine,
         date: LocalDate,
@@ -78,11 +77,11 @@ object RoutineSchedule {
     ): Boolean = isDueOn(routine, date, zone) && !isCompletedOn(routine, date, zone)
 
     /**
-     * Cuántas veces tocaba hacerla entre [from] y [to], ambos incluidos. Es el denominador de
-     * la tasa de cumplimiento.
+     * How many times it was due between [from] and [to], both inclusive. This is the denominator of
+     * the completion rate.
      *
-     * En las rutinas por intervalo se estima a partir del propio intervalo: el "¿tocaba aquel
-     * día?" del pasado dependería del historial de completados de entonces, que no reconstruimos.
+     * For interval routines it is estimated from the interval itself: a past "was it due that day?"
+     * would depend on the completion history of the time, which is not reconstructed.
      */
     fun expectedOccurrences(routine: Routine, from: LocalDate, to: LocalDate): Int {
         if (to.isBefore(from)) return 0
@@ -103,8 +102,8 @@ object RoutineSchedule {
     }
 
     /**
-     * Una rutina por intervalo toca cuando nunca se ha hecho o cuando desde la última vez
-     * han pasado al menos [Routine.intervalDays] días.
+     * An interval routine is due when it has never been done, or when at least [Routine.intervalDays]
+     * days have passed since the last time.
      */
     private fun isIntervalDueOn(routine: Routine, date: LocalDate, zone: ZoneId): Boolean {
         val interval = routine.intervalDays?.takeIf { it > 0 } ?: return true
@@ -113,6 +112,6 @@ object RoutineSchedule {
         return ChronoUnit.DAYS.between(lastDate, date) >= interval
     }
 
-    /** `java.time` numera lunes=1..domingo=7; `Calendar` (lo que guarda [Routine]) domingo=1..sábado=7. */
+    /** `java.time` numbers Monday=1..Sunday=7; `Calendar` (what [Routine] stores) Sunday=1..Saturday=7. */
     private fun LocalDate.toCalendarDayOfWeek(): Int = dayOfWeek.value % 7 + 1
 }

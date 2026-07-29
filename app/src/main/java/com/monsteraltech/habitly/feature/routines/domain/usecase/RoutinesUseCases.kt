@@ -12,10 +12,10 @@ import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 
-/** Días permitidos en una rutina "cada N días". */
+/** Allowed day counts in an "every N days" routine. */
 private val INTERVAL_RANGE = 1..365
 
-/** Normaliza el intervalo: solo tiene sentido en [RoutineFrequency.EVERY_N_DAYS]. */
+/** Normalises the interval: it only makes sense for [RoutineFrequency.EVERY_N_DAYS]. */
 private fun sanitizeInterval(frequency: RoutineFrequency, intervalDays: Int?): Int? =
     if (frequency == RoutineFrequency.EVERY_N_DAYS) {
         (intervalDays ?: INTERVAL_RANGE.first).coerceIn(INTERVAL_RANGE)
@@ -54,7 +54,7 @@ class AddRoutineUseCase @Inject constructor(
     ): Result<Routine> {
         if (title.isBlank()) return Result.failure(Exception("El título no puede estar vacío"))
 
-        // La rotación solo existe en las rutinas de casa.
+        // Rotation only exists on household routines.
         val rotates = rotationEnabled && type == RoutineType.HOUSEHOLD
 
         val routine = Routine(
@@ -163,7 +163,7 @@ class ReorderRoutineUseCase @Inject constructor(
     }
 }
 
-/** Fechas completadas de una rutina en un rango, para pintar el calendario de la ficha. */
+/** A routine's completed dates within a range, for painting the detail sheet's calendar. */
 class GetRoutineCompletionsUseCase @Inject constructor(
     private val repository: RoutinesRepository
 ) {
@@ -186,10 +186,10 @@ class GetRoutineCompletionsUseCase @Inject constructor(
 }
 
 /**
- * Pasa el turno de una rutina rotativa al siguiente miembro de la casa.
+ * Passes a rotating routine's turn to the next household member.
  *
- * Solo actúa sobre rutinas de casa con la rotación activada; en cualquier otro caso no
- * escribe nada, para que el llamante pueda invocarlo sin comprobar condiciones.
+ * It only acts on household routines with rotation enabled; anything else writes nothing, so the
+ * caller can invoke it without checking conditions first.
  */
 class AdvanceRotationUseCase @Inject constructor(
     private val repository: RoutinesRepository
@@ -217,7 +217,7 @@ class AdvanceRotationUseCase @Inject constructor(
     }
 }
 
-/** Devuelve el turno a quien ha desmarcado la rutina (deshacer un completado). */
+/** Returns the turn to whoever unmarked the routine (undoing a completion). */
 class ReturnRotationUseCase @Inject constructor(
     private val repository: RoutinesRepository
 ) {
@@ -240,11 +240,11 @@ class ReturnRotationUseCase @Inject constructor(
 }
 
 /**
- * Cuántas rutinas de casa ha completado cada miembro en un rango de fechas.
+ * How many household routines each member has completed within a date range.
  *
- * Hace una consulta por rutina (N+1). Se asume a propósito: una casa tiene pocas rutinas
- * compartidas, y la alternativa (una *collection group query* sobre `completions`) obligaría
- * a añadir reglas nuevas de Firestore, que es justo lo que este plan evita.
+ * Makes one query per routine (N+1). Accepted on purpose: a household has few shared routines, and
+ * the alternative — a collection group query over `completions` — would force new Firestore rules,
+ * which is exactly what this plan avoids.
  */
 class GetHouseholdBalanceUseCase @Inject constructor(
     private val repository: RoutinesRepository

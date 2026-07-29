@@ -26,14 +26,14 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /**
- * Calendario mensual de cumplimiento de una rutina.
+ * A routine's monthly completion calendar.
  *
- * Se pinta a partir de la subcolección `completions`, que ya existía: cada día completado es
- * un documento con id `yyyy-MM-dd`.
+ * It is painted from the `completions` subcollection, which already existed: each completed day is
+ * a document with id `yyyy-MM-dd`.
  *
- * Accesibilidad: la cuadrícula es decorativa a propósito. Leer 31 celdas con TalkBack sería
- * ruido; la información real (racha actual, mejor racha y cumplimiento) va como texto justo
- * encima, en [com.monsteraltech.habitly.feature.routines.presentation.RoutineDetailSheet].
+ * Accessibility: the grid is decorative on purpose. Reading 31 cells with TalkBack would be noise;
+ * the real information (current streak, best streak and completion) goes as text just above it, in
+ * [com.monsteraltech.habitly.feature.routines.presentation.RoutineDetailSheet].
  */
 @Composable
 fun CompletionHeatmap(
@@ -44,7 +44,7 @@ fun CompletionHeatmap(
     today: LocalDate = LocalDate.now()
 ) {
     val firstDay = month.atDay(1)
-    // java.time numera lunes=1: los huecos previos alinean el día 1 con su columna.
+    // java.time numbers Monday=1: the leading blanks align day 1 with its column.
     val leadingBlanks = firstDay.dayOfWeek.value - 1
     val daysInMonth = month.lengthOfMonth()
     val cells = leadingBlanks + daysInMonth
@@ -101,7 +101,7 @@ private fun DayCell(
 ) {
     val isCompleted = date in completedDates
     val isFuture = date.isAfter(today)
-    // Solo marcamos como fallado lo que ya pasó: hoy sigue siendo recuperable.
+    // Only the past is marked as missed: today is still recoverable.
     val isMissed = !isCompleted && !isFuture && date != today && isDueOn(date)
 
     val background = when {
@@ -142,7 +142,7 @@ private fun DayCell(
 private const val DAYS_PER_WEEK = 7
 private val CELL_SIZE = 36.dp
 
-/** De lunes a domingo, en el mismo orden en que `java.time` numera los días. */
+/** Monday to Sunday, in the same order `java.time` numbers the days. */
 private val WEEKDAY_LABELS = listOf(
     R.string.routines_day_mon,
     R.string.routines_day_tue,

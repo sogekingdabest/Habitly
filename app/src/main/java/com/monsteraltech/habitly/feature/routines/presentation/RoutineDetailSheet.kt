@@ -44,8 +44,8 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 /**
- * Ficha de progreso de una rutina: rachas, cumplimiento del mes, calendario de completados
- * y el interruptor de modo vacaciones.
+ * A routine's progress sheet: streaks, the month's completion, the completions calendar and the
+ * holiday-mode switch.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,8 +100,8 @@ fun RoutineDetailSheet(
                 CompletionHeatmap(
                     month = detail.month,
                     completedDates = detail.completedDates,
-                    // El calendario semanal, sin la pausa ni el intervalo: enseña los días
-                    // en los que tocaba por diseño, no si hoy toca.
+                    // The weekly calendar, without the pause or interval: it shows the days it was
+                    // due by design, not whether it is due today.
                     isDueOn = { date -> RoutineSchedule.matchesDayOfWeek(routine, date) }
                 )
                 Text(

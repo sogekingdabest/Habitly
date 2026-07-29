@@ -7,26 +7,26 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 /**
- * Calcula rachas de cumplimiento a partir de las fechas en las que se completó una rutina.
- * Funciones puras (sin dependencias de Android/Firestore) para poder testearlas con JUnit.
+ * Computes completion streaks from the dates a routine was completed on. Pure functions with no
+ * Android or Firestore dependency, so they are testable under JUnit.
  *
- * Dos reglas de diseño, ambas pensadas para que la racha no desmotive:
+ * Two design rules, both meant to keep the streak from being demotivating:
  *
- * 1. **Se cuentan ocurrencias programadas, no días naturales.** Una rutina de los lunes suma
- *    racha lunes tras lunes; los días en los que no tocaba ni suman ni rompen. (Antes se
- *    contaban días consecutivos, así que ninguna rutina no diaria pasaba de racha 1.)
- * 2. **Protector de racha**: se perdonan hasta [DEFAULT_GRACE_MISSES] ocurrencias falladas antes
- *    de dar la racha por rota. El día de hoy nunca cuenta como fallo mientras no termine.
+ * 1. **Scheduled occurrences are counted, not calendar days.** A Monday routine builds a streak
+ *    Monday after Monday; days it was not due neither add nor break. (This used to count
+ *    consecutive days, so no non-daily routine ever got past a streak of 1.)
+ * 2. **Streak protector**: up to [DEFAULT_GRACE_MISSES] missed occurrences are forgiven before the
+ *    streak is considered broken. Today never counts as a miss until it is over.
  */
 object StreakCalculator {
 
-    /** Fallos perdonados antes de romper la racha. */
+    /** Misses forgiven before the streak breaks. */
     const val DEFAULT_GRACE_MISSES = 1
 
-    /** Tope de días hacia atrás que se recorren, para que el cálculo no crezca sin límite. */
+    /** How many days back the scan goes, so the calculation cannot grow without bound. */
     private const val MAX_LOOKBACK_DAYS = 400L
 
-    /** Punto de entrada: elige la regla que corresponde a la frecuencia de la rutina. */
+    /** Entry point: picks the rule matching the routine's frequency. */
     fun forRoutine(
         routine: Routine,
         completedDates: Collection<LocalDate>,
@@ -51,8 +51,8 @@ object StreakCalculator {
     }
 
     /**
-     * Rachas por calendario: recorre los días en los que tocaba hacerla.
-     * Con [isDueOn] por defecto (siempre toca) equivale a contar días naturales.
+     * Calendar streaks: walks the days it was due. With the default [isDueOn] (always due) this is
+     * the same as counting calendar days.
      */
     fun calculate(
         completedDates: Collection<LocalDate>,
@@ -66,7 +66,7 @@ object StreakCalculator {
         val earliest = days.first()
         val horizon = maxOf(earliest, today.minusDays(MAX_LOOKBACK_DAYS))
 
-        // Racha actual: hacia atrás desde hoy, perdonando hasta graceMisses ocurrencias.
+        // Current streak: backwards from today, forgiving up to graceMisses occurrences.
         var current = 0
         var misses = 0
         var cursor = today
@@ -74,7 +74,7 @@ object StreakCalculator {
             if (isDueOn(cursor)) {
                 when {
                     days.contains(cursor) -> current++
-                    // El día de hoy aún no ha terminado: no puede contar como fallo.
+                    // Today is not over yet: it cannot count as a miss.
                     cursor == today -> Unit
                     else -> {
                         misses++
@@ -85,7 +85,7 @@ object StreakCalculator {
             cursor = cursor.minusDays(1)
         }
 
-        // Mejor racha: tramo más largo de ocurrencias consecutivas cumplidas, sin tolerancia.
+        // Best streak: longest run of consecutive completed occurrences, no tolerance.
         var best = 0
         var run = 0
         var scan = horizon
@@ -96,7 +96,7 @@ object StreakCalculator {
                         run++
                         if (run > best) best = run
                     }
-                    // Hoy sin marcar todavía no corta el tramo.
+                    // Today, still unmarked, does not cut the run.
                     scan == today -> Unit
                     else -> run = 0
                 }
@@ -113,8 +113,8 @@ object StreakCalculator {
     }
 
     /**
-     * Rachas por intervalo ("cada N días"): la racha sigue viva mientras el hueco entre
-     * completados no supere [intervalDays] más la tolerancia [graceDays].
+     * Interval streaks ("every N days"): the streak stays alive while the gap between completions
+     * does not exceed [intervalDays] plus the [graceDays] tolerance.
      */
     fun calculateByInterval(
         completedDates: Collection<LocalDate>,
@@ -146,7 +146,7 @@ object StreakCalculator {
             }
         }
 
-        // Mejor racha: tramo más largo con huecos dentro del intervalo, sin tolerancia.
+        // Best streak: longest run with gaps within the interval, no tolerance.
         var best = 1
         var run = 1
         var previous: LocalDate? = null

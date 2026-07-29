@@ -18,13 +18,13 @@ import dagger.hilt.android.EntryPointAccessors
 import java.time.LocalDate
 
 /**
- * Notifica una rutina a su hora. El trabajo es periódico diario, así que en cada disparo
- * hay que decidir si hoy toca de verdad.
+ * Notifies a routine at its time. The work is a daily periodic job, so each firing has to decide
+ * whether it is genuinely due today.
  *
- * Relee la rutina de Firestore (que resuelve desde su caché offline, sin necesitar red) en vez
- * de fiarse de lo que se guardó al programar el recordatorio: la frecuencia, la pausa o la
- * última vez que se hizo pueden haber cambiado desde entonces, y en las rutinas "cada N días"
- * el "¿toca hoy?" depende justo de ese último dato.
+ * It re-reads the routine from Firestore — which resolves from its offline cache, needing no
+ * network — rather than trusting what was saved when the reminder was scheduled: the frequency, the
+ * pause or the last time done may have changed since, and for "every N days" routines "is it due
+ * today?" depends on exactly that last piece of data.
  */
 class RoutineReminderWorker(
     context: Context,
@@ -32,7 +32,7 @@ class RoutineReminderWorker(
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
-        // Interruptor maestro de recordatorios (Ajustes). Si está apagado, no molestamos.
+        // Master reminders switch (Settings). If it is off, do not disturb.
         if (!SettingsRepositoryImpl.readRemindersEnabled(applicationContext)) return Result.success()
 
         val routineId = inputData.getString(KEY_ROUTINE_ID) ?: return Result.failure()
@@ -49,20 +49,20 @@ class RoutineReminderWorker(
 
         val routineResult = repository.getRoutine(userId, householdId, routineId, type)
 
-        // No se pudo leer (sin red y sin caché): avisamos con lo último que sabíamos.
+        // Could not be read (no network and no cache): notify with the last thing we knew.
         if (routineResult.isFailure) {
             showNotification(fallbackTitle, routineId)
             return Result.success()
         }
 
-        // Se leyó bien pero no existe: la rutina se borró, el recordatorio sobra.
+        // Read fine but does not exist: the routine was deleted, the reminder is moot.
         val routine = routineResult.getOrNull() ?: return Result.success()
 
-        // No molestamos si hoy no toca, si está en pausa o si ya está hecha.
+        // Do not disturb if it is not due today, is paused, or is already done.
         if (!RoutineSchedule.isPendingOn(routine, LocalDate.now())) return Result.success()
 
-        // Si la rutina está asignada a otro miembro, no es asunto de este usuario.
-        // Esto da el "te toca a ti" sin necesitar FCM ni backend.
+        // If the routine is assigned to another member, it is not this user's concern. This is what
+        // gives "it's your turn" without needing FCM or a backend.
         val assignedTo = routine.assignedTo
         if (assignedTo != null && userId.isNotBlank() && assignedTo != userId) {
             return Result.success()
@@ -75,8 +75,8 @@ class RoutineReminderWorker(
     private fun showNotification(title: String, routineId: String) {
         val channelId = "routines_reminders"
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // Contexto con el idioma elegido en Ajustes: el applicationContext no lo refleja (solo
-        // el de la Activity), así que sin esto los textos salían en el idioma del sistema.
+        // Context carrying the language chosen in Settings: applicationContext does not reflect it
+        // (only the Activity's does), so without this the texts came out in the system language.
         val ctx = LocaleHelper.wrap(applicationContext)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

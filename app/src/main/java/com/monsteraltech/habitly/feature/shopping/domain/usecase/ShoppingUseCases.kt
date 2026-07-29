@@ -24,10 +24,10 @@ class AddShoppingItemUseCase @Inject constructor(
 }
 
 /**
- * Alta de varios productos de golpe (dictado por voz), en un único batch: tres escrituras
- * sueltas serían tres repintados de la lista y tres refrescos del widget.
+ * Adds several products at once (voice dictation) in a single batch: three separate writes would
+ * mean three list repaints and three widget refreshes.
  *
- * @return cuántos se han dado de alta.
+ * @return how many were added.
  */
 class AddShoppingItemsUseCase @Inject constructor(
     private val repository: ShoppingRepository
@@ -65,7 +65,7 @@ class DeleteShoppingItemUseCase @Inject constructor(
 class ArchiveShoppingListUseCase @Inject constructor(
     private val repository: ShoppingRepository
 ) {
-    /** @param stockPantry si lo comprado debe guardarse además en la despensa. */
+    /** @param stockPantry whether what was bought should also be stored in the pantry. */
     suspend operator fun invoke(householdId: String, stockPantry: Boolean = true): Result<Unit> {
         return repository.archiveShoppingList(householdId, stockPantry)
     }

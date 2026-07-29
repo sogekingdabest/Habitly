@@ -6,8 +6,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
 /**
- * Puente para obtener dependencias de Hilt desde el worker de recordatorios, que WorkManager
- * instancia por su cuenta. Sigue el mismo enfoque "sin hilt-work" que el widget.
+ * Bridge for pulling Hilt dependencies into the reminder worker, which WorkManager instantiates on
+ * its own. Follows the same "no hilt-work" approach as the widget.
  */
 @EntryPoint
 @InstallIn(SingletonComponent::class)

@@ -52,7 +52,7 @@ import androidx.compose.ui.graphics.Color
 import java.time.LocalDate
 import java.util.Calendar
 
-/** Lo que devuelve el formulario de alta/edición de una rutina. */
+/** What the routine create/edit form returns. */
 data class RoutineFormResult(
     val title: String,
     val description: String,
@@ -212,8 +212,8 @@ fun RoutinesScreen(
 }
 
 /**
- * Formulario compartido por el alta y la edición: antes eran dos diálogos casi idénticos,
- * y cada campo nuevo (como el intervalo) había que añadirlo por duplicado.
+ * Form shared by create and edit: these used to be two near-identical dialogs, and each new field
+ * (like the interval) had to be added in both.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -247,7 +247,7 @@ private fun RoutineFormDialog(
     var showTimePicker by remember { mutableStateOf(false) }
 
     val needsDays = frequency == RoutineFrequency.WEEKLY || frequency == RoutineFrequency.CUSTOM
-    // La rotación solo tiene sentido en una casa con más de un miembro.
+    // Rotation only makes sense in a household with more than one member.
     val canRotate = type == RoutineType.HOUSEHOLD && members.size > 1
 
     AlertDialog(
@@ -381,7 +381,7 @@ private fun RoutineFormDialog(
                             checked = rotationEnabled,
                             onCheckedChange = { enabled ->
                                 rotationEnabled = enabled
-                                // Al activarla hay que empezar por alguien.
+                                // Turning it on has to start with someone.
                                 if (enabled && assignedTo == null) assignedTo = members.firstOrNull()
                                 if (!enabled) assignedTo = null
                             }
@@ -509,8 +509,8 @@ fun RoutineCard(
     )
     val deleteLabel = stringResource(R.string.routines_delete_routine)
 
-    // Deslizar a la derecha marca/desmarca; a la izquierda abre la confirmación de borrado
-    // (por eso `dismissOnDelete = false`: la tarjeta sigue ahí hasta que el usuario confirme).
+    // Swipe right toggles done; swipe left opens the delete confirmation (hence
+    // `dismissOnDelete = false`: the card stays put until the user confirms).
     HabitlySwipeRow(
         onPrimaryAction = onToggle,
         onDelete = { showDeleteDialog = true },
@@ -561,7 +561,7 @@ fun RoutineCard(
 
             Spacer(modifier = Modifier.width(4.dp))
 
-            // Indicador visual de completado; el toggle accesible es la tarjeta (Role.Checkbox).
+            // Visual completion indicator; the accessible toggle is the card (Role.Checkbox).
             RitualToggle(checked = isCompleted, size = 28.dp)
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -605,7 +605,7 @@ fun RoutineCard(
                     )
                 }
 
-                // De quién es el turno. "Te toca a ti" se destaca porque es lo accionable.
+                // Whose turn it is. "It's your turn" stands out because it is the actionable part.
                 if (routine.assignedTo != null && !isCompleted) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(

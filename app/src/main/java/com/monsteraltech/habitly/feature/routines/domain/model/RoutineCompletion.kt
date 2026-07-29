@@ -3,8 +3,8 @@ package com.monsteraltech.habitly.feature.routines.domain.model
 import java.time.LocalDate
 
 /**
- * Un día en el que se completó una rutina, y quién lo hizo.
- * Se corresponde con un documento de la subcolección `completions/{yyyy-MM-dd}`.
+ * A day a routine was completed on, and who did it. Corresponds to a document in the
+ * `completions/{yyyy-MM-dd}` subcollection.
  */
 data class RoutineCompletion(
     val date: LocalDate,

@@ -12,16 +12,16 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 /**
- * Reparto de las rutinas de casa: quién ha hecho cuántas esta semana, cuántas la semana pasada y
- * cuántos días seguidos lleva la casa completando todo lo que tocaba.
+ * The share-out of household routines: who has done how many this week, how many last week, and how
+ * many days running the household has completed everything that was due.
  *
- * Se lee **una sola ventana** de historial por rutina (desde el lunes de la semana pasada, o más
- * atrás si hace falta para la racha) y de ahí salen las tres cifras. Hacerlo con
- * [GetHouseholdBalanceUseCase] dos veces —una por semana— costaría el doble de consultas.
+ * A **single window** of history is read per routine — from last week's Monday, or further back if
+ * the streak needs it — and all three figures come out of it. Doing this with
+ * [GetHouseholdBalanceUseCase] twice, one per week, would cost twice the queries.
  *
- * Como [GetHouseholdBalanceUseCase], hace una consulta por rutina de casa (N+1). Se asume a
- * propósito: una casa tiene pocas rutinas compartidas, y la alternativa (*collection group query*)
- * exigiría tocar las reglas de Firestore.
+ * Like [GetHouseholdBalanceUseCase], it makes one query per household routine (N+1). That is
+ * accepted on purpose: a household has few shared routines, and the alternative — a collection group
+ * query — would mean touching the Firestore rules.
  */
 class GetHouseholdShareUseCase @Inject constructor(
     private val repository: RoutinesRepository
@@ -42,7 +42,7 @@ class GetHouseholdShareUseCase @Inject constructor(
             val lastMonday = thisMonday.minusWeeks(1)
             val from = minOf(lastMonday, today.minusDays(STREAK_LOOKBACK_DAYS))
 
-            // uid → días completados, y día → rutinas completadas ese día (para la racha).
+            // uid → completed days, and day → routines completed that day (for the streak).
             val completionsByRoutine = mutableMapOf<String, List<RoutineCompletion>>()
             for (routine in routines) {
                 completionsByRoutine[routine.id] = repository.getCompletions(
@@ -66,7 +66,7 @@ class GetHouseholdShareUseCase @Inject constructor(
         }
     }
 
-    /** Completados por miembro dentro del rango (ambos incluidos). */
+    /** Completions per member within the range, both ends inclusive. */
     private fun List<RoutineCompletion>.countByMemberBetween(
         from: LocalDate,
         to: LocalDate
@@ -76,15 +76,15 @@ class GetHouseholdShareUseCase @Inject constructor(
             .eachCount()
 
     /**
-     * Días seguidos, hacia atrás desde hoy, en los que se completó **todo** lo que tocaba en casa.
+     * Days running, backwards from today, on which **everything** the household had due got done.
      *
-     * Reglas, alineadas con `StreakCalculator` para que la racha de la casa no desmotive:
-     *  - un día en el que no tocaba nada no suma ni rompe (no se puede fallar lo que no toca),
-     *  - hoy nunca cuenta como fallo mientras no termine,
-     *  - las rutinas "cada N días" quedan fuera del cálculo: saber si tocaban un día del pasado
-     *    exigiría reconstruir el historial de completados de entonces (la misma limitación que
-     *    documenta `RoutineSchedule.expectedOccurrences`), y exigirlas a diario rompería la
-     *    racha de cualquier casa.
+     * Rules, aligned with `StreakCalculator` so the house streak is not demotivating:
+     *  - a day with nothing due neither adds nor breaks (you cannot fail what is not due),
+     *  - today never counts as a miss until it is over,
+     *  - "every N days" routines are left out of the calculation: knowing whether they were due on
+     *    a past day would mean reconstructing the completion history of the time (the same limit
+     *    `RoutineSchedule.expectedOccurrences` documents), and requiring them daily would break any
+     *    household's streak.
      */
     private fun houseStreak(
         routines: List<Routine>,
@@ -112,7 +112,7 @@ class GetHouseholdShareUseCase @Inject constructor(
                 }
                 when {
                     allDone -> streak++
-                    // El día de hoy aún no ha terminado: no puede contar como fallo.
+                    // Today is not over yet: it cannot count as a miss.
                     cursor == today -> Unit
                     else -> return streak
                 }
@@ -124,7 +124,7 @@ class GetHouseholdShareUseCase @Inject constructor(
     }
 
     private companion object {
-        /** Tope de días hacia atrás que se leen y se recorren para la racha de la casa. */
+        /** How many days back are read and scanned for the house streak. */
         const val STREAK_LOOKBACK_DAYS = 30L
     }
 }

@@ -3,16 +3,15 @@ package com.monsteraltech.habitly.feature.shopping.domain.util
 import java.text.Normalizer
 
 /**
- * Normaliza nombres de producto para poder compararlos: "Tomate", " tomate " y "TOMÁTE"
- * son el mismo producto.
+ * Normalises product names so they can be compared: "Tomate", " tomate " and "TOMÁTE" are the same
+ * product.
  *
- * La despensa usa el nombre normalizado como id de documento en Firestore, así que la
- * deduplicación sale gratis: comprar tomates dos semanas seguidas actualiza el mismo
- * documento en vez de crear dos.
+ * The pantry uses the normalised name as the Firestore document id, so deduplication comes for
+ * free: buying tomatoes two weeks running updates the same document instead of creating two.
  */
 object ProductNameNormalizer {
 
-    /** Minúsculas, sin tildes y con los espacios colapsados. */
+    /** Lowercased, unaccented and with whitespace collapsed. */
     fun normalize(name: String): String =
         Normalizer.normalize(name.trim().lowercase(), Normalizer.Form.NFD)
             .replace(DIACRITICS, "")
@@ -20,9 +19,8 @@ object ProductNameNormalizer {
             .trim()
 
     /**
-     * Id de documento a partir del nombre. Firestore prohíbe `/` en los ids y no admite
-     * `.` ni `..` como id completo, así que se sustituyen los caracteres conflictivos.
-     * Devuelve null si no queda nada utilizable.
+     * Document id from the name. Firestore forbids `/` in ids and rejects `.` and `..` as whole
+     * ids, so the offending characters are substituted. Returns null when nothing usable is left.
      */
     fun toDocumentId(name: String): String? {
         val normalized = normalize(name)
@@ -32,7 +30,7 @@ object ProductNameNormalizer {
         return normalized.takeIf { it.isNotBlank() }
     }
 
-    /** ¿Dos nombres se refieren al mismo producto? */
+    /** Whether two names refer to the same product. */
     fun isSameProduct(a: String, b: String): Boolean = normalize(a) == normalize(b)
 
     private val DIACRITICS = Regex("\\p{Mn}+")

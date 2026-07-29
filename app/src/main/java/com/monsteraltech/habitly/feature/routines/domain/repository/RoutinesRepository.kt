@@ -12,29 +12,29 @@ interface RoutinesRepository {
     suspend fun addRoutine(userId: String, householdId: String, routine: Routine): Result<Unit>
 
     /**
-     * Lee una rutina concreta. Se apoya en la caché offline de Firestore, así que sirve
-     * para consultarla desde un worker sin depender de la red.
+     * Reads a single routine. It leans on Firestore's offline cache, so it works from a worker
+     * without depending on the network.
      */
     suspend fun getRoutine(userId: String, householdId: String, routineId: String, type: RoutineType): Result<Routine?>
 
     /**
-     * Registra (o borra) el completado del día y recalcula la racha.
-     * Necesita la [Routine] entera, no solo su id, porque la racha depende de la frecuencia.
+     * Records (or removes) the day's completion and recomputes the streak. It needs the whole
+     * [Routine], not just its id, because the streak depends on the frequency.
      */
     suspend fun updateRoutineCompletion(userId: String, householdId: String, routine: Routine, completedAt: Long?, completedBy: String?): Result<Unit>
 
-    /** Días en los que se completó la rutina dentro del rango, con quién la hizo. */
+    /** The days the routine was completed within the range, and who did it. */
     suspend fun getCompletions(userId: String, householdId: String, routineId: String, type: RoutineType, from: LocalDate, to: LocalDate): Result<List<RoutineCompletion>>
 
     suspend fun deleteRoutine(userId: String, householdId: String, routineId: String, type: RoutineType): Result<Unit>
 
     /**
-     * Guarda los campos editables de [routine] (título, descripción, frecuencia, recordatorio,
-     * pausa y rotación). Recibe la rutina entera en vez de una lista larga de parámetros.
+     * Saves [routine]'s editable fields (title, description, frequency, reminder, pause and
+     * rotation). Takes the whole routine rather than a long parameter list.
      */
     suspend fun updateRoutine(userId: String, householdId: String, routine: Routine): Result<Unit>
 
-    /** Cambia de turno una rutina rotativa sin tocar el resto de campos. */
+    /** Advances a rotating routine's turn without touching its other fields. */
     suspend fun updateRoutineAssignment(userId: String, householdId: String, routineId: String, type: RoutineType, assignedTo: String?): Result<Unit>
 
     suspend fun reorderRoutines(userId: String, householdId: String, type: RoutineType, orderedIds: List<String>): Result<Unit>

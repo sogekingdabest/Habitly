@@ -8,16 +8,16 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.monsteraltech.habitly.R
 
-/** Unidad por defecto de un producto; con ella y cantidad 1 no hace falta enseñar nada. */
+/** A product's default unit; with it and a quantity of 1 there is nothing worth showing. */
 const val DEFAULT_UNIT = "unidad"
 
 /**
- * "2 kg", "3 unidades", "1 paquete" — bien formados en español y en inglés.
+ * "2 kg", "3 unidades", "1 paquete" — correctly formed in both Spanish and English.
  *
- * Antes se concatenaba a mano añadiendo una "s" cuando la cantidad pasaba de uno, lo que
- * producía "2 kgs" y "3 unidads". Las unidades se guardan con su nombre en español (es lo
- * que hay en Firestore), así que aquí se traducen a un `<plurals>` por unidad; una unidad
- * inventada por el usuario cae en el formato genérico.
+ * This used to be hand-concatenated with an "s" appended past a quantity of one, which produced
+ * "2 kgs" and "3 unidads". Units are stored under their Spanish names, which is what Firestore
+ * holds, so here each maps to its own `<plurals>`; a unit the user invented falls through to the
+ * generic format.
  */
 @Composable
 fun quantityWithUnit(quantity: Int, unit: String): String {
@@ -27,8 +27,8 @@ fun quantityWithUnit(quantity: Int, unit: String): String {
 }
 
 /**
- * Cantidad y unidad de un producto, o nada cuando es "1 unidad": repetir lo que ya se da por
- * supuesto solo añade ruido a la fila.
+ * A product's quantity and unit, or nothing at all when it is "1 unidad": restating what is already
+ * assumed only adds noise to the row.
  */
 @Composable
 fun ItemQuantityLabel(quantity: Int, unit: String, modifier: Modifier = Modifier) {

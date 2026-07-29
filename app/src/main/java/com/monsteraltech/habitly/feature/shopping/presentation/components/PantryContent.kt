@@ -41,10 +41,10 @@ import com.monsteraltech.habitly.ui.components.HabitlySwipeRow
 import com.monsteraltech.habitly.ui.components.swipeRowSemantics
 
 /**
- * Vista de la despensa: lo que hay en casa, agrupado por categoría.
+ * The pantry view: what is at home, grouped by category.
  *
- * Es deliberadamente simple (sin caducidades ni escaneos). Su valor está en que el asistente
- * la lee para responder "¿qué ceno con lo que tengo?" y para pedir solo lo que falta.
+ * Deliberately simple — no expiry dates, no barcode scanning. Its value is that the assistant reads
+ * it to answer "what can I cook with what I have?" and to ask only for what is missing.
  */
 @Composable
 fun PantryContent(
@@ -143,7 +143,7 @@ private fun PantryCategoryCard(
             )
             val rowColor = MaterialTheme.colorScheme.surface
             items.forEach { item ->
-                // key por id: ata el estado del gesto al producto, no a su posición.
+                // key by id: ties the gesture state to the product, not to its position.
                 key(item.id) {
                     PantryItemRow(
                         item = item,
@@ -158,10 +158,9 @@ private fun PantryCategoryCard(
 }
 
 /**
- * Fila de la despensa. Mismo patrón que la lista de la compra: deslizar a la derecha gasta
- * una unidad, deslizar a la izquierda saca el producto de casa (con deshacer). El botón de
- * borrar sale de la fila: era la única diana destructiva pegada a los botones de cantidad,
- * que son los que de verdad se usan.
+ * A pantry row. Same pattern as the shopping list: swipe right to use one unit, swipe left to take
+ * the product out of the house (with undo). The delete button leaves the row: it was the one
+ * destructive target sitting next to the quantity buttons, which are what actually get used.
  */
 @Composable
 private fun PantryItemRow(
@@ -210,7 +209,7 @@ private fun PantryItemRow(
                 )
             }
 
-            // La cantidad ya la anuncian los botones; leerla otra vez sería ruido.
+            // The buttons already announce the quantity; reading it again would be noise.
             Text(
                 text = quantityWithUnit(item.quantity, item.unit),
                 style = MaterialTheme.typography.labelLarge,
@@ -234,7 +233,7 @@ private fun PantryItemRow(
     }
 }
 
-/** Aviso de "esto ya lo tienes en casa" para el alta de productos. */
+/** The "you already have this at home" notice, shown while adding products. */
 @Composable
 fun PantryHint(quantity: Int, unit: String, modifier: Modifier = Modifier) {
     Box(modifier = modifier) {

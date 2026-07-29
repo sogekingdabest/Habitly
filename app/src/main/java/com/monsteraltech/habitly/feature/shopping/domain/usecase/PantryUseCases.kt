@@ -27,10 +27,10 @@ class DeletePantryItemUseCase @Inject constructor(
 }
 
 /**
- * Devuelve a la despensa un producto que se acaba de sacar (el "deshacer" del gesto).
+ * Puts a just-removed product back into the pantry — the gesture's "undo".
  *
- * `upsertItems` suma a lo que hubiera, y tras el borrado no hay nada, así que el producto
- * vuelve con la misma cantidad que tenía.
+ * `upsertItems` adds onto whatever is there, and after the deletion there is nothing, so the
+ * product returns with exactly the quantity it had.
  */
 class RestorePantryItemUseCase @Inject constructor(
     private val repository: PantryRepository

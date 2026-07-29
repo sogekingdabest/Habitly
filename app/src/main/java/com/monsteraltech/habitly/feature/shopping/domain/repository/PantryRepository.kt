@@ -5,17 +5,16 @@ import kotlinx.coroutines.flow.Flow
 
 interface PantryRepository {
 
-    /** Observa en tiempo real lo que hay en casa. */
+    /** Observes what is at home in real time. */
     fun observePantry(householdId: String): Flow<List<PantryItem>>
 
     /**
-     * Mete productos en la despensa sumándolos a lo que ya hubiera.
-     * El id de cada documento es el nombre normalizado, así que repetir un producto
-     * actualiza su entrada en vez de duplicarla.
+     * Puts products into the pantry, adding onto whatever was already there. Each document id is
+     * the normalised name, so repeating a product updates its entry instead of duplicating it.
      */
     suspend fun upsertItems(householdId: String, items: List<PantryItem>): Result<Unit>
 
-    /** Suma [delta] a la cantidad. Si llega a cero o menos, el producto sale de la despensa. */
+    /** Adds [delta] to the quantity. At zero or below, the product leaves the pantry. */
     suspend fun adjustQuantity(householdId: String, itemId: String, delta: Int): Result<Unit>
 
     suspend fun deleteItem(householdId: String, itemId: String): Result<Unit>

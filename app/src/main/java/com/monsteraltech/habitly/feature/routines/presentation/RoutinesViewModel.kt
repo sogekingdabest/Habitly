@@ -37,20 +37,20 @@ import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
 
-/** Ficha de una rutina: calendario de cumplimiento del mes que se está mirando. */
+/** A routine's detail: the completion calendar for the month being viewed. */
 data class RoutineDetailState(
     val routine: Routine,
     val month: YearMonth,
     val completedDates: Set<LocalDate> = emptySet(),
     val isLoading: Boolean = true
 ) {
-    /** Veces que tocaba en el tramo del mes ya transcurrido. */
+    /** How many times it was due in the part of the month already elapsed. */
     fun expectedInMonth(today: LocalDate = LocalDate.now()): Int {
         val to = minOf(month.atEndOfMonth(), today)
         return RoutineSchedule.expectedOccurrences(routine, month.atDay(1), to)
     }
 
-    /** Cumplimiento del mes, de 0 a 1. Null si aún no tocaba ninguna vez. */
+    /** Completion for the month, 0 to 1. Null if it was not yet due even once. */
     fun completionRate(today: LocalDate = LocalDate.now()): Float? {
         val expected = expectedInMonth(today)
         if (expected <= 0) return null
@@ -67,13 +67,13 @@ data class RoutinesUiState(
     val currentUserId: String = "",
     val currentHouseholdId: String = "",
     val memberNicknames: Map<String, String> = emptyMap(),
-    /** Miembros de la casa en el orden que marca el turno de las rutinas rotativas. */
+    /** Household members in the order the rotating-routine turn follows. */
     val householdMembers: List<String> = emptyList(),
     val routineDetail: RoutineDetailState? = null,
-    /** Rutinas de casa completadas por miembro en la semana en curso. */
+    /** Household routines completed per member in the current week. */
     val weeklyBalance: Map<String, Int> = emptyMap()
 ) {
-    /** Total de rutinas de casa completadas esta semana entre todos. */
+    /** Total household routines completed this week by everyone. */
     val weeklyBalanceTotal: Int
         get() = weeklyBalance.values.sum()
 }
@@ -125,8 +125,8 @@ class RoutinesViewModel @Inject constructor(
         viewModelScope.launch {
             observeHouseholdUseCase(householdId).collectLatest { household ->
                 if (household != null) {
-                    // Los nombres vienen dentro del propio documento de la casa: se
-                    // resuelven en memoria, sin una lectura de Firestore por miembro.
+                    // The names live inside the household document itself: resolved in memory,
+                    // with no per-member Firestore read.
                     val nicknames = getMemberProfilesUseCase(household)
                         .filter { it.nickname.isNotBlank() || it.displayName.isNotBlank() }
                         .associate { it.id to it.nickname.ifBlank { it.displayName } }
@@ -151,7 +151,7 @@ class RoutinesViewModel @Inject constructor(
                         state.copy(
                             routines = routines,
                             isLoading = false,
-                            // La ficha abierta se mantiene sincronizada con los datos frescos.
+                            // The open detail sheet stays in sync with the fresh data.
                             routineDetail = state.routineDetail?.let { detail ->
                                 routines.find { it.id == detail.routine.id }
                                     ?.let { detail.copy(routine = it) }
@@ -174,7 +174,7 @@ class RoutinesViewModel @Inject constructor(
             toggleRoutineUseCase(state.currentUserId, state.currentHouseholdId, routine, willComplete)
                 .onSuccess {
                     if (willComplete) {
-                        // Completada: el turno pasa al siguiente miembro.
+                        // Completed: the turn moves to the next member.
                         advanceRotationUseCase(
                             state.currentUserId,
                             state.currentHouseholdId,
@@ -182,8 +182,8 @@ class RoutinesViewModel @Inject constructor(
                             state.householdMembers
                         )
                     } else {
-                        // Deshecha: el turno vuelve a quien la ha desmarcado, no al anterior;
-                        // si la desmarcas es porque en realidad no estaba hecha.
+                        // Undone: the turn goes back to whoever unmarked it, not to the previous
+                        // holder; unmarking it means it was not really done.
                         returnRotationUseCase(state.currentUserId, state.currentHouseholdId, routine)
                     }
                     refreshDetailIfShowing(routine.id)
@@ -193,7 +193,7 @@ class RoutinesViewModel @Inject constructor(
         }
     }
 
-    /** Balance de la semana en curso (de lunes a domingo). */
+    /** The current week's balance, Monday to Sunday. */
     private fun loadWeeklyBalance() {
         val state = _uiState.value
         if (state.currentUserId.isBlank() || state.currentHouseholdId.isBlank()) return
@@ -245,8 +245,8 @@ class RoutinesViewModel @Inject constructor(
                 rotationEnabled, assignedTo
             )
                 .onSuccess {
-                    // Reprograma con los datos nuevos; si reminderTime es null, el
-                    // use case cancela el work existente.
+                    // Reschedules with the new data; if reminderTime is null, the use case cancels
+                    // the existing work.
                     scheduleReminderUseCase(
                         routine.copy(
                             title = title.trim(),
@@ -267,7 +267,7 @@ class RoutinesViewModel @Inject constructor(
         }
     }
 
-    /** Activa o desactiva el modo vacaciones hasta la fecha indicada (null = reanudar). */
+    /** Turns holiday mode on until the given date, or off (null = resume). */
     fun onSetPaused(routine: Routine, pausedUntil: Long?) {
         onEditRoutine(
             routine = routine,
@@ -291,7 +291,7 @@ class RoutinesViewModel @Inject constructor(
         }
     }
 
-    // ---------- Ficha con el calendario de cumplimiento ----------
+    // ---------- Detail sheet with the completion calendar ----------
 
     fun onOpenRoutineDetail(routine: Routine) {
         _uiState.update {
@@ -308,7 +308,7 @@ class RoutinesViewModel @Inject constructor(
     fun onDetailMonthShift(months: Long) {
         val detail = _uiState.value.routineDetail ?: return
         val target = detail.month.plusMonths(months)
-        // No dejamos avanzar más allá del mes en curso: no hay nada que enseñar.
+        // Do not let it move past the current month: there is nothing to show.
         if (target.isAfter(YearMonth.now())) return
 
         _uiState.update {
@@ -337,7 +337,7 @@ class RoutinesViewModel @Inject constructor(
             )
             _uiState.update { current ->
                 val open = current.routineDetail ?: return@update current
-                // Puede haber cambiado de mes/rutina mientras se cargaba.
+                // The month or routine may have changed while it was loading.
                 if (open.month != detail.month || open.routine.id != detail.routine.id) return@update current
                 current.copy(
                     routineDetail = open.copy(

@@ -44,8 +44,8 @@ import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
 import com.monsteraltech.habitly.ui.theme.habitly
 
 /**
- * [openQuickAdd] llega a `true` cuando se entra desde el atajo "Añadir a la compra" del icono
- * del launcher: la pestaña se abre ya con la hoja de alta rápida desplegada.
+ * [openQuickAdd] arrives `true` when entering from the launcher icon's "Add to shopping" shortcut:
+ * the tab opens with the quick-add sheet already unfolded.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,8 +71,8 @@ fun ShoppingScreen(
     var showArchiveDialog by remember { mutableStateOf(false) }
     var showClearDialog by remember { mutableStateOf(false) }
 
-    // skipPartiallyExpanded: la hoja abre entera y con el teclado; un estado intermedio solo
-    // taparía el campo que hay que escribir.
+    // skipPartiallyExpanded: the sheet opens fully, keyboard and all; a halfway state would only
+    // cover the field you have to type in.
     val quickAddSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     if (uiState.quickAdd.isOpen) {
@@ -103,8 +103,8 @@ fun ShoppingScreen(
         }
     }
 
-    // Confirmación del dictado: al añadir varios de golpe sin abrir ninguna hoja, el recuento
-    // es la única señal de que se ha entendido bien.
+    // Dictation confirmation: when several are added at once without opening any sheet, the count
+    // is the only sign that it was understood correctly.
     val voiceAdded = uiState.voiceAddedCount
     if (voiceAdded != null) {
         val voiceAddedMessage = pluralStringResource(R.plurals.addproduct_added_count, voiceAdded, voiceAdded)
@@ -262,8 +262,8 @@ fun ShoppingScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // weight: con el micro la cabecera tiene tres iconos; sin esto, en pantallas
-                // estrechas o con fuente grande el título los empujaría fuera en vez de partirse.
+                // weight: with the mic the header carries three icons; without this, on narrow
+                // screens or at large font sizes the title would push them off instead of wrapping.
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         stringResource(R.string.shopping_title),
@@ -279,9 +279,9 @@ fun ShoppingScreen(
                     }
                 }
                 Row {
-                    // Micro en la cabecera: con las manos ocupadas en la cocina, dictar
-                    // "leche, huevos y pan" es el camino más corto a la lista. El botón no
-                    // aparece si el dispositivo no tiene reconocedor de voz.
+                    // Mic in the header: with your hands busy in the kitchen, dictating "leche,
+                    // huevos y pan" is the shortest path to the list. The button does not appear
+                    // when the device has no speech recogniser.
                     VoiceInputButton(onSpokenText = viewModel::onVoiceProducts)
                     IconButton(onClick = onNavigateToHistory) {
                         Icon(Icons.Filled.History, contentDescription = stringResource(R.string.shopping_view_history))
@@ -336,8 +336,8 @@ fun ShoppingScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // Los frecuentes van por encima del filtro de tiendas: son lo que más se pulsa
-            // de toda la pantalla y estaban enterrados debajo.
+            // Frequents sit above the store filter: they are the most tapped thing on the whole
+            // screen and used to be buried underneath it.
             if (uiState.frequentItems.isNotEmpty()) {
                 Text(
                     stringResource(R.string.shopping_quick_add),
@@ -373,8 +373,8 @@ fun ShoppingScreen(
                 items(uiState.availableStores, key = { it }) { store ->
                     FilterChip(
                         selected = uiState.selectedStore == store,
-                        // Buscando, el filtro de tienda no pinta nada: la búsqueda barre
-                        // toda la lista a propósito.
+                        // While searching the store filter has no place: the search deliberately
+                        // sweeps the whole list.
                         enabled = !uiState.isSearching,
                         onClick = { viewModel.onSelectStore(store) },
                         label = { Text(store) }
@@ -424,8 +424,8 @@ fun ShoppingScreen(
                 uiState.filteredPendingItems.isEmpty() &&
                 uiState.filteredCompletedItems.isEmpty()
             ) {
-                // Que la búsqueda no encuentre nada es la respuesta útil: significa que el
-                // producto no está apuntado y se puede añadir sin miedo a duplicarlo.
+                // A search finding nothing is the useful answer: it means the product is not on the
+                // list and can be added without fear of duplicating it.
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -511,8 +511,8 @@ fun ShoppingScreen(
 }
 
 /**
- * Buscador de la lista. Filtra sobre pendientes **y** completados: apuntar dos veces el
- * arroz pasa justamente porque lo ya comprado está plegado y no se ve.
+ * The list's search box. It filters over pending **and** completed items: adding the rice twice
+ * happens precisely because what is already bought is folded away out of sight.
  */
 @Composable
 private fun SearchField(
@@ -578,8 +578,8 @@ fun StoreSectionCard(
             )
             val rowColor = MaterialTheme.habitly.card
             items.forEach { item ->
-                // key por id: sin él, el estado del gesto se reutilizaría entre filas al
-                // reordenarse la lista y una fila recién llegada aparecería ya deslizada.
+                // key by id: without it the gesture state would be reused across rows when the list
+                // reorders, and a freshly arrived row would show up already swiped.
                 key(item.id) {
                     ShoppingItemRow(
                         item = item,
@@ -601,8 +601,8 @@ fun CompletedSectionCard(
     onToggle: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    // Opaco a propósito: las filas de dentro pintan este mismo color para tapar el fondo del
-    // gesto, y con una tarjeta translúcida el color no coincidiría.
+    // Opaque on purpose: the rows inside paint this same colour to cover the gesture background,
+    // and with a translucent card the colours would not match.
     val cardColor = MaterialTheme.colorScheme.surfaceVariant
 
     HabitlyCard(
@@ -681,13 +681,13 @@ fun CompletedSectionCard(
 }
 
 /**
- * Fila de producto. Se tacha deslizando a la derecha y se borra deslizando a la izquierda
- * (con el snackbar de deshacer): en el súper, con una mano en el carro, el gesto acierta más
- * que un icono pequeño. El botón de borrar desapareció de la fila justamente por eso —era
- * una diana destructiva pegada al gesto que más se repite.
+ * A product row. Swipe right to tick it off, swipe left to delete it (with the undo snackbar): in
+ * the supermarket, one hand on the trolley, a gesture lands better than a small icon. The delete
+ * button left the row for exactly that reason — it was a destructive target sitting right next to
+ * the most repeated gesture.
  *
- * [containerColor] tiene que ser el color opaco de la tarjeta que la contiene: si la fila
- * fuese transparente, el fondo de color del gesto se vería siempre.
+ * [containerColor] must be the opaque colour of the card containing it: were the row transparent,
+ * the gesture's coloured background would always show through.
  */
 @Composable
 fun ShoppingItemRow(
@@ -728,7 +728,7 @@ fun ShoppingItemRow(
                         deleteLabel = deleteLabel,
                         onDelete = onDelete
                     )
-                    // 48 dp de alto mínimo: el gesto no puede robarle tamaño a la diana.
+                    // 48 dp minimum height: the gesture must not steal size from the tap target.
                     .heightIn(min = 48.dp)
                     .padding(vertical = 6.dp, horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically

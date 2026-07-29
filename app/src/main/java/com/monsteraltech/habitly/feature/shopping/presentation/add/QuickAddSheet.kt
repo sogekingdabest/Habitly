@@ -56,8 +56,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Espera antes de pedir el foco: la hoja entra animada y en el primer frame el campo aún no
- * está enganchado al árbol.
+ * Wait before requesting focus: the sheet animates in, and on the first frame the field is not yet
+ * attached to the tree.
  */
 private const val FOCUS_DELAY_MS = 150L
 
@@ -77,13 +77,12 @@ val CATEGORIES = listOf(
 val UNITS = listOf("unidad", "kg", "g", "L", "ml", "docena", "paquete")
 
 /**
- * Alta rápida de producto.
+ * Quick product entry.
  *
- * Sustituye a la antigua pantalla completa de seis campos. Para el 90 % de los casos ("pan")
- * solo hace falta el nombre, así que la hoja abre con ese único campo enfocado y el teclado
- * ya levantado, y **guardar no la cierra**: vacía el campo y devuelve el foco para poder
- * apuntar diez cosas del tirón. El resto de campos siguen ahí, plegados tras "Más opciones"
- * y con los mismos valores por defecto de antes.
+ * Replaces the old full screen of six fields. For 90% of cases ("pan") only the name is needed, so
+ * the sheet opens with that single field focused and the keyboard already up, and **saving does not
+ * close it**: it clears the field and returns focus so ten things can be jotted down in one go. The
+ * other fields are still there, folded behind "More options" with the same defaults as before.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,16 +107,16 @@ fun QuickAddSheet(
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
 
-    // El foco se pide al abrir y después de cada guardado, que es cuando el campo se vacía.
-    // La espera es porque la hoja entra animada: en el primer frame el campo aún no está
-    // enganchado y `requestFocus` lanzaría IllegalStateException.
+    // Focus is requested on open and after each save, which is when the field empties. The wait is
+    // because the sheet animates in: on the first frame the field is not yet attached and
+    // `requestFocus` would throw IllegalStateException.
     LaunchedEffect(state.savedCount) {
         delay(FOCUS_DELAY_MS)
         runCatching { focusRequester.requestFocus() }
     }
 
-    // Cerrar de verdad: primero se retira la hoja con su animación y solo después se limpia
-    // el estado. Si se limpiase antes, la hoja desaparecería de golpe.
+    // Closing for real: the sheet retracts with its animation first and only then is the state
+    // cleared. Clearing first would make the sheet vanish abruptly.
     val dismissWithAnimation: () -> Unit = {
         scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
     }
@@ -149,19 +148,19 @@ fun QuickAddSheet(
                     .focusRequester(focusRequester),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { onSave() }),
-                // El dictado aquí **rellena** el formulario en vez de guardar: el usuario ve la
-                // cantidad y la unidad reconocidas ("dos litros de leche" → 2 L) antes de dar de
-                // alta. El botón desaparece si el dispositivo no tiene reconocedor.
+                // Dictation here **fills** the form rather than saving: the user sees the
+                // recognised quantity and unit ("dos litros de leche" → 2 L) before committing.
+                // The button disappears when the device has no recogniser.
                 trailingIcon = { VoiceInputButton(onSpokenText = onVoiceInput) }
             )
 
-            // Avisa de que ya lo tienes en casa antes de que lo compres otra vez.
+            // Warns that you already have it at home before you buy it again.
             if (pantryQuantity != null && pantryUnit != null) {
                 Spacer(Modifier.height(8.dp))
                 PantryHint(quantity = pantryQuantity, unit = pantryUnit)
             }
 
-            // …y de que ya está apuntado, que es la otra forma de comprarlo dos veces.
+            // …and that it is already on the list, the other way to buy it twice.
             if (duplicate != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -205,8 +204,8 @@ fun QuickAddSheet(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Recuento de lo que llevas apuntado sin salir: la única confirmación que hace
-            // falta cuando la hoja no se cierra al guardar.
+            // Count of what has been jotted down without leaving: the only confirmation needed when
+            // the sheet does not close on save.
             if (state.savedCount > 0) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -318,8 +317,8 @@ private fun MoreOptions(
 }
 
 /**
- * Desplegable de una sola opción. [emptyOptionLabel] añade arriba la opción "sin valor"
- * (la categoría es opcional).
+ * Single-choice dropdown. [emptyOptionLabel] adds a "no value" option at the top, since the
+ * category is optional.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

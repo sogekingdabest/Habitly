@@ -6,9 +6,9 @@ enum class RoutineType {
 }
 
 /**
- * Ojo: Firestore serializa este enum por nombre. Añadir un valor nuevo hace que una versión
- * antigua de la app reviente al leer una rutina que lo use, así que conviene que todos los
- * dispositivos de una casa actualicen a la vez.
+ * Careful: Firestore serialises this enum by name. Adding a new value makes an old app version
+ * crash when it reads a routine that uses it, so all the devices in a household should update
+ * together.
  */
 enum class RoutineFrequency(val label: String) {
     DAILY("Diaria"),
@@ -24,11 +24,11 @@ data class Routine(
     val type: RoutineType = RoutineType.PERSONAL,
     val frequency: RoutineFrequency = RoutineFrequency.DAILY,
     val scheduledDays: List<Int> = emptyList(),
-    /** Cada cuántos días toca, solo para [RoutineFrequency.EVERY_N_DAYS]. */
+    /** How many days apart it is due, only for [RoutineFrequency.EVERY_N_DAYS]. */
     val intervalDays: Int? = null,
     /**
-     * Modo vacaciones: mientras no se pase esta fecha, la rutina no toca ni notifica
-     * y los días saltados no rompen la racha. Nulo = sin pausa.
+     * Holiday mode: until this date passes, the routine is neither due nor notified and the skipped
+     * days do not break the streak. Null means no pause.
      */
     val pausedUntil: Long? = null,
     val order: Int = 0,
@@ -37,14 +37,14 @@ data class Routine(
     val lastCompletedAt: Long? = null,
     val lastCompletedBy: String? = null,
     val reminderTime: Int? = null,
-    /** Miembro al que le toca ahora. Solo tiene sentido en rutinas de casa. */
+    /** The member whose turn it is now. Only meaningful for household routines. */
     val assignedTo: String? = null,
-    /** Al completarla, el turno pasa automáticamente al siguiente miembro de la casa. */
+    /** On completion, the turn passes automatically to the next household member. */
     val rotationEnabled: Boolean = false,
-    /** Racha actual, en ocurrencias programadas (no en días naturales). Denormalizada. */
+    /** Current streak, in scheduled occurrences (not calendar days). Denormalised. */
     val currentStreak: Int = 0,
-    /** Mejor racha histórica. Denormalizada. */
+    /** Best streak ever. Denormalised. */
     val bestStreak: Int = 0,
-    /** La racha actual se mantiene viva gracias al protector (hubo un fallo perdonado). */
+    /** The current streak is alive thanks to the protector (a miss was forgiven). */
     val streakGraceUsed: Boolean = false
 )

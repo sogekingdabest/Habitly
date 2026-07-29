@@ -1,18 +1,18 @@
 package com.monsteraltech.habitly.feature.routines.domain.util
 
 /**
- * Decide a quién le toca el siguiente turno de una rutina rotativa.
+ * Decides whose turn is next on a rotating routine.
  *
- * Función pura para poder testearla. El orden es el de la lista `members` de la casa, que
- * Firestore devuelve estable, así que el turno es predecible para todo el mundo.
+ * A pure function so it is testable. The order is that of the household's `members` list, which
+ * Firestore returns stably, so the turn is predictable for everyone.
  */
 object RotationCalculator {
 
     /**
-     * Siguiente miembro tras [current], dando la vuelta al llegar al final.
+     * The member after [current], wrapping around at the end.
      *
-     * Si nadie tenía el turno, o quien lo tenía ya no está en la casa (le expulsaron o se fue),
-     * empieza por el primero: es preferible a dejar la rutina sin dueño.
+     * If nobody held the turn, or whoever did is no longer in the household (removed or left), it
+     * starts from the first: better than leaving the routine ownerless.
      */
     fun next(members: List<String>, current: String?): String? {
         if (members.isEmpty()) return null

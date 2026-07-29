@@ -52,8 +52,8 @@ import java.util.Calendar
 import java.util.Locale
 
 /**
- * Alta de rutina a pantalla completa: sustituye al antiguo diálogo flotante, que se quedaba
- * pequeño en cuanto la rutina llevaba días, recordatorio o turnos.
+ * Full-screen routine creation: replaces the old floating dialog, which ran out of room the moment
+ * a routine carried days, a reminder or turns.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +93,7 @@ fun AddRoutineScreen(
         ) {
             Spacer(modifier = Modifier.height(0.dp))
 
-            // ---------- Qué rutina es ----------
+            // ---------- What routine it is ----------
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionHeader(stringResource(R.string.routines_add_section_what))
                 OutlinedTextField(
@@ -115,7 +115,7 @@ fun AddRoutineScreen(
                 )
             }
 
-            // ---------- De quién es ----------
+            // ---------- Whose it is ----------
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionHeader(stringResource(R.string.routines_add_section_type))
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -144,7 +144,7 @@ fun AddRoutineScreen(
                 )
             }
 
-            // ---------- Cada cuánto toca ----------
+            // ---------- How often it is due ----------
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionHeader(stringResource(R.string.routines_add_section_frequency))
                 RoutineFrequency.entries.forEach { freq ->
@@ -228,7 +228,7 @@ fun AddRoutineScreen(
                 }
             }
 
-            // ---------- Recordatorio ----------
+            // ---------- Reminder ----------
             SettingCard(
                 icon = { Icon(Icons.Rounded.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 title = stringResource(R.string.routines_reminder_title),
@@ -250,7 +250,7 @@ fun AddRoutineScreen(
                 }
             }
 
-            // ---------- Turnos rotatorios ----------
+            // ---------- Rotating turns ----------
             if (uiState.canRotate) {
                 SettingCard(
                     icon = { Icon(Icons.Rounded.Groups, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
@@ -329,7 +329,7 @@ private fun SectionHeader(text: String) {
     )
 }
 
-/** Opción de frecuencia con su explicación, seleccionable como un radio. */
+/** A frequency option with its explanation, selectable like a radio button. */
 @Composable
 private fun FrequencyOption(
     selected: Boolean,
@@ -370,7 +370,7 @@ private fun FrequencyOption(
     }
 }
 
-/** Día de la semana como botón redondo, al estilo del calendario de la ficha. */
+/** A day of the week as a round button, in the style of the detail sheet's calendar. */
 @Composable
 private fun DayCircle(
     label: String,
@@ -401,8 +401,8 @@ private fun DayCircle(
 }
 
 /**
- * Tarjeta de ajuste con interruptor (recordatorio, turnos) y contenido extra
- * que solo aparece al activarla.
+ * A settings card with a switch (reminder, turns) and extra content that only appears once it is
+ * turned on.
  */
 @Composable
 private fun SettingCard(
@@ -489,7 +489,7 @@ private val RoutineFrequency.descRes: Int
         RoutineFrequency.EVERY_N_DAYS -> R.string.routines_frequency_interval_desc
     }
 
-/** Nombre completo del día para el lector de pantalla ("lunes", "martes"...). */
+/** The day's full name for the screen reader ("lunes", "martes"…). */
 private fun Int.toDayOfWeekName(): String {
     val dayOfWeek = if (this == Calendar.SUNDAY) DayOfWeek.SUNDAY else DayOfWeek.of(this - 1)
     return dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())

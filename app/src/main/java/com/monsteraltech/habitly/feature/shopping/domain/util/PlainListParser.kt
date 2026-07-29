@@ -1,8 +1,8 @@
 package com.monsteraltech.habitly.feature.shopping.domain.util
 
 /**
- * Un producto reconocido en un texto plano, con lo justo para dar de alta una fila de la lista.
- * La unidad por defecto es la misma que guarda Firestore (`"unidad"`, ver `DEFAULT_UNIT`).
+ * A product recognised in plain text, with just enough to create a list row. The default unit is
+ * the one Firestore stores (`"unidad"`, see `DEFAULT_UNIT`).
  */
 data class ParsedProduct(
     val name: String,
@@ -11,39 +11,39 @@ data class ParsedProduct(
 )
 
 /**
- * Lector de listas escritas "a lo humano", sin IA: una línea por producto (texto compartido) o
- * una frase dictada ("leche, huevos y pan").
+ * Reads lists written the human way, with no AI: one line per product (shared text) or a dictated
+ * phrase ("leche, huevos y pan").
  *
- * Es el **camino de respaldo** de dos funciones:
- *  - "Compartir con Habitly" cuando el modelo local no está descargado: sin esto, el usuario
- *    llega a un callejón sin salida.
- *  - El dictado por voz, donde vale más una respuesta instantánea y predecible que una
- *    inferencia de varios segundos con un modelo de gigabytes para tres palabras.
+ * It is the **fallback path** for two features:
+ *  - "Share with Habitly" when the local model is not downloaded — without it the user hits a
+ *    dead end.
+ *  - Voice dictation, where an instant, predictable answer beats several seconds of inference from
+ *    a gigabyte-sized model for three words.
  *
- * Funciones puras (sin Android) para poder testearlas con JUnit. Reconoce cantidad y unidad en
- * las formas habituales en español e inglés: `2 kg de tomates`, `500 g harina`,
- * `dos litros de leche`, `leche x2`, `3 huevos`. Lo que no entiende lo deja como nombre, que
- * es el fallo barato: el usuario ve la propuesta y la corrige.
+ * Pure functions with no Android dependency, so they are testable under JUnit. Quantity and unit
+ * are recognised in the usual Spanish and English shapes: `2 kg de tomates`, `500 g harina`,
+ * `dos litros de leche`, `leche x2`, `3 huevos`. Anything it does not understand stays part of the
+ * name, which is the cheap failure: the user sees the proposal and corrects it.
  */
 object PlainListParser {
 
-    /** Tope de productos que se sacan de un texto compartido (una receta larga no da más). */
+    /** Cap on products taken from shared text; not even a long recipe yields more. */
     const val MAX_ITEMS = 40
 
-    /** Tope de productos de una frase dictada: nadie dicta veinte cosas de una vez. */
+    /** Cap for a dictated phrase: nobody dictates twenty things at once. */
     const val MAX_SPOKEN_ITEMS = 20
 
     /**
-     * Una línea = un producto, para el texto que llega por "Compartir". Se parte también por
-     * comas: una lista enviada por WhatsApp suele venir en una sola línea ("leche, huevos, pan").
-     * Por "y" no se parte aquí, que en un texto largo aparece dentro de frases normales.
+     * One line = one product, for text arriving through "Share". Commas split too, because a list
+     * sent over WhatsApp usually comes as a single line ("leche, huevos, pan"). "y" does **not**
+     * split here — in a long text it turns up inside ordinary sentences.
      */
     fun fromLines(text: String, limit: Int = MAX_ITEMS): List<ParsedProduct> =
         parseEntries(LINE_SEPARATORS.split(text).asSequence(), limit)
 
     /**
-     * Una frase dictada, separada por comas, punto y coma y las conjunciones "y"/"e"/"and".
-     * "Leche, huevos y pan" son tres productos, no uno.
+     * A dictated phrase, split on commas, semicolons and the conjunctions "y"/"e"/"and", so
+     * "Leche, huevos y pan" is three products rather than one.
      */
     fun fromSpeech(text: String, limit: Int = MAX_SPOKEN_ITEMS): List<ParsedProduct> =
         parseEntries(SPEECH_SEPARATORS.split(text).asSequence(), limit)
@@ -58,19 +58,19 @@ object PlainListParser {
         return byName.values.toList()
     }
 
-    /** Convierte una línea/fragmento en producto, o null si no parece un producto. */
+    /** Turns a line or fragment into a product, or null if it does not look like one. */
     fun parseEntry(raw: String): ParsedProduct? {
         var text = raw.trim()
         if (text.isEmpty()) return null
 
-        // Viñetas, numeración y casillas de una lista pegada de cualquier sitio.
+        // Bullets, numbering and checkboxes from a list pasted in from anywhere.
         text = text.replace(BULLET_PREFIX, "").trim()
-        // Un encabezado ("Ingredientes:") no es un producto.
+        // A heading ("Ingredientes:") is not a product.
         if (text.endsWith(':')) return null
         text = text.trim(*TRAILING_PUNCTUATION)
         if (text.isBlank()) return null
 
-        // Un párrafo de instrucciones no es un producto; tampoco un enlace ni una línea sin letras.
+        // A paragraph of instructions is not a product, nor is a link or a line without letters.
         if (text.length > MAX_ENTRY_LENGTH) return null
         if (!HAS_LETTER.containsMatchIn(text)) return null
         if (URL.containsMatchIn(text)) return null
@@ -82,7 +82,7 @@ object PlainListParser {
         var quantity: Int? = null
         var unit: String? = null
 
-        // 1. Cantidad al principio: "2 …", "2kg …", "2x …", "dos …".
+        // 1. Quantity at the start: "2 …", "2kg …", "2x …", "dos …".
         val numeric = splitNumericToken(tokens[0])
         if (numeric != null) {
             val (value, suffix) = numeric
@@ -97,7 +97,7 @@ object PlainListParser {
                     unit = suffixUnit
                     index = 1
                 }
-                // "2ª", "2do"… no es cantidad + unidad: se deja tal cual como nombre.
+                // "2ª", "2do"… is not quantity + unit: leave it as part of the name.
                 else -> Unit
             }
         } else {
@@ -107,7 +107,7 @@ object PlainListParser {
             }
         }
 
-        // 2. Tras la cantidad puede venir la unidad y/o un "de"/"of" de relleno.
+        // 2. After the quantity may come the unit and/or a filler "de"/"of".
         if (quantity != null) {
             if (unit == null && index < tokens.size) {
                 if (tokens[index].equals("x", ignoreCase = true)) index++
@@ -118,7 +118,7 @@ object PlainListParser {
 
         var name = tokens.drop(index).joinToString(" ")
 
-        // 3. Cantidad al final: "leche x2", "leche (2)". Solo si no había una al principio.
+        // 3. Quantity at the end: "leche x2", "leche (2)". Only if there was none at the start.
         if (quantity == null) {
             TRAILING_QUANTITY.find(name)?.let { match ->
                 quantity = match.groupValues[1].toIntOrNull()
@@ -137,8 +137,8 @@ object PlainListParser {
     }
 
     /**
-     * Parte un token que empieza por dígitos en (número, resto). El resto es null cuando el
-     * token es solo el número. Devuelve null si no empieza por dígitos.
+     * Splits a token starting with digits into (number, rest). The rest is null when the token is
+     * only the number; the whole thing is null when it does not start with digits.
      */
     private fun splitNumericToken(token: String): Pair<Int, String?>? {
         val match = NUMERIC_TOKEN.find(token) ?: return null
@@ -147,11 +147,11 @@ object PlainListParser {
         return value to suffix
     }
 
-    /** Unidad canónica (la que guarda Firestore) a partir de cualquiera de sus sinónimos. */
+    /** The canonical unit Firestore stores, from any of its synonyms. */
     private fun canonicalUnit(token: String): String? =
         UNIT_SYNONYMS[normalizeWord(token).trimEnd('.')]
 
-    /** Minúsculas, sin tildes y sin puntuación pegada, para comparar palabras sueltas. */
+    /** Lowercased, unaccented and stripped of trailing punctuation, for comparing single words. */
     private fun normalizeWord(token: String): String =
         ProductNameNormalizer.normalize(token).trim('.', ',', ';', ':', '(', ')')
 
@@ -163,7 +163,7 @@ object PlainListParser {
     private val WHITESPACE = Regex("\\s+")
     private val HAS_LETTER = Regex("\\p{L}")
     private val URL = Regex("https?://|www\\.", RegexOption.IGNORE_CASE)
-    // Llaves y corchetes escapados: el motor ICU de Android 16+ rechaza uno suelto.
+    // Braces and brackets escaped: the ICU engine on Android 16+ rejects a bare one.
     private val BULLET_PREFIX = Regex("^\\s*(?:[-*•·–—>]+|\\d{1,2}[.)]|\\[[ xX]?\\])\\s*")
     private val NUMERIC_TOKEN = Regex("^(\\d{1,3})\\s*([\\p{L}]*)$")
     private val TRAILING_QUANTITY = Regex("\\s*[x×(]\\s*(\\d{1,3})\\s*\\)?$", RegexOption.IGNORE_CASE)
@@ -174,7 +174,7 @@ object PlainListParser {
         ' ', '.', ',', ';', ':', '-', '–', '—', '·', '*', '"', '\''
     )
 
-    /** Palabras de relleno entre la cantidad y el producto: "2 kg **de** tomates". */
+    /** Filler words between quantity and product: "2 kg **de** tomates". */
     private val FILLER_WORDS = setOf("de", "del", "of")
 
     private val NUMBER_WORDS = mapOf(
@@ -193,8 +193,8 @@ object PlainListParser {
     )
 
     /**
-     * Sinónimos de unidad → unidad canónica. Solo las siete que maneja la app: una unidad
-     * inventada ("botellas") se queda formando parte del nombre en vez de colarse en el campo.
+     * Unit synonyms mapped to the canonical unit. Only the seven the app handles: a made-up unit
+     * ("botellas") stays part of the name instead of slipping into the field.
      */
     private val UNIT_SYNONYMS = mapOf(
         "kg" to "kg", "kgs" to "kg", "kilo" to "kg", "kilos" to "kg",
