@@ -11,10 +11,10 @@ class RegisterWithEmailUseCase @Inject constructor(
 ) {
 
     /**
-     * Orquesta el flujo de registro:
-     * 1. Valida las credenciales. Si hay errores, falla con el primero.
-     * 2. Delega al repositorio.
-     * 3. Propaga el Result<AuthUser> sin transformar.
+     * Orchestrates the registration flow:
+     * 1. Validates the credentials. On errors, fails with the first.
+     * 2. Delegates to the repository.
+     * 3. Propagates the Result<AuthUser> untransformed.
      */
     suspend operator fun invoke(credentials: RegisterCredentials): Result<AuthUser> {
         val errors = validateInput(credentials)

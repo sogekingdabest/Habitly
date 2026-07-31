@@ -10,11 +10,11 @@ class SignInWithGoogleUseCase @Inject constructor(
 ) {
 
     /**
-     * Completa la autenticación con Google dado el idToken obtenido
-     * por el Credential Manager en la capa de Presentation.
+     * Completes Google authentication given the idToken the Credential Manager obtained in the
+     * presentation layer.
      *
-     * Válido tanto para Login como para Registro con Google:
-     * Firebase gestiona internamente si el usuario es nuevo o existente.
+     * Valid for both Google login and registration: Firebase handles internally whether the user is
+     * new or existing.
      */
     suspend operator fun invoke(idToken: String): Result<AuthUser> {
         if (idToken.isBlank()) {

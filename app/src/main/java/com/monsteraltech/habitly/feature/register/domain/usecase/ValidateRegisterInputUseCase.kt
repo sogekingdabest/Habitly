@@ -8,9 +8,8 @@ import javax.inject.Inject
 class ValidateRegisterInputUseCase @Inject constructor() {
 
     /**
-     * Valida todos los campos del formulario de registro.
-     * Retorna una lista vacía si todo es válido.
-     * Nunca lanza excepciones.
+     * Validates every field of the registration form. Returns an empty list when all is valid.
+     * Never throws.
      */
     operator fun invoke(credentials: RegisterCredentials): List<RegisterError> {
         val errors = mutableListOf<RegisterError>()

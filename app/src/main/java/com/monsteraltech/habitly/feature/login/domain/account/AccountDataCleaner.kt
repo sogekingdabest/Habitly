@@ -1,14 +1,14 @@
 package com.monsteraltech.habitly.feature.login.domain.account
 
 /**
- * Limpieza de datos locales ligados a la cuenta (bases de datos, preferencias…) al **borrar la
- * cuenta**. Cada feature con estado local sensible aporta su implementación por multibinding de
- * Hilt (`@Binds @IntoSet`) y AuthRepositoryImpl las ejecuta todas: así ningún borrado de cuenta
- * puede olvidarse de una limpieza.
+ * Cleanup of account-bound local data (databases, preferences…) on **account deletion**. Each
+ * feature with sensitive local state contributes its implementation through Hilt multibinding
+ * (`@Binds @IntoSet`), and AuthRepositoryImpl runs them all, so no account deletion can forget a
+ * cleanup.
  *
- * OJO: NO se ejecuta en el cierre de sesión normal. Un logout (voluntario o por caducidad de la
- * sesión de Firebase) no debe llevarse el historial: el usuario volvería a entrar y lo encontraría
- * vacío. Al desinstalar la app, Android ya borra todo el almacenamiento interno por su cuenta.
+ * NOTE: this does NOT run on an ordinary logout. A logout (voluntary or from Firebase session
+ * expiry) must not take the history with it: the user would sign back in and find it empty. On
+ * uninstall, Android wipes all internal storage on its own anyway.
  */
 interface AccountDataCleaner {
     suspend fun clearAccountData()

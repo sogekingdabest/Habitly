@@ -26,7 +26,7 @@ class AuthRepositoryImpl @Inject constructor(
 ) : AuthRepository {
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Existente: Login con email/contraseña
+    // Email/password login
     // ─────────────────────────────────────────────────────────────────────────
 
     override suspend fun login(credentials: LoginCredentials): Result<AuthToken> {
@@ -48,7 +48,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Nuevo: Registro con email/contraseña
+    // Email/password registration
     // ─────────────────────────────────────────────────────────────────────────
 
     override suspend fun register(credentials: RegisterCredentials): Result<AuthUser> {
@@ -59,16 +59,16 @@ class AuthRepositoryImpl @Inject constructor(
             val user = authResult.user
                 ?: return Result.failure(RegisterError.Unknown(Exception("FirebaseUser null tras registro")))
 
-            // Actualizar displayName en el perfil de Firebase
+            // Set displayName on the Firebase profile.
             val profileUpdates = UserProfileChangeRequest.Builder()
                 .setDisplayName(credentials.displayName)
                 .build()
             user.updateProfile(profileUpdates).await()
 
-            // Enviar email de verificación
+            // Send the verification email.
             user.sendEmailVerification().await()
 
-            // Obtener token de sesión
+            // Get the session token.
             val tokenResult = user.getIdToken(false).await()
             val accessToken = tokenResult.token ?: ""
             val authToken = AuthToken(accessToken = accessToken, refreshToken = "")
@@ -94,7 +94,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Nuevo: Google Sign-In
+    // Google Sign-In
     // ─────────────────────────────────────────────────────────────────────────
 
     override suspend fun signInWithGoogle(idToken: String): Result<AuthUser> {
@@ -113,7 +113,7 @@ class AuthRepositoryImpl @Inject constructor(
                     uid = user.uid,
                     email = user.email,
                     displayName = user.displayName,
-                    isEmailVerified = true, // Google garantiza verificación
+                    isEmailVerified = true, // Google guarantees verification
                     authToken = authToken
                 )
             )
@@ -127,7 +127,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Nuevo: Estado de sesión
+    // Session state
     // ─────────────────────────────────────────────────────────────────────────
 
     override fun getCurrentUser(): AuthUser? {
@@ -145,7 +145,7 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val user = firebaseAuth.currentUser
                 ?: return Result.failure(RegisterError.Unknown(Exception("No hay usuario activo")))
-            user.reload().await() // invalida la caché local de Firebase
+            user.reload().await() // invalidates Firebase's local cache
             Result.success(
                 AuthUser(
                     uid = user.uid,
@@ -161,9 +161,9 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun signOut() {
-        // Solo cierra la sesión de Firebase. NO se borran datos locales: un logout (voluntario
-        // o por caducidad de sesión) no debe llevarse el historial de chat; el usuario volvería
-        // a entrar y lo encontraría vacío. La limpieza vive en deleteAccount().
+        // Only closes the Firebase session. Local data is NOT wiped: a logout (voluntary or from
+        // session expiry) must not take the chat history with it; the user would sign back in and
+        // find it empty. The cleanup lives in deleteAccount().
         firebaseAuth.signOut()
     }
 
@@ -172,8 +172,8 @@ class AuthRepositoryImpl @Inject constructor(
             firebaseAuth.sendPasswordResetEmail(email).await()
             Result.success(Unit)
         } catch (e: FirebaseAuthInvalidUserException) {
-            // El correo no está registrado. No lo revelamos (evita enumeración de cuentas):
-            // se responde igual que un envío correcto.
+            // The email is not registered. We do not reveal it (avoids account enumeration): the
+            // response is the same as a successful send.
             Result.success(Unit)
         } catch (e: UnknownHostException) {
             Result.failure(RegisterError.NetworkError)
@@ -214,19 +214,19 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Helpers privados
+    // Private helpers
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Ejecuta todos los [AccountDataCleaner] registrados al borrar la cuenta. Cada uno aislado:
-     * que una limpieza falle no debe impedir el borrado ni frenar al resto.
+     * Runs every registered [AccountDataCleaner] on account deletion. Each is isolated: one cleanup
+     * failing must neither block the deletion nor stop the rest.
      */
     private suspend fun clearLocalAccountData() {
         accountDataCleaners.forEach { cleaner ->
             try {
                 cleaner.clearAccountData()
             } catch (e: Exception) {
-                Log.w("AuthRepository", "Fallo limpiando datos locales de la cuenta", e)
+                Log.w("AuthRepository", "Failed cleaning up local account data", e)
             }
         }
     }

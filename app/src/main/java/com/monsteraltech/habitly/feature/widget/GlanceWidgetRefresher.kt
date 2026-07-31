@@ -13,10 +13,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Implementación real de [WidgetRefresher] sobre Glance.
+ * The real [WidgetRefresher] implementation, over Glance.
  *
- * Usa un scope propio de aplicación en vez del `viewModelScope` de quien escribe: el
- * repintado debe completarse aunque la pantalla que provocó el cambio ya se haya ido.
+ * It uses its own application-scoped scope instead of the writer's `viewModelScope`: the repaint
+ * must complete even if the screen that caused the change is already gone.
  */
 @Singleton
 class GlanceWidgetRefresher @Inject constructor(

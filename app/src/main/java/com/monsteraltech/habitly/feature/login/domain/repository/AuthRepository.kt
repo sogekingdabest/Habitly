@@ -7,32 +7,31 @@ import com.monsteraltech.habitly.feature.register.domain.model.RegisterCredentia
 
 interface AuthRepository {
 
-    // — Existente —
+    // — Login —
     suspend fun login(credentials: LoginCredentials): Result<AuthToken>
 
-    // — Registro con email/contraseña —
+    // — Email/password registration —
     suspend fun register(credentials: RegisterCredentials): Result<AuthUser>
 
     // — Google Sign-In —
     suspend fun signInWithGoogle(idToken: String): Result<AuthUser>
 
-    // — Estado de sesión —
+    // — Session state —
     fun getCurrentUser(): AuthUser?
     suspend fun reloadCurrentUser(): Result<AuthUser>
     suspend fun signOut()
 
-    // — Recuperación de contraseña —
+    // — Password recovery —
     /**
-     * Envía un correo de restablecimiento de contraseña. Por privacidad (evitar enumeración de
-     * cuentas) devuelve éxito aunque el correo no corresponda a ningún usuario; solo falla ante
-     * errores reales (formato inválido, red).
+     * Sends a password-reset email. For privacy (avoiding account enumeration) it returns success
+     * even when the address matches no user; it only fails on real errors (invalid format, network).
      */
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
 
-    // — Verificación de correo —
-    /** Reenvía el correo de verificación al usuario autenticado actualmente. */
+    // — Email verification —
+    /** Resends the verification email to the currently authenticated user. */
     suspend fun resendVerificationEmail(): Result<Unit>
 
-    // — Borrado de cuenta —
+    // — Account deletion —
     suspend fun deleteAccount(): Result<Unit>
 }

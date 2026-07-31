@@ -11,9 +11,8 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 /**
- * Construye el [WidgetSnapshot] leyendo la casa activa del usuario: productos pendientes
- * y rutinas de hoy sin completar. Se apoya en la caché offline de Firestore, por lo que
- * funciona aunque no haya red.
+ * Builds the [WidgetSnapshot] by reading the user's active household: pending products and today's
+ * uncompleted routines. It leans on Firestore's offline cache, so it works even with no network.
  */
 class BuildWidgetSnapshotUseCase @Inject constructor(
     private val authRepository: AuthRepository,

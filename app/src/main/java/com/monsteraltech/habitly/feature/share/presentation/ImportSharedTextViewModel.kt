@@ -27,10 +27,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** En qué punto va la importación del texto compartido. */
+/** Where the shared-text import currently stands. */
 enum class ImportStage { ANALYZING, REVIEW, SAVING, DONE }
 
-/** Una fila de la revisión: la propuesta y si el usuario la quiere. */
+/** A review row: the proposal and whether the user wants it. */
 data class ImportProductRow(val product: AiShoppingSuggestion, val selected: Boolean = true)
 
 data class ImportRoutineRow(val routine: AiRoutineSuggestion, val selected: Boolean = true)
@@ -39,7 +39,7 @@ data class ImportSharedUiState(
     val stage: ImportStage = ImportStage.ANALYZING,
     val products: List<ImportProductRow> = emptyList(),
     val routines: List<ImportRoutineRow> = emptyList(),
-    /** Si lo propuesto lo sacó el modelo local o el lector de texto plano. */
+    /** Whether the proposals came from the local model or the plain-text reader. */
     val usedAi: Boolean = false,
     val modelStatus: ModelStatus = ModelStatus.NotDownloaded,
     val selectedModel: AiModelConfig? = null,
@@ -65,27 +65,27 @@ data class ImportSharedUiState(
     val downloadProgress: Float
         get() = (modelStatus as? ModelStatus.Downloading)?.progress ?: 0f
 
-    /** Nada que revisar: ni productos ni rutinas. */
+    /** Nothing to review: no products and no routines. */
     val hasNothing: Boolean
         get() = products.isEmpty() && routines.isEmpty()
 
     /**
-     * Ofrecer "analizar con la IA": el modelo está listo pero lo que se ve salió del lector de
-     * texto plano (porque no lo estaba al recibir el texto, o porque el modelo no encontró nada).
+     * Offer "analyse with AI": the model is ready but what is shown came from the plain-text reader
+     * (because it was not ready when the text arrived, or because the model found nothing).
      */
     val canAnalyzeWithAi: Boolean
         get() = isModelReady && !usedAi && stage == ImportStage.REVIEW
 }
 
 /**
- * "Compartir con Habitly": recibe el texto de otra app, propone lo que ha reconocido y **no
- * guarda nada** hasta que el usuario lo confirma en la revisión.
+ * "Share with Habitly": takes text from another app, proposes what it recognised, and **saves
+ * nothing** until the user confirms it in the review.
  *
- * El texto llega de fuera y no es fiable, así que:
- *  - se sanea y acota en [SharedTextGuard] antes de tocar el modelo,
- *  - el modelo lo ve delimitado como datos, nunca como instrucciones,
- *  - y el alta la dispara el usuario desde la pantalla de revisión, con casillas y cantidades
- *    editables. Por mucho que el texto "pida" crear algo, aquí no se da de alta solo.
+ * The text comes from outside and is untrusted, so:
+ *  - it is sanitised and capped in [SharedTextGuard] before the model is touched,
+ *  - the model sees it delimited as data, never as instructions,
+ *  - and the user triggers the creation from the review screen, with editable checkboxes and
+ *    quantities. However much the text "asks" to create something, nothing is created on its own.
  */
 @HiltViewModel
 class ImportSharedTextViewModel @Inject constructor(
@@ -100,7 +100,7 @@ class ImportSharedTextViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ImportSharedUiState())
     val uiState: StateFlow<ImportSharedUiState> = _uiState.asStateFlow()
 
-    /** Texto ya saneado del que se está tirando (para poder reanalizarlo con IA). */
+    /** The already-sanitised text in use (so it can be re-analysed with AI). */
     private var sanitizedText: String = ""
 
     private var extractionJob: Job? = null
@@ -119,12 +119,12 @@ class ImportSharedTextViewModel @Inject constructor(
     }
 
     /**
-     * Punto de entrada: el texto crudo que ha llegado por `ACTION_SEND`. Con el modelo en disco
-     * se analiza con IA; sin él se propone ya el parseo por líneas, que es instantáneo, y la
-     * pantalla ofrece descargarlo.
+     * Entry point: the raw text that arrived via `ACTION_SEND`. With the model on disk it is
+     * analysed with AI; without it the line-by-line parse is proposed right away (it is instant) and
+     * the screen offers to download it.
      */
     fun onTextReceived(raw: String) {
-        if (sanitizedText.isNotBlank()) return // Ya se está trabajando con este texto.
+        if (sanitizedText.isNotBlank()) return // Already working on this text.
 
         sanitizedText = SharedTextGuard.sanitize(raw)
         if (sanitizedText.isBlank()) {
@@ -139,7 +139,7 @@ class ImportSharedTextViewModel @Inject constructor(
         }
     }
 
-    /** Relanza la extracción con el modelo local (tras descargarlo, o si el parseo simple falló). */
+    /** Re-runs the extraction with the local model (after downloading it, or if the simple parse failed). */
     fun onAnalyzeWithAi() {
         if (!_uiState.value.isModelReady || sanitizedText.isBlank()) return
         analyzeWithAi()
@@ -154,8 +154,8 @@ class ImportSharedTextViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(tag, "Fallo al analizar el texto compartido", e)
-                // Sin IA hay salida: se propone el parseo por líneas y se avisa del fallo.
+                Log.e(tag, "Failed to analyse the shared text", e)
+                // There is a way out without AI: propose the line-by-line parse and flag the failure.
                 showExtraction(extractSharedTextUseCase.withoutAi(sanitizedText))
                 _uiState.update { it.copy(errorRes = R.string.share_error_analyze) }
             }
@@ -193,7 +193,7 @@ class ImportSharedTextViewModel @Inject constructor(
         }
     }
 
-    /** Ajusta la cantidad de una propuesta: el modelo se equivoca y el usuario manda. */
+    /** Adjusts a proposal's quantity: the model gets it wrong and the user is in charge. */
     fun onChangeQuantity(index: Int, delta: Int) {
         _uiState.update { state ->
             state.copy(
@@ -207,7 +207,7 @@ class ImportSharedTextViewModel @Inject constructor(
         }
     }
 
-    /** Da de alta solo lo que sigue marcado. */
+    /** Creates only what is still checked. */
     fun onConfirm() {
         val state = _uiState.value
         if (state.stage == ImportStage.SAVING || state.selectedCount == 0) return
@@ -226,17 +226,17 @@ class ImportSharedTextViewModel @Inject constructor(
                     .onSuccess { addedProducts = it }
                     .onFailure {
                         failed = true
-                        Log.e(tag, "No se pudieron añadir los productos compartidos", it)
+                        Log.e(tag, "Could not add the shared products", it)
                     }
             }
             if (routines.isNotEmpty()) {
-                // Compartidas con la casa: un texto que llega de fuera suele ser el reparto de
-                // tareas del piso, no una rutina personal.
+                // Shared with the household: text arriving from outside is usually the flat's chore
+                // split, not a personal routine.
                 addAiRoutinesUseCase(routines, RoutineType.HOUSEHOLD)
                     .onSuccess { addedRoutines = it }
                     .onFailure {
                         failed = true
-                        Log.e(tag, "No se pudieron crear las rutinas compartidas", it)
+                        Log.e(tag, "Could not create the shared routines", it)
                     }
             }
 
@@ -256,7 +256,7 @@ class ImportSharedTextViewModel @Inject constructor(
             try {
                 repository.downloadModel(wifiOnly)
             } catch (e: Exception) {
-                Log.e(tag, "Error al encolar la descarga del modelo", e)
+                Log.e(tag, "Error enqueueing the model download", e)
                 _uiState.update { it.copy(errorRes = R.string.ai_error_download) }
             }
         }
@@ -270,7 +270,7 @@ class ImportSharedTextViewModel @Inject constructor(
         _uiState.update { it.copy(errorRes = null) }
     }
 
-    /** Al cerrar la hoja: se corta la inferencia en vuelo y se olvida el texto recibido. */
+    /** On closing the sheet: cancel the in-flight inference and forget the received text. */
     fun onDismissed() {
         extractionJob?.cancel()
         extractionJob = null

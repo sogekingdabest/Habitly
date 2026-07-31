@@ -55,7 +55,7 @@ fun LoginScreen(
                 .imePadding()
                 .padding(horizontal = 26.dp, vertical = 20.dp)
         ) {
-            // --- Parte superior desplazable ---
+            // --- Scrollable top part ---
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -64,8 +64,8 @@ fun LoginScreen(
             ) {
                 Spacer(modifier = Modifier.height(28.dp))
 
-                // Marca: mismo recurso que el icono del launcher, sobre el verde de
-                // acento para que despegue del fondo (el halo neutro se fundía con él).
+                // Brand: same resource as the launcher icon, over the accent green so it lifts off
+                // the background (the neutral halo blended into it).
                 IconHalo(
                     size = 82.dp,
                     cornerRadius = 26.dp,
@@ -144,7 +144,7 @@ fun LoginScreen(
                 }
             }
 
-            // --- Parte inferior fija ---
+            // --- Fixed bottom part ---
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally

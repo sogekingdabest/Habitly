@@ -15,10 +15,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Preferencias respaldadas por `SharedPreferences` (nombre [PREFS_NAME]). Se abre por nombre
- * dentro del impl —no vía DI— para no chocar con el `SharedPreferences` sin cualificar que ya
- * provee el módulo del asistente, y para que [readLanguageTag] y [readRemindersEnabled] puedan
- * leer el mismo fichero de forma síncrona desde sitios sin Hilt (`attachBaseContext`, el worker).
+ * Preferences backed by `SharedPreferences` (named [PREFS_NAME]). It is opened by name inside the
+ * impl — not through DI — so it does not clash with the unqualified `SharedPreferences` the
+ * assistant module already provides, and so [readLanguageTag] and [readRemindersEnabled] can read
+ * the same file synchronously from places without Hilt (`attachBaseContext`, the worker).
  */
 @Singleton
 class SettingsRepositoryImpl @Inject constructor(
@@ -49,7 +49,7 @@ class SettingsRepositoryImpl @Inject constructor(
         prefs.edit().putBoolean(KEY_REMINDERS, enabled).apply()
     }
 
-    /** Emite el valor actual y vuelve a emitir cuando cambia [key] (o toda la prefs). */
+    /** Emits the current value and re-emits when [key] (or the whole prefs) changes. */
     private fun <T> observe(key: String, read: () -> T): Flow<T> = callbackFlow {
         trySend(read())
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, changedKey ->
@@ -65,12 +65,12 @@ class SettingsRepositoryImpl @Inject constructor(
         const val KEY_LANGUAGE = "app_language"
         const val KEY_REMINDERS = "reminders_enabled"
 
-        /** Lectura síncrona del tag de idioma (para `attachBaseContext`). "" = sistema. */
+        /** Synchronous read of the language tag (for `attachBaseContext`). "" = system. */
         fun readLanguageTag(context: Context): String =
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .getString(KEY_LANGUAGE, "") ?: ""
 
-        /** Lectura síncrona del interruptor maestro de recordatorios (para el worker). */
+        /** Synchronous read of the master reminders switch (for the worker). */
         fun readRemindersEnabled(context: Context): Boolean =
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .getBoolean(KEY_REMINDERS, true)

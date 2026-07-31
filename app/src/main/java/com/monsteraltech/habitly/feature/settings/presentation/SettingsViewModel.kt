@@ -56,8 +56,8 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             observeUserProfileUseCase(currentUserId).collectLatest { profile ->
                 _uiState.update { it.copy(nickname = profile?.nickname.orEmpty()) }
-                // Se guarda aparte del estado de UI: el nickname se duplica dentro del
-                // documento de la casa y hace falta saber a cuál escribir.
+                // Kept apart from the UI state: the nickname is denormalised inside the household
+                // document, and we need to know which one to write to.
                 activeHouseholdId = profile?.activeHouseholdId.orEmpty()
             }
         }
@@ -67,7 +67,7 @@ class SettingsViewModel @Inject constructor(
 
     fun onThemeModeSelected(mode: ThemeMode) = settingsRepository.setThemeMode(mode)
 
-    /** Persiste el idioma. La pantalla llama a `recreate()` para que se aplique la locale. */
+    /** Persists the language. The screen calls `recreate()` so the locale takes effect. */
     fun onLanguageSelected(language: AppLanguage) = settingsRepository.setLanguage(language)
 
     fun onRemindersToggled(enabled: Boolean) = settingsRepository.setRemindersEnabled(enabled)

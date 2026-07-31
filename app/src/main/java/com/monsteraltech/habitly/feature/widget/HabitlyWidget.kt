@@ -50,15 +50,14 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
- * Widget de pantalla de inicio: muestra los productos pendientes de la compra y las
- * rutinas de hoy sin completar, **con casilla para marcarlos sin abrir la app**. Los datos
- * se leen bajo demanda (caché offline de Firestore) cada vez que Android refresca el widget
- * o se abre la app.
+ * Home-screen widget: shows the pending shopping products and today's uncompleted routines, **with a
+ * checkbox to tick them off without opening the app**. Data is read on demand (Firestore's offline
+ * cache) every time Android refreshes the widget or the app is opened.
  *
- * Piel "Verde niebla" con los mismos tokens de marca que la app (tarjeta crema, verde
- * salvia, pastillas de recuento), en variantes día/noche que siguen el modo oscuro del
- * sistema. Los textos se resuelven con [LocaleHelper.wrap] para respetar el idioma
- * elegido en Ajustes (si no, Glance usaría el locale del sistema).
+ * "Verde niebla" skin with the same brand tokens as the app (cream card, sage green, count pills),
+ * in day/night variants that follow the system dark mode. Texts are resolved through
+ * [LocaleHelper.wrap] to honour the language chosen in Settings — otherwise Glance would use the
+ * system locale.
  */
 class HabitlyWidget : GlanceAppWidget() {
 
@@ -76,7 +75,7 @@ class HabitlyWidget : GlanceAppWidget() {
     }
 }
 
-/** Paleta del widget en variantes día/noche (siguen el modo oscuro del sistema). */
+/** Widget palette in day/night variants (they follow the system dark mode). */
 private object WidgetColors {
     val title = ColorProvider(day = SageText, night = SageDarkAccent)
     val accent = ColorProvider(day = Sage, night = SageDarkPrimary)
@@ -87,7 +86,7 @@ private object WidgetColors {
 
 @Composable
 private fun WidgetBody(snapshot: WidgetSnapshot) {
-    // Contexto localizado: resuelve los textos con el idioma elegido en Ajustes.
+    // Localised context: resolves the texts in the language chosen in Settings.
     val context = LocaleHelper.wrap(LocalContext.current)
 
     Column(
@@ -111,7 +110,7 @@ private fun WidgetBody(snapshot: WidgetSnapshot) {
             WidgetState.READY -> {
                 WidgetSection(
                     context = context,
-                    emoji = "🛒", // 🛒
+                    emoji = "🛒",
                     header = context.getString(R.string.widget_shopping),
                     lines = snapshot.pendingItems,
                     emptyText = context.getString(R.string.widget_shopping_empty),
@@ -123,7 +122,7 @@ private fun WidgetBody(snapshot: WidgetSnapshot) {
                 Spacer(GlanceModifier.height(12.dp))
                 WidgetSection(
                     context = context,
-                    emoji = "☀️", // ☀️
+                    emoji = "☀️",
                     header = context.getString(R.string.widget_routines),
                     lines = snapshot.pendingRoutines,
                     emptyText = context.getString(R.string.widget_routines_empty),
@@ -222,13 +221,13 @@ private fun WidgetSection(
 }
 
 /**
- * Línea marcable. La casilla es la que hace útil al widget: antes solo se podía mirar.
- * Al pulsarla, el callback escribe en Firestore y repinta; no hay estado local que mantener.
+ * A checkable line. The checkbox is what makes the widget useful: before, it was look-only. Tapping
+ * it makes the callback write to Firestore and repaint; there is no local state to keep.
  */
 @Composable
 private fun ItemRow(line: WidgetLine, onCheck: (WidgetLine) -> Action) {
     CheckBox(
-        // Solo se listan pendientes, así que siempre arranca sin marcar.
+        // Only pending ones are listed, so it always starts unchecked.
         checked = false,
         onCheckedChange = onCheck(line),
         modifier = GlanceModifier.fillMaxWidth().padding(vertical = 1.dp),

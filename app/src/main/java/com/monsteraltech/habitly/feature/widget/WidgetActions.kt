@@ -10,15 +10,13 @@ import com.monsteraltech.habitly.feature.widget.domain.WidgetActionsUseCase
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** Id de la línea sobre la que se ha pulsado, único dato que viaja al callback. */
+/** Id of the tapped line, the only piece of data that travels to the callback. */
 val LineIdKey = ActionParameters.Key<String>("habitly.widget.lineId")
 
-/** Parámetros de una acción del widget para la línea [id]. */
+/** Parameters of a widget action for line [id]. */
 fun widgetLineParameters(id: String): ActionParameters = actionParametersOf(LineIdKey to id)
 
-/**
- * Tacha un producto de la lista de la compra desde el widget, sin abrir la app.
- */
+/** Ticks a shopping-list product off from the widget, without opening the app. */
 class ToggleShoppingItemAction : ActionCallback {
     override suspend fun onAction(
         context: Context,
@@ -29,7 +27,7 @@ class ToggleShoppingItemAction : ActionCallback {
     }
 }
 
-/** Da por hecha una rutina de hoy desde el widget. */
+/** Marks one of today's routines done from the widget. */
 class CompleteRoutineAction : ActionCallback {
     override suspend fun onAction(
         context: Context,
@@ -41,17 +39,16 @@ class CompleteRoutineAction : ActionCallback {
 }
 
 /**
- * Ejecuta [block] con las dependencias del widget y repinta al terminar.
+ * Runs [block] with the widget's dependencies and repaints when it finishes.
  *
- * El callback corre fuera de la UI de la app: aquí no hay snackbar donde avisar de un fallo.
- * Por eso se refresca **siempre**, acierte o falle: al acertar la línea desaparece, y al
- * fallar la casilla vuelve a estar sin marcar en lugar de quedarse mintiendo.
+ * The callback runs outside the app's UI: there is no snackbar here to report a failure. So it
+ * refreshes **always**, whether it succeeds or fails: on success the line disappears, and on failure
+ * the checkbox goes back to unchecked instead of sitting there lying.
  *
- * El tope de tiempo es lo que hace que la acción funcione sin red: la escritura de Firestore
- * no confirma hasta que llega al servidor, pero la caché local ya la tiene aplicada y la
- * mutación queda encolada. Sin el tope, el `await` se quedaría colgado y el widget no se
- * repintaría nunca; además, el receptor que ejecuta el callback tiene su propia ventana
- * limitada antes de que Android lo mate.
+ * The timeout is what lets the action work without network: a Firestore write does not confirm until
+ * it reaches the server, but the local cache has already applied it and the mutation is queued.
+ * Without the timeout the `await` would hang and the widget would never repaint; besides, the
+ * receiver running the callback has its own limited window before Android kills it.
  */
 private suspend fun runWidgetAction(
     context: Context,
@@ -66,7 +63,7 @@ private suspend fun runWidgetAction(
         withTimeoutOrNull(WRITE_TIMEOUT_MS) {
             block(entryPoint.widgetActionsUseCase()).getOrThrow()
         }
-    }.onFailure { Log.w(TAG, "Acción del widget fallida", it) }
+    }.onFailure { Log.w(TAG, "Widget action failed", it) }
 
     runCatching { HabitlyWidget().update(context, glanceId) }
 }

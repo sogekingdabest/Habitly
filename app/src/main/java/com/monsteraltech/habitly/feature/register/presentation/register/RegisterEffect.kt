@@ -2,7 +2,7 @@ package com.monsteraltech.habitly.feature.register.presentation.register
 
 sealed class RegisterEffect {
 
-    // — Navegación —
+    // — Navigation —
     object NavigateToEmailVerification : RegisterEffect()
     object NavigateToHome : RegisterEffect()
     object NavigateToLogin : RegisterEffect()
@@ -10,6 +10,6 @@ sealed class RegisterEffect {
     // — Google Sign-In —
     object LaunchGoogleSignIn : RegisterEffect()
 
-    // — Feedback —
+    // — User feedback —
     data class ShowSnackbar(val message: String) : RegisterEffect()
 }

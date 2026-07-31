@@ -12,7 +12,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * @param emailInvalid true si el fallo es de formato de correo (mensaje distinto al de red).
+ * @param emailInvalid true when the failure is an email-format one (a different message from the
+ *   network one).
  */
 data class ForgotPasswordUiState(
     val email: String = "",

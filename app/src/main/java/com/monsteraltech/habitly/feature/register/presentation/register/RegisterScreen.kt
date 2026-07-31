@@ -134,7 +134,7 @@ fun RegisterScreen(
                     .imePadding()
                     .padding(horizontal = 26.dp, vertical = 12.dp)
             ) {
-                // --- Parte superior desplazable ---
+                // --- Scrollable top part ---
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -272,7 +272,7 @@ fun RegisterScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // --- Parte inferior fija ---
+                // --- Fixed bottom part ---
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally

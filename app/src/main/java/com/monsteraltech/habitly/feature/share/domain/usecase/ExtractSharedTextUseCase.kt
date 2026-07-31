@@ -12,24 +12,24 @@ import com.monsteraltech.habitly.feature.share.domain.util.SharedTextKind
 import com.monsteraltech.habitly.feature.shopping.domain.util.PlainListParser
 import javax.inject.Inject
 
-/** Lo que se ha reconocido en un texto compartido, para que el usuario lo revise. */
+/** What was recognised in a shared text, for the user to review. */
 data class SharedTextExtraction(
     val products: List<AiShoppingSuggestion> = emptyList(),
     val routines: List<AiRoutineSuggestion> = emptyList(),
-    /** Si lo ha extraído el modelo local o el lector de texto plano. */
+    /** Whether the local model extracted it or the plain-text reader did. */
     val usedAi: Boolean = false
 ) {
     val isEmpty: Boolean get() = products.isEmpty() && routines.isEmpty()
 }
 
 /**
- * Analiza el texto que llega de otra app por "Compartir con Habitly".
+ * Analyses text arriving from another app via "Share with Habitly".
  *
- * Reutiliza tal cual la maquinaria del asistente: el turno de extracción aislado del repositorio
- * ([AiAssistantRepository.extractShopping] / [AiAssistantRepository.extractRoutines], temperatura
- * baja y no persistido) y los parsers tolerantes de su salida. Aquí solo se añade lo propio de
- * este camino: el texto va **delimitado como datos** ([SharedTextGuard]) y hay un plan B sin
- * modelo ([withoutAi]) para no dejar al usuario en un callejón sin salida.
+ * It reuses the assistant's machinery as-is: the repository's isolated extraction turn
+ * ([AiAssistantRepository.extractShopping] / [AiAssistantRepository.extractRoutines], low
+ * temperature, not persisted) and the tolerant parsers of its output. All this path adds is its own
+ * concerns: the text goes in **delimited as data** ([SharedTextGuard]), and there is a model-free
+ * plan B ([withoutAi]) so the user is not left at a dead end.
  */
 class ExtractSharedTextUseCase @Inject constructor(
     private val repository: AiAssistantRepository,
@@ -38,11 +38,11 @@ class ExtractSharedTextUseCase @Inject constructor(
 ) {
 
     /**
-     * Extracción con el modelo local. Solo lanza los turnos que pide el tipo de texto: cada uno
-     * es una inferencia completa, y la primera del día tarda.
+     * Extraction with the local model. It only runs the turns the text kind calls for: each is a
+     * full inference, and the first of the day is slow.
      *
-     * Si el modelo no encuentra nada, cae al lector de texto plano: es mejor proponer las líneas
-     * del texto que devolver una pantalla vacía cuando el usuario ha compartido una lista.
+     * If the model finds nothing, it falls back to the plain-text reader: better to propose the
+     * text's lines than return an empty screen when the user shared a list.
      */
     suspend fun withAi(sanitized: String): SharedTextExtraction {
         if (sanitized.isBlank()) return SharedTextExtraction()
@@ -66,9 +66,9 @@ class ExtractSharedTextUseCase @Inject constructor(
     }
 
     /**
-     * Extracción sin modelo: una línea (o un elemento separado por comas) es un producto, con
-     * su cantidad y unidad si vienen escritas. Cubre el caso más común —una lista pegada de
-     * WhatsApp o de una nota— sin descargar 2,5 GB.
+     * Model-free extraction: one line (or a comma-separated item) is a product, with its quantity
+     * and unit if written. Covers the most common case — a list pasted from WhatsApp or a note —
+     * without downloading 2.5 GB.
      */
     fun withoutAi(
         sanitized: String,
@@ -79,8 +79,8 @@ class ExtractSharedTextUseCase @Inject constructor(
         val entries = PlainListParser.fromLines(sanitized)
         if (entries.isEmpty()) return SharedTextExtraction()
 
-        // Un texto de tareas se propone como rutinas; en un texto mixto, la compra manda:
-        // adivinar rutinas de un menú semanal sin modelo daría basura.
+        // A chores text is proposed as routines; in a mixed text, shopping wins: guessing routines
+        // out of a weekly menu without a model would give garbage.
         return if (kind == SharedTextKind.ROUTINES) {
             SharedTextExtraction(
                 routines = entries.map { entry ->

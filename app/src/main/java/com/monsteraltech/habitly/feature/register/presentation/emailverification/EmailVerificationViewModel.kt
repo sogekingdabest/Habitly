@@ -99,7 +99,7 @@ class EmailVerificationViewModel @Inject constructor(
                            _effects.send(EmailVerificationEffect.ShowSnackbar("Correo de verificación reenviado"))
                            startCooldown()
                        }.onFailure {
-                           // Sin cooldown en el fallo: que el usuario pueda reintentar de inmediato.
+                           // No cooldown on failure: let the user retry immediately.
                            _effects.send(EmailVerificationEffect.ShowSnackbar("No se pudo reenviar el correo"))
                        }
                    }

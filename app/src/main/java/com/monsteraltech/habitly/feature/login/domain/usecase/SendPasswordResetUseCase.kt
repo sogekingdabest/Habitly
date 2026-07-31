@@ -4,8 +4,8 @@ import com.monsteraltech.habitly.feature.login.domain.repository.AuthRepository
 import javax.inject.Inject
 
 /**
- * Valida el formato del correo y solicita el envío del enlace de restablecimiento. La validación
- * vive en domain (regex pura, sin `android.util.Patterns`) para poder testearla en la JVM.
+ * Validates the email format and requests the reset link. The validation lives in domain (a pure
+ * regex, no `android.util.Patterns`) so it is testable on the JVM.
  */
 class SendPasswordResetUseCase @Inject constructor(
     private val authRepository: AuthRepository

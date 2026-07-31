@@ -21,8 +21,8 @@ class LoginWithEmailUseCase @Inject constructor(
     }
 
     companion object {
-        // Regex de dominio puro (sin android.util.Patterns), para que la capa
-        // domain sea testeable en tests JVM y no dependa del framework de Android.
+        // A pure-domain regex (no android.util.Patterns), so the domain layer is testable in JVM
+        // tests and does not depend on the Android framework.
         private val EMAIL_REGEX = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
     }
 }

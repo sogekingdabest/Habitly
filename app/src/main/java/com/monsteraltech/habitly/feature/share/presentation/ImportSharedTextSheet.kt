@@ -59,14 +59,13 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
- * "Compartir con Habitly": hoja de revisión de lo que se ha reconocido en el texto que llega de
- * otra app.
+ * "Share with Habitly": review sheet for what was recognised in text arriving from another app.
  *
- * Es la pantalla que hace segura toda la función: el modelo se equivoca y el texto compartido no
- * es de fiar, así que **nada se guarda hasta que el usuario lo confirma aquí**, con casillas para
- * descartar y cantidades editables.
+ * This is the screen that makes the whole feature safe: the model gets things wrong and shared text
+ * is untrusted, so **nothing is saved until the user confirms it here**, with checkboxes to discard
+ * and editable quantities.
  *
- * [sharedText] es el texto crudo del intent; [onDismiss] cierra y lo consume.
+ * [sharedText] is the intent's raw text; [onDismiss] closes and consumes it.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,18 +84,18 @@ fun ImportSharedTextSheet(
         viewModel.onTextReceived(sharedText)
     }
 
-    // Cierre inmediato (el gesto ya trae su propia animación).
+    // Immediate close (the gesture already brings its own animation).
     val dismiss: () -> Unit = {
         viewModel.onDismissed()
         onDismiss()
     }
 
-    // Cierre desde un botón: primero se retira la hoja con su animación y luego se limpia.
+    // Close from a button: the sheet retracts with its animation first, then the state is cleared.
     val hideAndDismiss: () -> Unit = {
         scope.launch { sheetState.hide() }.invokeOnCompletion { dismiss() }
     }
 
-    // Alta hecha: se avisa fuera (snackbar en la pantalla) y la hoja se retira sola.
+    // Save done: it is announced outside (a snackbar on the screen) and the sheet retracts on its own.
     LaunchedEffect(uiState.stage) {
         if (uiState.stage == ImportStage.DONE) {
             onImported(uiState.savedProducts, uiState.savedRoutines)
@@ -150,8 +149,8 @@ fun ImportSharedTextSheet(
 
             Spacer(Modifier.height(16.dp))
 
-            // Sin modelo en disco no se deja al usuario tirado: lo que se ve sale del lector de
-            // texto plano y desde aquí puede descargar el modelo para una lectura mejor.
+            // With no model on disk the user is not left stranded: what is shown comes from the
+            // plain-text reader, and from here they can download the model for a better read.
             if (uiState.stage != ImportStage.ANALYZING && !uiState.isModelReady) {
                 OfferLocalModel(
                     isDownloading = uiState.isDownloading,
@@ -162,8 +161,8 @@ fun ImportSharedTextSheet(
                 Spacer(Modifier.height(12.dp))
             }
 
-            // También cuando no se ha reconocido nada: es justo el caso en el que el usuario
-            // acaba de descargar el modelo y necesita poder reintentar con él.
+            // Also when nothing was recognised: that is exactly the case where the user has just
+            // downloaded the model and needs to be able to retry with it.
             if (uiState.canAnalyzeWithAi) {
                 HabitlyTextButton(
                     text = stringResource(R.string.share_analyze_with_ai),
@@ -221,8 +220,8 @@ fun ImportSharedTextSheet(
 }
 
 /**
- * La primera inferencia del modelo local tarda (carga del engine + prefill), así que hay
- * progreso y un aviso explícito: una pantalla quieta se lee como colgada.
+ * The local model's first inference is slow (engine load + prefill), so there is progress and an
+ * explicit notice: a still screen reads as frozen.
  */
 @Composable
 private fun AnalyzingState() {
@@ -248,7 +247,7 @@ private fun AnalyzingState() {
     }
 }
 
-/** Un texto sin productos no da de alta nada, y se dice con claridad. */
+/** A text with no products creates nothing, and it says so plainly. */
 @Composable
 private fun NothingFoundState() {
     Column(
@@ -279,7 +278,7 @@ private fun ReviewState(
     onChangeQuantity: (Int, Int) -> Unit,
     onToggleRoutine: (Int) -> Unit
 ) {
-    // Acotada en alto: una receta larga no puede empujar el botón de guardar fuera de la hoja.
+    // Height-capped: a long recipe must not push the save button off the sheet.
     LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
         if (uiState.products.isNotEmpty()) {
             item(key = "products-header") {
@@ -422,7 +421,7 @@ private fun RoutineReviewRow(row: ImportRoutineRow, onToggle: () -> Unit) {
     }
 }
 
-/** Invitación a descargar el modelo local, con su progreso si ya está en marcha. */
+/** Invitation to download the local model, with its progress if already under way. */
 @Composable
 private fun OfferLocalModel(
     isDownloading: Boolean,
@@ -463,7 +462,7 @@ private fun OfferLocalModel(
     }
 }
 
-/** Tamaño del modelo en GB/MB, con el mismo formato que la pantalla del asistente. */
+/** The model size in GB/MB, in the same format as the assistant screen. */
 private fun formatModelSize(bytes: Long): String {
     if (bytes <= 0L) return "~2 GB"
     val gb = bytes / 1_000_000_000.0

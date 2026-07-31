@@ -11,13 +11,13 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
- * Las acciones que el widget puede ejecutar sin abrir la app: tachar un producto y dar por
- * hecha una rutina.
+ * The actions the widget can run without opening the app: ticking off a product and marking a
+ * routine done.
  *
- * Vive aquí y no en el `ActionCallback` porque el callback corre fuera del ciclo de vida de
- * la app y no puede inyectar nada: solo sabe pedir esta clase al `EntryPoint`. Reutiliza los
- * mismos use cases que las pantallas para que un tick desde el widget y un tick desde la app
- * escriban exactamente lo mismo (incluida la rotación de turnos).
+ * It lives here rather than in the `ActionCallback` because the callback runs outside the app's
+ * lifecycle and can inject nothing: all it can do is ask the `EntryPoint` for this class. It reuses
+ * the same use cases as the screens, so a tick from the widget and a tick from the app write exactly
+ * the same thing (turn rotation included).
  */
 class WidgetActionsUseCase @Inject constructor(
     private val authRepository: AuthRepository,
@@ -28,7 +28,7 @@ class WidgetActionsUseCase @Inject constructor(
     private val advanceRotationUseCase: AdvanceRotationUseCase
 ) {
 
-    /** Marca un producto de la lista de la compra como comprado. */
+    /** Marks a shopping-list product as bought. */
     suspend fun checkShoppingItem(itemId: String): Result<Unit> {
         if (itemId.isBlank()) return Result.failure(IllegalArgumentException("itemId vacío"))
         val session = resolveSession() ?: return Result.failure(IllegalStateException("Sin sesión"))
@@ -36,8 +36,8 @@ class WidgetActionsUseCase @Inject constructor(
     }
 
     /**
-     * Da por hecha una rutina de hoy. Busca la rutina completa porque el use case de toggle
-     * necesita la frecuencia y el último completado para recalcular la racha.
+     * Marks one of today's routines done. It looks up the full routine because the toggle use case
+     * needs the frequency and the last completion to recompute the streak.
      */
     suspend fun completeRoutine(routineId: String): Result<Unit> {
         if (routineId.isBlank()) return Result.failure(IllegalArgumentException("routineId vacío"))
@@ -55,8 +55,8 @@ class WidgetActionsUseCase @Inject constructor(
 
         return toggleRoutineUseCase(session.userId, session.householdId, routine, true)
             .onSuccess {
-                // Mismo comportamiento que la pantalla de rutinas: al completarla, el turno
-                // pasa al siguiente miembro. Si falla, la rutina ya está marcada igualmente.
+                // Same behaviour as the routines screen: completing it passes the turn to the next
+                // member. If that fails, the routine is marked done anyway.
                 val members = withTimeoutOrNull(TIMEOUT_MS) {
                     householdRepository.observeHousehold(session.householdId).firstOrNull()
                 }?.members.orEmpty()

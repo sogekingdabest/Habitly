@@ -4,29 +4,29 @@ import com.monsteraltech.habitly.feature.register.domain.model.RegisterError
 
 data class RegisterUiState(
 
-    // — Campos del formulario —
+    // — Form fields —
     val displayName: String = "",
     val email: String = "",
     val password: String = "",
     val confirmPassword: String = "",
 
-    // — Visibilidad de campos protegidos —
+    // — Visibility of protected fields —
     val isPasswordVisible: Boolean = false,
     val isConfirmPasswordVisible: Boolean = false,
 
-    // — Errores por campo (null = sin error visible) —
+    // — Per-field errors (null = no visible error) —
     val displayNameError: RegisterError? = null,
     val emailError: RegisterError? = null,
     val passwordError: RegisterError? = null,
     val confirmPasswordError: RegisterError? = null,
 
-    // — Estado de carga —
+    // — Loading state —
     val isLoading: Boolean = false,
     val isGoogleSignInLoading: Boolean = false,
 
-    // — Error global (errores de red, email en uso, etc.) —
+    // — Global error (network errors, email already in use, etc.) —
     val globalError: RegisterError? = null,
 
-    // — Habilitación del botón principal (heurística rápida: campos no vacíos) —
+    // — Main button enablement (quick heuristic: fields non-empty) —
     val isRegisterButtonEnabled: Boolean = false,
 )

@@ -1,16 +1,15 @@
 package com.monsteraltech.habitly.feature.widget.domain
 
 /**
- * Avisa al widget de pantalla de inicio de que los datos han cambiado.
+ * Tells the home-screen widget its data has changed.
  *
- * Es una interfaz para que las capas de datos no dependan de Glance ni arrastren un
- * `Context` a los tests: en las pruebas basta con no bindear nada.
+ * It is an interface so the data layers do not depend on Glance or drag a `Context` into the tests:
+ * in tests, binding nothing is enough.
  */
 interface WidgetRefresher {
     /**
-     * Repinta todas las instancias del widget. No bloquea: se lanza en segundo plano y los
-     * fallos se tragan, porque refrescar el widget nunca debe tumbar la escritura que lo
-     * provocó.
+     * Repaints every widget instance. Non-blocking: it runs in the background and swallows
+     * failures, because refreshing the widget must never take down the write that triggered it.
      */
     fun refresh()
 }

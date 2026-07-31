@@ -86,8 +86,8 @@ fun ForgotPasswordScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Mensajes de estado bajo el campo: éxito (privacy-friendly), error de formato
-                // o error genérico/red.
+                // Status messages under the field: success (privacy-friendly), format error, or a
+                // generic/network error.
                 when {
                     uiState.isSent -> Text(
                         text = stringResource(R.string.forgot_success),
@@ -113,7 +113,7 @@ fun ForgotPasswordScreen(
                 }
             }
 
-            // --- Parte inferior fija ---
+            // --- Fixed bottom part ---
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally

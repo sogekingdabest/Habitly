@@ -61,7 +61,7 @@ fun EmailVerificationScreen(
                 .imePadding()
                 .padding(24.dp)
         ) {
-            // --- Parte Superior Desplazable ---
+            // --- Scrollable top part ---
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -141,7 +141,7 @@ fun EmailVerificationScreen(
                 }
             }
 
-            // --- Parte Inferior Fija ---
+            // --- Fixed bottom part ---
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally

@@ -5,9 +5,9 @@ import com.monsteraltech.habitly.feature.settings.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Preferencias de la app (tema, idioma, notificaciones). Respaldado por un `SharedPreferences`
- * síncrono para poder leer el idioma en `attachBaseContext`, antes de que Hilt esté disponible.
- * Los setters usan `apply()` (no bloquean) por lo que no necesitan ser `suspend`.
+ * App preferences (theme, language, notifications). Backed by a synchronous `SharedPreferences` so
+ * the language can be read in `attachBaseContext`, before Hilt is available. The setters use
+ * `apply()` (non-blocking), so they need not be `suspend`.
  */
 interface SettingsRepository {
     val themeMode: Flow<ThemeMode>

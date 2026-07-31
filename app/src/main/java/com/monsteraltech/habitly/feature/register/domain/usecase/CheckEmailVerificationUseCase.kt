@@ -8,8 +8,8 @@ class CheckEmailVerificationUseCase @Inject constructor(
 ) {
 
     /**
-     * Recarga el FirebaseUser y retorna si el email ya está verificado.
-     * Usado por EmailVerificationViewModel para el polling periódico.
+     * Reloads the FirebaseUser and reports whether the email is verified yet. Used by
+     * EmailVerificationViewModel for its periodic polling.
      */
     suspend operator fun invoke(): Result<Boolean> {
         return authRepository.reloadCurrentUser().map { authUser ->

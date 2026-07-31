@@ -55,7 +55,7 @@ import com.monsteraltech.habitly.feature.settings.domain.model.ThemeMode
 import com.monsteraltech.habitly.ui.components.HabitlyCard
 import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
 
-// URLs de las páginas legales (GitHub Pages). Deben coincidir con la ficha de Google Play.
+// URLs of the legal pages (GitHub Pages). Must match the Google Play listing.
 private const val URL_PRIVACY = "https://sogekingdabest.github.io/habitly-legal/privacidad.html"
 private const val URL_TERMS = "https://sogekingdabest.github.io/habitly-legal/terminos.html"
 
@@ -127,7 +127,7 @@ fun SettingsScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            // === CUENTA ===
+            // === ACCOUNT ===
             SettingsSection(stringResource(R.string.settings_section_account)) {
                 SettingsInfoRow(
                     icon = Icons.Filled.Email,
@@ -153,7 +153,7 @@ fun SettingsScreen(
                 )
             }
 
-            // === APARIENCIA ===
+            // === APPEARANCE ===
             SettingsSection(stringResource(R.string.settings_section_appearance)) {
                 SettingsRowHeader(
                     icon = Icons.Filled.Palette,
@@ -168,7 +168,7 @@ fun SettingsScreen(
                 }
             }
 
-            // === IDIOMA ===
+            // === LANGUAGE ===
             SettingsSection(stringResource(R.string.settings_section_language)) {
                 SettingsRowHeader(
                     icon = Icons.Filled.Language,
@@ -181,7 +181,7 @@ fun SettingsScreen(
                         onClick = {
                             if (uiState.language != language) {
                                 viewModel.onLanguageSelected(language)
-                                // Recrea la Activity para que attachBaseContext aplique la locale.
+                                // Recreates the Activity so attachBaseContext applies the locale.
                                 activity?.recreate()
                             }
                         }
@@ -189,7 +189,7 @@ fun SettingsScreen(
                 }
             }
 
-            // === NOTIFICACIONES ===
+            // === NOTIFICATIONS ===
             SettingsSection(stringResource(R.string.settings_section_notifications)) {
                 SettingsSwitchRow(
                     icon = Icons.Filled.Notifications,
@@ -210,7 +210,7 @@ fun SettingsScreen(
                 )
             }
 
-            // === ACERCA DE ===
+            // === ABOUT ===
             SettingsSection(stringResource(R.string.settings_section_about)) {
                 SettingsInfoRow(
                     icon = Icons.Filled.Info,
@@ -256,7 +256,7 @@ fun SettingsScreen(
                 )
             }
 
-            // === ZONA DE PELIGRO ===
+            // === DANGER ZONE ===
             Spacer(Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.household_danger_zone),
@@ -292,7 +292,7 @@ fun SettingsScreen(
         }
     }
 
-    // Diálogo editar apodo
+    // Edit-nickname dialog
     if (showNicknameDialog) {
         AlertDialog(
             onDismissRequest = { showNicknameDialog = false },
@@ -322,7 +322,7 @@ fun SettingsScreen(
         )
     }
 
-    // Diálogo cerrar sesión
+    // Log-out dialog
     if (showSignOutDialog) {
         AlertDialog(
             onDismissRequest = { showSignOutDialog = false },
@@ -343,7 +343,7 @@ fun SettingsScreen(
         )
     }
 
-    // Diálogo borrar cuenta
+    // Delete-account dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -369,7 +369,7 @@ fun SettingsScreen(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Componentes reutilizables (piel Cozy)
+// Reusable components (Cozy skin)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable

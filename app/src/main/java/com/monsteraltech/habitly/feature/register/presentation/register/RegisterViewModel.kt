@@ -130,7 +130,7 @@ class RegisterViewModel @Inject constructor(
             displayName = state.displayName
         )
 
-        // Validacion
+        // Validation
         val errors = validateRegisterInputUseCase(credentials)
         if (errors.isNotEmpty()) {
             _uiState.update { it.applyErrors(errors) }

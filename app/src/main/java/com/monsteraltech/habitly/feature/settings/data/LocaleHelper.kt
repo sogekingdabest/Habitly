@@ -5,13 +5,13 @@ import android.content.res.Configuration
 import java.util.Locale
 
 /**
- * Aplica el idioma persistido al `Context` de la Activity. Se llama desde
- * `MainActivity.attachBaseContext`, que corre antes de la inyección de Hilt, por eso lee la
- * preferencia de forma síncrona con [SettingsRepositoryImpl.readLanguageTag].
+ * Applies the persisted language to the Activity's `Context`. It is called from
+ * `MainActivity.attachBaseContext`, which runs before Hilt injection, which is why it reads the
+ * preference synchronously via [SettingsRepositoryImpl.readLanguageTag].
  *
- * Funciona en API 29+ sin `appcompat`: envuelve el contexto con una `Configuration` cuya locale
- * es la elegida. Al cambiar el idioma en Ajustes basta con `Activity.recreate()` para que este
- * `wrap` se ejecute de nuevo con la nueva locale.
+ * Works on API 29+ without `appcompat`: it wraps the context with a `Configuration` whose locale is
+ * the chosen one. When the language changes in Settings, an `Activity.recreate()` is enough for this
+ * `wrap` to run again with the new locale.
  */
 object LocaleHelper {
 

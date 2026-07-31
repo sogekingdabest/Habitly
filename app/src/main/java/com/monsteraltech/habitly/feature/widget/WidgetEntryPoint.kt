@@ -7,8 +7,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
 /**
- * Puente para obtener dependencias de Hilt desde el widget (que no es un componente
- * inyectable). Sigue el mismo enfoque "sin hilt-work" que el resto de la app.
+ * Bridge for pulling Hilt dependencies from the widget, which is not an injectable component. It
+ * follows the same "no hilt-work" approach as the rest of the app.
  */
 @EntryPoint
 @InstallIn(SingletonComponent::class)

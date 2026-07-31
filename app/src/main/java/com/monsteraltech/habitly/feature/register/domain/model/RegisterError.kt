@@ -2,7 +2,7 @@ package com.monsteraltech.habitly.feature.register.domain.model
 
 sealed class RegisterError : Exception() {
 
-    // — Errores de validación de entrada (dominio puro) —
+    // — Input validation errors (pure domain) —
     object EmailBlank : RegisterError()
     object EmailInvalidFormat : RegisterError()
     object PasswordTooShort : RegisterError()       // < 8 chars
@@ -12,13 +12,13 @@ sealed class RegisterError : Exception() {
     object DisplayNameBlank : RegisterError()
     object DisplayNameTooShort : RegisterError()    // < 2 chars
 
-    // — Errores de Firebase / red —
+    // — Firebase / network errors —
     object EmailAlreadyInUse : RegisterError()
     object NetworkError : RegisterError()
     object GoogleSignInCancelled : RegisterError()
     object GoogleSignInFailed : RegisterError()
     object EmailNotVerifiedYet : RegisterError()    // usado en polling
 
-    // — Fallback genérico —
+    // — Generic fallback —
     data class Unknown(override val cause: Throwable) : RegisterError()
 }
