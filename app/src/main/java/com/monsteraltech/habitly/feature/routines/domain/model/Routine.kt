@@ -21,10 +21,34 @@ enum class RoutineFrequency(val label: String) {
     YEARLY("Anual")
 }
 
+/**
+ * How loudly a routine's reminder arrives. Each value maps to its own notification channel, because
+ * Android freezes a channel's sound and vibration the moment it is created; the user then tunes each
+ * level to taste from the system settings.
+ *
+ * Same warning as [RoutineFrequency]: Firestore serialises this by name, so adding a value here
+ * breaks older app versions reading a routine that uses it.
+ */
+enum class NotificationLevel {
+    /** Arrives without sound or vibration. */
+    SILENT,
+    DEFAULT,
+    /** Pops up on screen. */
+    HIGH
+}
+
 data class Routine(
     val id: String = "",
     val title: String = "",
     val description: String = "",
+    /**
+     * Emoji shown next to the title and in the reminder, so the routine is recognisable without
+     * reading it. Empty means no icon. A plain string on purpose: it syncs with the household for
+     * free and there are no image files to keep, upload or clean up.
+     */
+    val icon: String = "",
+    /** Which channel the reminder uses. */
+    val notificationLevel: NotificationLevel = NotificationLevel.DEFAULT,
     val type: RoutineType = RoutineType.PERSONAL,
     val frequency: RoutineFrequency = RoutineFrequency.DAILY,
     val scheduledDays: List<Int> = emptyList(),

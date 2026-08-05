@@ -80,6 +80,12 @@
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
 
+        <!-- Botones "Posponer" y "Hecho" del recordatorio de rutinas. No exportado: solo lo
+             despiertan los PendingIntent que crea la propia app. -->
+        <receiver
+            android:name=".feature.routines.data.notification.RoutineActionReceiver"
+            android:exported="false" />
+
         <!-- Widget de pantalla de inicio: lista de la compra y rutinas de hoy -->
         <receiver
             android:name=".feature.widget.HabitlyWidgetReceiver"

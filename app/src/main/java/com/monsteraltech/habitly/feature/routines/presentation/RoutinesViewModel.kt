@@ -8,6 +8,7 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.household.domain.usecase.GetMemberProfilesUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveHouseholdUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
+import com.monsteraltech.habitly.feature.routines.domain.model.NotificationLevel
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
@@ -234,6 +235,8 @@ class RoutinesViewModel @Inject constructor(
         pausedUntil: Long? = routine.pausedUntil,
         startDate: Long? = routine.startDate,
         endDate: Long? = routine.endDate,
+        icon: String = routine.icon,
+        notificationLevel: NotificationLevel = routine.notificationLevel,
         rotationEnabled: Boolean = routine.rotationEnabled,
         assignedTo: String? = routine.assignedTo
     ) {
@@ -244,7 +247,7 @@ class RoutinesViewModel @Inject constructor(
             updateRoutineUseCase(
                 state.currentUserId, state.currentHouseholdId, routine, title, description,
                 frequency, scheduledDays, reminderTime, intervalDays, pausedUntil,
-                startDate, endDate, rotationEnabled, assignedTo
+                startDate, endDate, icon, notificationLevel, rotationEnabled, assignedTo
             )
                 .onSuccess {
                     // Reschedules with the new data; if reminderTime is null, the use case cancels
@@ -260,6 +263,8 @@ class RoutinesViewModel @Inject constructor(
                             pausedUntil = pausedUntil,
                             startDate = startDate,
                             endDate = endDate,
+                            icon = icon,
+                            notificationLevel = notificationLevel,
                             rotationEnabled = rotationEnabled,
                             assignedTo = assignedTo
                         ),

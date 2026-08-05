@@ -92,6 +92,31 @@
     <string name="routines_end_before_start">The end date can\'t be before the start</string>
     <string name="routines_finished_badge">Finished</string>
     <string name="routines_starts_on">Starts on %s</string>
+    <!-- Per-level notification channels (Phase 2) -->
+    <string name="routines_channel_group">Routine reminders</string>
+    <string name="routines_channel_silent">Silent</string>
+    <string name="routines_channel_default">Normal</string>
+    <string name="routines_channel_high">Important</string>
+    <string name="routines_channel_desc">Tap here to pick this level\'s sound and vibration.</string>
+    <string name="routines_notification_snooze">Snooze</string>
+    <string name="routines_notification_done">Done</string>
+    <string name="routines_level_label">How it should alert you</string>
+    <string name="routines_level_silent">Silent</string>
+    <string name="routines_level_default">Normal</string>
+    <string name="routines_level_high">Important</string>
+    <string name="settings_notification_sounds">Reminder sound</string>
+    <string name="settings_notification_sounds_desc">Pick the sound and vibration for each level</string>
+    <string name="settings_notification_level_row">\"%s\" level</string>
+    <!-- Routine emoji (Phase 2) -->
+    <string name="routines_icon_label">Icon</string>
+    <string name="routines_icon_none">No icon</string>
+    <string name="routines_icon_choose">Pick an icon</string>
+    <string name="routines_icon_clear">Clear icon</string>
+    <string name="routines_icon_group_home">Home</string>
+    <string name="routines_icon_group_kitchen">Kitchen</string>
+    <string name="routines_icon_group_health">Health</string>
+    <string name="routines_icon_group_pets">Pets</string>
+    <string name="routines_icon_group_other">Other</string>
     <string name="routines_streak_protected">🛡️ Streak protected: one miss was forgiven</string>
     <!-- Progress sheet -->
     <string name="routines_detail_open">View progress</string>

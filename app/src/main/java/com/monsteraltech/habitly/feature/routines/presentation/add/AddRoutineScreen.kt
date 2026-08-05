@@ -48,7 +48,9 @@ import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.presentation.TimePickerDialog
 import com.monsteraltech.habitly.feature.routines.presentation.components.AnchorHintText
 import com.monsteraltech.habitly.feature.routines.presentation.components.DateWindowFields
+import com.monsteraltech.habitly.feature.routines.presentation.components.IconPickerField
 import com.monsteraltech.habitly.feature.routines.presentation.components.IntervalSelector
+import com.monsteraltech.habitly.feature.routines.presentation.components.NotificationLevelSelector
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.Calendar
@@ -115,6 +117,10 @@ fun AddRoutineScreen(
                     maxLines = 4,
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
+                )
+                IconPickerField(
+                    icon = uiState.icon,
+                    onIconChange = viewModel::onIconChange
                 )
             }
 
@@ -234,16 +240,26 @@ fun AddRoutineScreen(
                 checked = uiState.reminderEnabled,
                 onCheckedChange = viewModel::onReminderToggle
             ) {
-                FilledTonalButton(onClick = { showTimePicker = true }) {
-                    Icon(
-                        Icons.Rounded.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FilledTonalButton(onClick = { showTimePicker = true }) {
+                        Icon(
+                            Icons.Rounded.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "%02d:%02d".format(uiState.reminderMinutes / 60, uiState.reminderMinutes % 60),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
                     Text(
-                        text = "%02d:%02d".format(uiState.reminderMinutes / 60, uiState.reminderMinutes % 60),
-                        style = MaterialTheme.typography.titleMedium
+                        text = stringResource(R.string.routines_level_label),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    NotificationLevelSelector(
+                        level = uiState.notificationLevel,
+                        onLevelChange = viewModel::onNotificationLevelChange
                     )
                 }
             }

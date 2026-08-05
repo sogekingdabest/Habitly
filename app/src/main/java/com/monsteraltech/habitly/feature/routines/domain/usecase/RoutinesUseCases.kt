@@ -1,5 +1,6 @@
 package com.monsteraltech.habitly.feature.routines.domain.usecase
 
+import com.monsteraltech.habitly.feature.routines.domain.model.NotificationLevel
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
@@ -55,6 +56,8 @@ class AddRoutineUseCase @Inject constructor(
         intervalDays: Int? = null,
         startDate: Long? = null,
         endDate: Long? = null,
+        icon: String = "",
+        notificationLevel: NotificationLevel = NotificationLevel.DEFAULT,
         rotationEnabled: Boolean = false,
         assignedTo: String? = null
     ): Result<Routine> {
@@ -74,6 +77,8 @@ class AddRoutineUseCase @Inject constructor(
             reminderTime = reminderTime,
             startDate = startDate,
             endDate = sanitizeEndDate(startDate, endDate),
+            icon = icon,
+            notificationLevel = notificationLevel,
             rotationEnabled = rotates,
             assignedTo = if (rotates) assignedTo else null,
             authorId = userId
@@ -137,6 +142,8 @@ class UpdateRoutineUseCase @Inject constructor(
         pausedUntil: Long? = routine.pausedUntil,
         startDate: Long? = routine.startDate,
         endDate: Long? = routine.endDate,
+        icon: String = routine.icon,
+        notificationLevel: NotificationLevel = routine.notificationLevel,
         rotationEnabled: Boolean = routine.rotationEnabled,
         assignedTo: String? = routine.assignedTo
     ): Result<Unit> {
@@ -155,6 +162,8 @@ class UpdateRoutineUseCase @Inject constructor(
                 pausedUntil = pausedUntil,
                 startDate = startDate,
                 endDate = sanitizeEndDate(startDate, endDate),
+                icon = icon,
+                notificationLevel = notificationLevel,
                 rotationEnabled = rotationEnabled,
                 assignedTo = assignedTo
             )

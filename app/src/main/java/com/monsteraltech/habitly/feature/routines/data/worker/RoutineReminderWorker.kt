@@ -1,17 +1,11 @@
 package com.monsteraltech.habitly.feature.routines.data.worker
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.routines.data.notification.RoutineNotifier
+import com.monsteraltech.habitly.feature.routines.domain.model.NotificationLevel
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
-import com.monsteraltech.habitly.feature.settings.data.LocaleHelper
 import com.monsteraltech.habitly.feature.settings.data.SettingsRepositoryImpl
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
 import dagger.hilt.android.EntryPointAccessors
@@ -51,7 +45,16 @@ class RoutineReminderWorker(
 
         // Could not be read (no network and no cache): notify with the last thing we knew.
         if (routineResult.isFailure) {
-            showNotification(fallbackTitle, routineId)
+            RoutineNotifier.show(
+                context = applicationContext,
+                routineId = routineId,
+                title = fallbackTitle,
+                icon = "",
+                level = NotificationLevel.DEFAULT,
+                type = type,
+                userId = userId,
+                householdId = householdId
+            )
             return Result.success()
         }
 
@@ -68,53 +71,17 @@ class RoutineReminderWorker(
             return Result.success()
         }
 
-        showNotification(routine.title, routineId)
-        return Result.success()
-    }
-
-    private fun showNotification(title: String, routineId: String) {
-        val channelId = "routines_reminders"
-        val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // Context carrying the language chosen in Settings: applicationContext does not reflect it
-        // (only the Activity's does), so without this the texts came out in the system language.
-        val ctx = LocaleHelper.wrap(applicationContext)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                ctx.getString(R.string.routines_notification_channel_name),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = ctx.getString(R.string.routines_notification_channel_desc)
-            }
-            notificationManager.createNotificationChannel(channel)
-        }
-
-        val intent = Intent().apply {
-            setClassName(applicationContext, "com.monsteraltech.habitly.MainActivity")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("routine_id", routineId)
-        }
-
-        val pendingIntent = PendingIntent.getActivity(
-            applicationContext,
-            routineId.hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        RoutineNotifier.show(
+            context = applicationContext,
+            routineId = routineId,
+            title = routine.title,
+            icon = routine.icon,
+            level = routine.notificationLevel,
+            type = type,
+            userId = userId,
+            householdId = householdId
         )
-
-        val notificationText = ctx.getString(R.string.routines_notification_text, title)
-
-        val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(ctx.getString(R.string.routines_notification_title))
-            .setContentText(notificationText)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
-
-        notificationManager.notify(routineId.hashCode(), notification)
+        return Result.success()
     }
 
     companion object {
