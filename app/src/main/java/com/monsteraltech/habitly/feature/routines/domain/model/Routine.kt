@@ -14,7 +14,11 @@ enum class RoutineFrequency(val label: String) {
     DAILY("Diaria"),
     WEEKLY("Semanal"),
     CUSTOM("Personalizada"),
-    EVERY_N_DAYS("Cada N días")
+    EVERY_N_DAYS("Cada N días"),
+    /** Once a month, on the day of month of the anchor date (start date, or creation). */
+    MONTHLY("Mensual"),
+    /** Once a year, on the month+day of the anchor date (start date, or creation). */
+    YEARLY("Anual")
 }
 
 data class Routine(
@@ -31,6 +35,14 @@ data class Routine(
      * days do not break the streak. Null means no pause.
      */
     val pausedUntil: Long? = null,
+    /**
+     * The routine's lifetime window (epoch ms). Before [startDate] or after [endDate] it is neither
+     * due nor notified, and days outside the window do not break the streak. Null means open-ended
+     * on that side. For [RoutineFrequency.MONTHLY]/[RoutineFrequency.YEARLY], [startDate] (or
+     * [createdAt] when null) also acts as the calendar anchor.
+     */
+    val startDate: Long? = null,
+    val endDate: Long? = null,
     val order: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
     val authorId: String = "",

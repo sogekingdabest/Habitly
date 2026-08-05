@@ -255,4 +255,113 @@ class RoutineScheduleTest {
 
         assertEquals(0, RoutineSchedule.expectedOccurrences(routine, monday, monday.minusDays(1)))
     }
+
+    // ---------- Ventana de vida (fecha inicio/fin) ----------
+
+    @Test
+    fun `routine is not due before its start date`() {
+        val routine = Routine(frequency = RoutineFrequency.DAILY, startDate = epochOf(wednesday))
+
+        assertFalse(RoutineSchedule.isDueOn(routine, monday, zone))
+        assertTrue(RoutineSchedule.isDueOn(routine, wednesday, zone))
+        assertTrue(RoutineSchedule.isDueOn(routine, sunday, zone))
+    }
+
+    @Test
+    fun `routine is not due after its end date`() {
+        val routine = Routine(frequency = RoutineFrequency.DAILY, endDate = epochOf(wednesday))
+
+        assertTrue(RoutineSchedule.isDueOn(routine, monday, zone))
+        assertTrue(RoutineSchedule.isDueOn(routine, wednesday, zone))
+        assertFalse(RoutineSchedule.isDueOn(routine, sunday, zone))
+    }
+
+    @Test
+    fun `start and end date are inclusive`() {
+        val routine = Routine(
+            frequency = RoutineFrequency.DAILY,
+            startDate = epochOf(monday),
+            endDate = epochOf(sunday)
+        )
+
+        assertTrue(RoutineSchedule.isDueOn(routine, monday, zone))
+        assertTrue(RoutineSchedule.isDueOn(routine, sunday, zone))
+    }
+
+    @Test
+    fun `isFinishedOn and isNotStartedOn track the window edges`() {
+        val routine = Routine(
+            frequency = RoutineFrequency.DAILY,
+            startDate = epochOf(wednesday),
+            endDate = epochOf(sunday)
+        )
+
+        assertTrue(RoutineSchedule.isNotStartedOn(routine, monday, zone))
+        assertFalse(RoutineSchedule.isNotStartedOn(routine, wednesday, zone))
+        assertFalse(RoutineSchedule.isFinishedOn(routine, sunday, zone))
+        assertTrue(RoutineSchedule.isFinishedOn(routine, sunday.plusDays(1), zone))
+    }
+
+    @Test
+    fun `expected occurrences is clamped to the window`() {
+        // Empieza el jueves 16: de un rango lunes..domingo solo cuentan jue, vie, sáb, dom = 4.
+        val routine = Routine(
+            frequency = RoutineFrequency.DAILY,
+            startDate = epochOf(LocalDate.of(2026, 7, 16))
+        )
+
+        assertEquals(4, RoutineSchedule.expectedOccurrences(routine, monday, sunday, zone))
+    }
+
+    // ---------- Frecuencia mensual (ancla) ----------
+
+    @Test
+    fun `monthly routine is due only on its anchor day of month`() {
+        // Ancla el día 15 (miércoles 2026-07-15).
+        val routine = Routine(frequency = RoutineFrequency.MONTHLY, startDate = epochOf(wednesday))
+
+        assertTrue(RoutineSchedule.isDueOn(routine, LocalDate.of(2026, 8, 15), zone))
+        assertTrue(RoutineSchedule.isDueOn(routine, LocalDate.of(2026, 9, 15), zone))
+        assertFalse(RoutineSchedule.isDueOn(routine, LocalDate.of(2026, 8, 14), zone))
+        assertFalse(RoutineSchedule.isDueOn(routine, LocalDate.of(2026, 8, 16), zone))
+    }
+
+    @Test
+    fun `monthly routine anchored on day 31 fires on the last day of short months`() {
+        val routine = Routine(
+            frequency = RoutineFrequency.MONTHLY,
+            startDate = epochOf(LocalDate.of(2026, 1, 31))
+        )
+
+        // Febrero 2026 (no bisiesto) tiene 28 días: cae el 28, no el 31 (que no existe).
+        assertTrue(RoutineSchedule.isDueOn(routine, LocalDate.of(2026, 2, 28), zone))
+        assertFalse(RoutineSchedule.isDueOn(routine, LocalDate.of(2026, 2, 27), zone))
+        // En un mes de 31 días vuelve al 31.
+        assertTrue(RoutineSchedule.isDueOn(routine, LocalDate.of(2026, 3, 31), zone))
+    }
+
+    // ---------- Frecuencia anual (ancla) ----------
+
+    @Test
+    fun `yearly routine is due only on its anchor month and day`() {
+        val routine = Routine(frequency = RoutineFrequency.YEARLY, startDate = epochOf(wednesday))
+
+        assertTrue(RoutineSchedule.isDueOn(routine, LocalDate.of(2027, 7, 15), zone))
+        assertTrue(RoutineSchedule.isDueOn(routine, LocalDate.of(2028, 7, 15), zone))
+        assertFalse(RoutineSchedule.isDueOn(routine, LocalDate.of(2027, 8, 15), zone))
+        assertFalse(RoutineSchedule.isDueOn(routine, LocalDate.of(2027, 7, 14), zone))
+    }
+
+    @Test
+    fun `yearly routine anchored on Feb 29 fires on Feb 28 in non-leap years`() {
+        val routine = Routine(
+            frequency = RoutineFrequency.YEARLY,
+            startDate = epochOf(LocalDate.of(2024, 2, 29)) // 2024 bisiesto, en el pasado
+        )
+
+        // 2027 no es bisiesto: cae el 28.
+        assertTrue(RoutineSchedule.isDueOn(routine, LocalDate.of(2027, 2, 28), zone))
+        // 2028 sí es bisiesto: cae el 29.
+        assertTrue(RoutineSchedule.isDueOn(routine, LocalDate.of(2028, 2, 29), zone))
+    }
 }

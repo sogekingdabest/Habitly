@@ -248,4 +248,43 @@ class StreakCalculatorTest {
         assertEquals(3, result.current)
         assertEquals(3, result.total)
     }
+
+    // ---------- Ventana de vida y frecuencia mensual ----------
+
+    private fun millisOf(date: LocalDate): Long =
+        date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    @Test
+    fun `days after the end date do not break the streak`() {
+        // Rutina diaria que terminó hace 3 días; completada sus últimos 3 días seguidos.
+        // Sin la ventana, los días posteriores al fin contarían como fallos y romperían la racha.
+        val routine = Routine(
+            frequency = RoutineFrequency.DAILY,
+            endDate = millisOf(today.minusDays(3))
+        )
+        val dates = listOf(today.minusDays(5), today.minusDays(4), today.minusDays(3))
+
+        val result = StreakCalculator.forRoutine(routine, dates, today, graceMisses = 0)
+
+        assertEquals("tras la fecha de fin no hay fallos que rompan la racha", 3, result.current)
+    }
+
+    @Test
+    fun `monthly routine builds a streak across months`() {
+        // hoy = 2026-07-08 (día 8); ancla el día 8 vía fecha de inicio.
+        val routine = Routine(
+            frequency = RoutineFrequency.MONTHLY,
+            startDate = millisOf(LocalDate.of(2026, 5, 8))
+        )
+        val days = listOf(
+            LocalDate.of(2026, 7, 8),
+            LocalDate.of(2026, 6, 8),
+            LocalDate.of(2026, 5, 8)
+        )
+
+        val result = StreakCalculator.forRoutine(routine, days, today, graceMisses = 0)
+
+        assertEquals("tres meses seguidos en el día ancla son racha 3", 3, result.current)
+        assertEquals(3, result.best)
+    }
 }

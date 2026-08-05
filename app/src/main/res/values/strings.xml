@@ -75,6 +75,26 @@
     </plurals>
     <string name="routines_interval_less">Reducir intervalo</string>
     <string name="routines_interval_more">Aumentar intervalo</string>
+    <!-- Frecuencia mensual/anual y presets de intervalo (Fase 1) -->
+    <string name="routines_frequency_monthly">Mensual</string>
+    <string name="routines_frequency_yearly">Anual</string>
+    <string name="routines_frequency_monthly_desc">Una vez al mes, el mismo día</string>
+    <string name="routines_frequency_yearly_desc">Una vez al año, en la misma fecha</string>
+    <string name="routines_interval_field_label">Cada cuántos días</string>
+    <string name="routines_interval_presets_label">Rápido:</string>
+    <string name="routines_monthly_anchor_hint">Se repetirá el día %1$d de cada mes</string>
+    <string name="routines_yearly_anchor_hint">Se repetirá cada %1$s</string>
+    <!-- Duración / vigencia de la rutina (Fase 1) -->
+    <string name="routines_dates_section">Duración</string>
+    <string name="routines_dates_hint">Opcional. Déjalo en blanco para que no caduque.</string>
+    <string name="routines_start_date_label">Empieza</string>
+    <string name="routines_end_date_label">Termina</string>
+    <string name="routines_date_none">Sin fecha</string>
+    <string name="routines_date_clear">Quitar fecha</string>
+    <string name="routines_date_confirm">Aceptar</string>
+    <string name="routines_end_before_start">La fecha de fin no puede ser anterior al inicio</string>
+    <string name="routines_finished_badge">Finalizada</string>
+    <string name="routines_starts_on">Empieza el %s</string>
     <string name="routines_streak_protected">🛡️ Racha protegida: se te perdonó un fallo</string>
     <!-- Ficha de progreso -->
     <string name="routines_detail_open">Ver progreso</string>

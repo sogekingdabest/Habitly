@@ -23,6 +23,10 @@ private fun sanitizeInterval(frequency: RoutineFrequency, intervalDays: Int?): I
         null
     }
 
+/** Drops an end date that falls before the start date, so the window can never be empty. */
+private fun sanitizeEndDate(startDate: Long?, endDate: Long?): Long? =
+    if (startDate != null && endDate != null && endDate < startDate) null else endDate
+
 class ObserveRoutinesUseCase @Inject constructor(
     private val repository: RoutinesRepository
 ) {
@@ -49,6 +53,8 @@ class AddRoutineUseCase @Inject constructor(
         scheduledDays: List<Int> = emptyList(),
         reminderTime: Int? = null,
         intervalDays: Int? = null,
+        startDate: Long? = null,
+        endDate: Long? = null,
         rotationEnabled: Boolean = false,
         assignedTo: String? = null
     ): Result<Routine> {
@@ -66,6 +72,8 @@ class AddRoutineUseCase @Inject constructor(
             scheduledDays = scheduledDays,
             intervalDays = sanitizeInterval(frequency, intervalDays),
             reminderTime = reminderTime,
+            startDate = startDate,
+            endDate = sanitizeEndDate(startDate, endDate),
             rotationEnabled = rotates,
             assignedTo = if (rotates) assignedTo else null,
             authorId = userId
@@ -127,6 +135,8 @@ class UpdateRoutineUseCase @Inject constructor(
         reminderTime: Int? = routine.reminderTime,
         intervalDays: Int? = routine.intervalDays,
         pausedUntil: Long? = routine.pausedUntil,
+        startDate: Long? = routine.startDate,
+        endDate: Long? = routine.endDate,
         rotationEnabled: Boolean = routine.rotationEnabled,
         assignedTo: String? = routine.assignedTo
     ): Result<Unit> {
@@ -143,6 +153,8 @@ class UpdateRoutineUseCase @Inject constructor(
                 reminderTime = reminderTime,
                 intervalDays = sanitizeInterval(frequency, intervalDays),
                 pausedUntil = pausedUntil,
+                startDate = startDate,
+                endDate = sanitizeEndDate(startDate, endDate),
                 rotationEnabled = rotationEnabled,
                 assignedTo = assignedTo
             )

@@ -100,9 +100,9 @@ fun RoutineDetailSheet(
                 CompletionHeatmap(
                     month = detail.month,
                     completedDates = detail.completedDates,
-                    // The weekly calendar, without the pause or interval: it shows the days it was
-                    // due by design, not whether it is due today.
-                    isDueOn = { date -> RoutineSchedule.matchesDayOfWeek(routine, date) }
+                    // The calendar (weekly or monthly/yearly anchor), without the pause, window or
+                    // interval: it shows the days it falls on by design, not whether it is due today.
+                    isDueOn = { date -> RoutineSchedule.isScheduledCalendarDay(routine, date) }
                 )
                 Text(
                     text = stringResource(R.string.routines_detail_legend),

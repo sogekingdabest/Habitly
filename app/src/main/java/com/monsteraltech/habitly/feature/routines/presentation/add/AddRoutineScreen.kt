@@ -46,6 +46,9 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.presentation.TimePickerDialog
+import com.monsteraltech.habitly.feature.routines.presentation.components.AnchorHintText
+import com.monsteraltech.habitly.feature.routines.presentation.components.DateWindowFields
+import com.monsteraltech.habitly.feature.routines.presentation.components.IntervalSelector
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.Calendar
@@ -187,45 +190,40 @@ fun AddRoutineScreen(
                 }
 
                 AnimatedVisibility(visible = uiState.frequency == RoutineFrequency.EVERY_N_DAYS) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = stringResource(R.string.routines_interval_label),
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.labelLarge
                         )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        FilledTonalIconButton(
-                            onClick = { viewModel.onIntervalChange(-1) },
-                            enabled = uiState.intervalDays > 1
-                        ) {
-                            Icon(
-                                Icons.Rounded.Remove,
-                                contentDescription = stringResource(R.string.routines_interval_less)
-                            )
-                        }
-                        Text(
-                            text = pluralStringResource(
-                                R.plurals.routines_interval_days,
-                                uiState.intervalDays,
-                                uiState.intervalDays
-                            ),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = 12.dp)
+                        IntervalSelector(
+                            intervalDays = uiState.intervalDays,
+                            onIntervalChange = viewModel::onIntervalSet
                         )
-                        FilledTonalIconButton(onClick = { viewModel.onIntervalChange(1) }) {
-                            Icon(
-                                Icons.Rounded.Add,
-                                contentDescription = stringResource(R.string.routines_interval_more)
-                            )
-                        }
                     }
                 }
+
+                AnimatedVisibility(
+                    visible = uiState.frequency == RoutineFrequency.MONTHLY ||
+                        uiState.frequency == RoutineFrequency.YEARLY
+                ) {
+                    AnchorHintText(
+                        frequency = uiState.frequency,
+                        anchorMillis = uiState.startDate ?: System.currentTimeMillis(),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+
+            // ---------- Duration (lifetime window) ----------
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionHeader(stringResource(R.string.routines_dates_section))
+                DateWindowFields(
+                    startDate = uiState.startDate,
+                    endDate = uiState.endDate,
+                    onStartChange = viewModel::onStartDateChange,
+                    onEndChange = viewModel::onEndDateChange
+                )
             }
 
             // ---------- Reminder ----------
@@ -479,6 +477,8 @@ private val RoutineFrequency.titleRes: Int
         RoutineFrequency.WEEKLY -> R.string.routines_frequency_weekly
         RoutineFrequency.CUSTOM -> R.string.routines_frequency_custom
         RoutineFrequency.EVERY_N_DAYS -> R.string.routines_frequency_interval
+        RoutineFrequency.MONTHLY -> R.string.routines_frequency_monthly
+        RoutineFrequency.YEARLY -> R.string.routines_frequency_yearly
     }
 
 private val RoutineFrequency.descRes: Int
@@ -487,6 +487,8 @@ private val RoutineFrequency.descRes: Int
         RoutineFrequency.WEEKLY -> R.string.routines_frequency_weekly_desc
         RoutineFrequency.CUSTOM -> R.string.routines_frequency_custom_desc
         RoutineFrequency.EVERY_N_DAYS -> R.string.routines_frequency_interval_desc
+        RoutineFrequency.MONTHLY -> R.string.routines_frequency_monthly_desc
+        RoutineFrequency.YEARLY -> R.string.routines_frequency_yearly_desc
     }
 
 /** The day's full name for the screen reader ("lunes", "martes"…). */

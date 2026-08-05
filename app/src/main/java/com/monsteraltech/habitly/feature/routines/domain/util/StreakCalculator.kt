@@ -46,7 +46,12 @@ object StreakCalculator {
             completedDates = completedDates,
             today = today,
             graceMisses = graceMisses,
-            isDueOn = { date -> RoutineSchedule.matchesDayOfWeek(routine, date) }
+            // Covers the weekly cases and the monthly/yearly anchor, and treats days outside the
+            // lifetime window as not-due so they neither count nor break the streak.
+            isDueOn = { date ->
+                RoutineSchedule.isScheduledCalendarDay(routine, date) &&
+                    RoutineSchedule.isWithinWindow(routine, date)
+            }
         )
     }
 
