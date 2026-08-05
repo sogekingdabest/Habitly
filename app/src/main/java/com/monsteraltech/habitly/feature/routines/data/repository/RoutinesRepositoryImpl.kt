@@ -1,9 +1,11 @@
 package com.monsteraltech.habitly.feature.routines.data.repository
 
 import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineComment
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineCompletion
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepository
@@ -265,6 +267,79 @@ class RoutinesRepositoryImpl @Inject constructor(
         }
     }
 
+    // ---------- Comments ----------
+
+    override fun observeComments(householdId: String, routineId: String): Flow<List<RoutineComment>> =
+        callbackFlow {
+            if (householdId.isBlank() || routineId.isBlank()) {
+                trySend(emptyList())
+                return@callbackFlow
+            }
+
+            val listener = commentsRef(householdId, routineId)
+                .orderBy("createdAt", Query.Direction.ASCENDING)
+                .limit(MAX_COMMENTS_SHOWN)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        close(error)
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null) {
+                        val comments = snapshot.documents.mapNotNull {
+                            it.toObject(RoutineComment::class.java)?.copy(id = it.id)
+                        }
+                        trySend(comments)
+                    }
+                }
+
+            awaitClose { listener.remove() }
+        }
+
+    override suspend fun addComment(
+        householdId: String,
+        routineId: String,
+        comment: RoutineComment
+    ): Result<Unit> {
+        return try {
+            val routineRef = documentFor(RoutineType.HOUSEHOLD, "", householdId, routineId)
+            // One batch so the comment and the counter can never disagree.
+            firestore.batch().apply {
+                set(commentsRef(householdId, routineId).document(comment.id), comment)
+                update(routineRef, "commentCount", FieldValue.increment(1))
+            }.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteComment(
+        householdId: String,
+        routineId: String,
+        commentId: String
+    ): Result<Unit> {
+        return try {
+            val routineRef = documentFor(RoutineType.HOUSEHOLD, "", householdId, routineId)
+            firestore.batch().apply {
+                delete(commentsRef(householdId, routineId).document(commentId))
+                update(routineRef, "commentCount", FieldValue.increment(-1))
+            }.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Comments only exist on household routines, so the path is always the household one. No new
+     * Firestore rules were needed: the recursive wildcard over a household's subcollections already
+     * limits this to its members.
+     */
+    private fun commentsRef(householdId: String, routineId: String): CollectionReference =
+        firestore.collection("households").document(householdId)
+            .collection("routines").document(routineId)
+            .collection("comments")
+
     private fun com.google.firebase.firestore.QuerySnapshot.toLocalDates(): List<LocalDate> =
         documents.mapNotNull { doc ->
             val value = doc.getString("date") ?: doc.id
@@ -284,5 +359,8 @@ class RoutinesRepositoryImpl @Inject constructor(
     private companion object {
         // Caps the history reads: ~1 year is more than enough for the streak.
         const val MAX_COMPLETIONS_SCANNED = 370L
+
+        // Caps the live listener: a routine's conversation is a handful of lines, not a chat log.
+        const val MAX_COMMENTS_SHOWN = 100L
     }
 }

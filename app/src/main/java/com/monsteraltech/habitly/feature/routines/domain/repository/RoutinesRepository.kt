@@ -1,6 +1,7 @@
 package com.monsteraltech.habitly.feature.routines.domain.repository
 
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineComment
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineCompletion
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import kotlinx.coroutines.flow.Flow
@@ -38,4 +39,18 @@ interface RoutinesRepository {
     suspend fun updateRoutineAssignment(userId: String, householdId: String, routineId: String, type: RoutineType, assignedTo: String?): Result<Unit>
 
     suspend fun reorderRoutines(userId: String, householdId: String, type: RoutineType, orderedIds: List<String>): Result<Unit>
+
+    // ---------- Comments (household routines only) ----------
+
+    /**
+     * The routine's comments, oldest first, updating live. Firestore's own listener is what makes
+     * these real time without any push infrastructure.
+     */
+    fun observeComments(householdId: String, routineId: String): Flow<List<RoutineComment>>
+
+    /** Adds a comment and bumps the routine's denormalised counter in the same batch. */
+    suspend fun addComment(householdId: String, routineId: String, comment: RoutineComment): Result<Unit>
+
+    /** Removes a comment and decrements the counter in the same batch. */
+    suspend fun deleteComment(householdId: String, routineId: String, commentId: String): Result<Unit>
 }

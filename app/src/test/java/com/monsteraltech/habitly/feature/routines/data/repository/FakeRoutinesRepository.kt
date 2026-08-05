@@ -1,6 +1,7 @@
 package com.monsteraltech.habitly.feature.routines.data.repository
 
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineComment
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineCompletion
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepository
@@ -149,6 +150,47 @@ class FakeRoutinesRepository : RoutinesRepository {
             householdRoutines.value = updated
         }
         return Result.success(Unit)
+    }
+
+    // ---------- Comentarios ----------
+
+    private val comments = MutableStateFlow<List<RoutineComment>>(emptyList())
+
+    var addCommentCalls = 0
+    var deleteCommentCalls = 0
+
+    override fun observeComments(householdId: String, routineId: String): Flow<List<RoutineComment>> =
+        comments
+
+    override suspend fun addComment(
+        householdId: String,
+        routineId: String,
+        comment: RoutineComment
+    ): Result<Unit> {
+        if (shouldFail) return Result.failure(Exception(errorMessage))
+        addCommentCalls++
+        comments.value = comments.value + comment
+        bumpCommentCount(routineId, +1)
+        return Result.success(Unit)
+    }
+
+    override suspend fun deleteComment(
+        householdId: String,
+        routineId: String,
+        commentId: String
+    ): Result<Unit> {
+        if (shouldFail) return Result.failure(Exception(errorMessage))
+        deleteCommentCalls++
+        comments.value = comments.value.filterNot { it.id == commentId }
+        bumpCommentCount(routineId, -1)
+        return Result.success(Unit)
+    }
+
+    /** Mirrors the real batch, which keeps the denormalised counter in step with the subcollection. */
+    private fun bumpCommentCount(routineId: String, delta: Int) {
+        householdRoutines.value = householdRoutines.value.map {
+            if (it.id == routineId) it.copy(commentCount = it.commentCount + delta) else it
+        }
     }
 
     override suspend fun reorderRoutines(

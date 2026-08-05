@@ -8,11 +8,17 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.household.domain.usecase.GetMemberProfilesUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveHouseholdUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
+import com.monsteraltech.habitly.feature.routines.data.local.CommentSeenStore
+import com.monsteraltech.habitly.feature.routines.domain.model.MAX_COMMENT_LENGTH
 import com.monsteraltech.habitly.feature.routines.domain.model.NotificationLevel
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineComment
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
+import com.monsteraltech.habitly.feature.routines.domain.usecase.AddRoutineCommentUseCase
 import com.monsteraltech.habitly.feature.routines.domain.usecase.AdvanceRotationUseCase
+import com.monsteraltech.habitly.feature.routines.domain.usecase.DeleteRoutineCommentUseCase
+import com.monsteraltech.habitly.feature.routines.domain.usecase.ObserveRoutineCommentsUseCase
 import com.monsteraltech.habitly.feature.routines.domain.usecase.CancelReminderUseCase
 import com.monsteraltech.habitly.feature.routines.domain.usecase.DeleteRoutineUseCase
 import com.monsteraltech.habitly.feature.routines.domain.usecase.GetHouseholdBalanceUseCase
@@ -43,7 +49,11 @@ data class RoutineDetailState(
     val routine: Routine,
     val month: YearMonth,
     val completedDates: Set<LocalDate> = emptySet(),
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    /** Live comments on the routine. Only household routines have them. */
+    val comments: List<RoutineComment> = emptyList(),
+    val commentDraft: String = "",
+    val isSendingComment: Boolean = false
 ) {
     /** How many times it was due in the part of the month already elapsed. */
     fun expectedInMonth(today: LocalDate = LocalDate.now()): Int {
@@ -72,7 +82,9 @@ data class RoutinesUiState(
     val householdMembers: List<String> = emptyList(),
     val routineDetail: RoutineDetailState? = null,
     /** Household routines completed per member in the current week. */
-    val weeklyBalance: Map<String, Int> = emptyMap()
+    val weeklyBalance: Map<String, Int> = emptyMap(),
+    /** Routine ids with comments the user has not opened yet. */
+    val routinesWithNewComments: Set<String> = emptySet()
 ) {
     /** Total household routines completed this week by everyone. */
     val weeklyBalanceTotal: Int
@@ -95,6 +107,10 @@ class RoutinesViewModel @Inject constructor(
     private val observeUserProfileUseCase: ObserveUserProfileUseCase,
     private val observeHouseholdUseCase: ObserveHouseholdUseCase,
     private val getMemberProfilesUseCase: GetMemberProfilesUseCase,
+    private val observeRoutineCommentsUseCase: ObserveRoutineCommentsUseCase,
+    private val addRoutineCommentUseCase: AddRoutineCommentUseCase,
+    private val deleteRoutineCommentUseCase: DeleteRoutineCommentUseCase,
+    private val commentSeenStore: CommentSeenStore,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -107,6 +123,7 @@ class RoutinesViewModel @Inject constructor(
     private var observeJob: Job? = null
     private var detailJob: Job? = null
     private var balanceJob: Job? = null
+    private var commentsJob: Job? = null
 
     init {
         _uiState.update { it.copy(currentUserId = currentUserId) }
@@ -152,6 +169,10 @@ class RoutinesViewModel @Inject constructor(
                         state.copy(
                             routines = routines,
                             isLoading = false,
+                            routinesWithNewComments = routines
+                                .filter { it.commentCount > commentSeenStore.seenCount(userId, it.id) }
+                                .map { it.id }
+                                .toSet(),
                             // The open detail sheet stays in sync with the fresh data.
                             routineDetail = state.routineDetail?.let { detail ->
                                 routines.find { it.id == detail.routine.id }
@@ -307,11 +328,103 @@ class RoutinesViewModel @Inject constructor(
             it.copy(routineDetail = RoutineDetailState(routine = routine, month = YearMonth.now()))
         }
         loadCompletions()
+        observeComments(routine)
     }
 
     fun onCloseRoutineDetail() {
         detailJob?.cancel()
+        commentsJob?.cancel()
         _uiState.update { it.copy(routineDetail = null) }
+    }
+
+    // ---------- Comentarios ----------
+
+    /**
+     * Only household routines carry comments: on a personal one there is nobody to talk to, and
+     * the path itself lives under the household document.
+     */
+    private fun observeComments(routine: Routine) {
+        commentsJob?.cancel()
+        if (routine.type != RoutineType.HOUSEHOLD) return
+
+        val state = _uiState.value
+        val householdId = state.currentHouseholdId
+        if (householdId.isBlank()) return
+
+        commentsJob = viewModelScope.launch {
+            observeRoutineCommentsUseCase(householdId, routine.id)
+                .catch { _uiState.update { it.copy(errorRes = R.string.routines_error_update) } }
+                .collect { comments ->
+                    _uiState.update { current ->
+                        val open = current.routineDetail ?: return@update current
+                        if (open.routine.id != routine.id) return@update current
+                        current.copy(routineDetail = open.copy(comments = comments))
+                    }
+                    // Opening the sheet is what counts as reading them.
+                    markCommentsSeen(routine.id, comments.size)
+                }
+        }
+    }
+
+    private fun markCommentsSeen(routineId: String, count: Int) {
+        val userId = _uiState.value.currentUserId
+        commentSeenStore.markSeen(userId, routineId, count)
+        _uiState.update { it.copy(routinesWithNewComments = it.routinesWithNewComments - routineId) }
+    }
+
+    fun onCommentDraftChange(text: String) {
+        _uiState.update { state ->
+            val detail = state.routineDetail ?: return@update state
+            state.copy(routineDetail = detail.copy(commentDraft = text.take(MAX_COMMENT_LENGTH)))
+        }
+    }
+
+    fun onSendComment() {
+        val state = _uiState.value
+        val detail = state.routineDetail ?: return
+        if (detail.commentDraft.isBlank() || detail.isSendingComment) return
+        if (state.currentUserId.isBlank() || state.currentHouseholdId.isBlank()) return
+
+        val text = detail.commentDraft
+        viewModelScope.launch {
+            _uiState.update {
+                val open = it.routineDetail ?: return@update it
+                it.copy(routineDetail = open.copy(isSendingComment = true))
+            }
+            addRoutineCommentUseCase(
+                householdId = state.currentHouseholdId,
+                routineId = detail.routine.id,
+                authorId = state.currentUserId,
+                text = text
+            )
+                .onSuccess {
+                    // The listener brings the comment back; only the draft is cleared here.
+                    _uiState.update { current ->
+                        val open = current.routineDetail ?: return@update current
+                        current.copy(routineDetail = open.copy(commentDraft = "", isSendingComment = false))
+                    }
+                }
+                .onFailure {
+                    _uiState.update { current ->
+                        val open = current.routineDetail ?: return@update current
+                        current.copy(
+                            routineDetail = open.copy(isSendingComment = false),
+                            errorRes = R.string.routines_error_comment
+                        )
+                    }
+                }
+        }
+    }
+
+    fun onDeleteComment(commentId: String) {
+        val state = _uiState.value
+        val detail = state.routineDetail ?: return
+        if (state.currentHouseholdId.isBlank()) return
+
+        viewModelScope.launch {
+            deleteRoutineCommentUseCase(state.currentHouseholdId, detail.routine.id, commentId)
+                .onFailure { _uiState.update { it.copy(errorRes = R.string.routines_error_comment) } }
+        }
     }
 
     fun onDetailMonthShift(months: Long) {

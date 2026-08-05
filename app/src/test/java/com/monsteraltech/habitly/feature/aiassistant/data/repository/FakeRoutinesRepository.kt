@@ -1,6 +1,7 @@
 package com.monsteraltech.habitly.feature.aiassistant.data.repository
 
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineComment
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineCompletion
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepository
@@ -33,6 +34,12 @@ class FakeRoutinesRepository : RoutinesRepository {
     override suspend fun updateRoutineAssignment(userId: String, householdId: String, routineId: String, type: RoutineType, assignedTo: String?): Result<Unit> = Result.success(Unit)
 
     override suspend fun reorderRoutines(userId: String, householdId: String, type: RoutineType, orderedIds: List<String>): Result<Unit> = Result.success(Unit)
+
+    override fun observeComments(householdId: String, routineId: String): Flow<List<RoutineComment>> = flowOf(emptyList())
+
+    override suspend fun addComment(householdId: String, routineId: String, comment: RoutineComment): Result<Unit> = Result.success(Unit)
+
+    override suspend fun deleteComment(householdId: String, routineId: String, commentId: String): Result<Unit> = Result.success(Unit)
 
     fun reset() {
         stubRoutines = emptyList()

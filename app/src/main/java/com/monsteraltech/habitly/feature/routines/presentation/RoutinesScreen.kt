@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -175,6 +177,7 @@ fun RoutinesScreen(
                                 isAssignedToMe = routine.assignedTo == uiState.currentUserId,
                                 members = uiState.householdMembers,
                                 memberNicknames = uiState.memberNicknames,
+                                hasNewComments = routine.id in uiState.routinesWithNewComments,
                                 onToggle = { viewModel.onToggleRoutine(routine) },
                                 onEdit = { form ->
                                     viewModel.onEditRoutine(
@@ -219,7 +222,12 @@ fun RoutinesScreen(
             detail = detail,
             onDismiss = { viewModel.onCloseRoutineDetail() },
             onMonthShift = { viewModel.onDetailMonthShift(it) },
-            onPause = { viewModel.onSetPaused(detail.routine, it) }
+            onPause = { viewModel.onSetPaused(detail.routine, it) },
+            currentUserId = uiState.currentUserId,
+            memberNicknames = uiState.memberNicknames,
+            onCommentDraftChange = viewModel::onCommentDraftChange,
+            onSendComment = viewModel::onSendComment,
+            onDeleteComment = viewModel::onDeleteComment
         )
     }
 }
@@ -540,11 +548,13 @@ fun RoutineCard(
     isAssignedToMe: Boolean = false,
     members: List<String> = emptyList(),
     memberNicknames: Map<String, String> = emptyMap(),
+    hasNewComments: Boolean = false,
     onMoveUp: () -> Unit = {},
     onMoveDown: () -> Unit = {}
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val newCommentsLabel = stringResource(R.string.routines_comments_new)
 
     val toggleLabel = stringResource(
         if (isCompleted) R.string.routines_a11y_uncomplete else R.string.routines_a11y_complete
@@ -686,6 +696,32 @@ fun RoutineCard(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+
+                // Comments: the count is what makes them discoverable at all, and the dot marks
+                // the ones added since this user last opened the routine.
+                if (routine.commentCount > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "💬 ${routine.commentCount}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (hasNewComments) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary)
+                                    .semantics {
+                                        contentDescription = newCommentsLabel
+                                    }
+                            )
+                        }
                     }
                 }
 
