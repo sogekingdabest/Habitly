@@ -231,6 +231,8 @@ class RoutinesRepositoryImpl @Inject constructor(
                         "reminderTime" to routine.reminderTime,
                         "intervalDays" to routine.intervalDays,
                         "pausedUntil" to routine.pausedUntil,
+                        "startDate" to routine.startDate,
+                        "endDate" to routine.endDate,
                         "assignedTo" to routine.assignedTo,
                         "rotationEnabled" to routine.rotationEnabled
                     )

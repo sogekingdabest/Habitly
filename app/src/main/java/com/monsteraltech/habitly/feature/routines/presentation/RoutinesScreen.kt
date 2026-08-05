@@ -40,7 +40,11 @@ import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
+import com.monsteraltech.habitly.feature.routines.presentation.components.AnchorHintText
+import com.monsteraltech.habitly.feature.routines.presentation.components.DateWindowFields
 import com.monsteraltech.habitly.feature.routines.presentation.components.HouseholdBalanceCard
+import com.monsteraltech.habitly.feature.routines.presentation.components.IntervalSelector
+import com.monsteraltech.habitly.feature.routines.presentation.components.formatRoutineDate
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
 import com.monsteraltech.habitly.ui.components.HabitlySwipeRow
 import com.monsteraltech.habitly.ui.components.HabitlyToggleCard
@@ -61,6 +65,8 @@ data class RoutineFormResult(
     val scheduledDays: List<Int>,
     val reminderTime: Int?,
     val intervalDays: Int?,
+    val startDate: Long? = null,
+    val endDate: Long? = null,
     val rotationEnabled: Boolean = false,
     val assignedTo: String? = null
 )
@@ -169,7 +175,8 @@ fun RoutinesScreen(
                                     viewModel.onEditRoutine(
                                         routine, form.title, form.description, form.frequency,
                                         form.scheduledDays, form.reminderTime, form.intervalDays,
-                                        routine.pausedUntil, form.rotationEnabled, form.assignedTo
+                                        routine.pausedUntil, form.startDate, form.endDate,
+                                        form.rotationEnabled, form.assignedTo
                                     )
                                 },
                                 onDelete = { viewModel.onDeleteRoutine(routine) },
@@ -230,6 +237,8 @@ private fun RoutineFormDialog(
     initialDays: List<Int> = emptyList(),
     initialReminderTime: Int? = null,
     initialIntervalDays: Int? = null,
+    initialStartDate: Long? = null,
+    initialEndDate: Long? = null,
     initialRotationEnabled: Boolean = false,
     initialAssignedTo: String? = null,
     members: List<String> = emptyList(),
@@ -242,11 +251,14 @@ private fun RoutineFormDialog(
     var selectedDays by remember { mutableStateOf(initialDays) }
     var reminderTime by remember { mutableStateOf(initialReminderTime) }
     var intervalDays by remember { mutableIntStateOf(initialIntervalDays ?: DEFAULT_INTERVAL_DAYS) }
+    var startDate by remember { mutableStateOf(initialStartDate) }
+    var endDate by remember { mutableStateOf(initialEndDate) }
     var rotationEnabled by remember { mutableStateOf(initialRotationEnabled) }
     var assignedTo by remember { mutableStateOf(initialAssignedTo) }
     var showTimePicker by remember { mutableStateOf(false) }
 
     val needsDays = frequency == RoutineFrequency.WEEKLY || frequency == RoutineFrequency.CUSTOM
+    val endBeforeStart = startDate != null && endDate != null && endDate!! < startDate!!
     // Rotation only makes sense in a household with more than one member.
     val canRotate = type == RoutineType.HOUSEHOLD && members.size > 1
 
@@ -304,6 +316,14 @@ private fun RoutineFormDialog(
                                 if (freq != RoutineFrequency.WEEKLY && freq != RoutineFrequency.CUSTOM) {
                                     selectedDays = emptyList()
                                 }
+                                // Monthly/yearly need an anchor date; default it to today.
+                                if ((freq == RoutineFrequency.MONTHLY || freq == RoutineFrequency.YEARLY) &&
+                                    startDate == null
+                                ) {
+                                    startDate = LocalDate.now()
+                                        .atStartOfDay(java.time.ZoneId.systemDefault())
+                                        .toInstant().toEpochMilli()
+                                }
                             },
                             label = { Text(stringResource(freq.stringRes)) }
                         )
@@ -331,34 +351,27 @@ private fun RoutineFormDialog(
 
                 if (frequency == RoutineFrequency.EVERY_N_DAYS) {
                     Text(stringResource(R.string.routines_interval_label), style = MaterialTheme.typography.labelLarge)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        IconButton(
-                            onClick = { if (intervalDays > MIN_INTERVAL_DAYS) intervalDays-- },
-                            enabled = intervalDays > MIN_INTERVAL_DAYS
-                        ) {
-                            Text(
-                                text = "−",
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                        }
-                        Text(
-                            text = pluralStringResource(R.plurals.routines_interval_days, intervalDays, intervalDays),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        IconButton(
-                            onClick = { if (intervalDays < MAX_INTERVAL_DAYS) intervalDays++ },
-                            enabled = intervalDays < MAX_INTERVAL_DAYS
-                        ) {
-                            Text(
-                                text = "+",
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                        }
-                    }
+                    IntervalSelector(
+                        intervalDays = intervalDays,
+                        onIntervalChange = { intervalDays = it }
+                    )
                 }
+
+                if (frequency == RoutineFrequency.MONTHLY || frequency == RoutineFrequency.YEARLY) {
+                    AnchorHintText(
+                        frequency = frequency,
+                        anchorMillis = startDate ?: System.currentTimeMillis()
+                    )
+                }
+
+                // Lifetime window.
+                Text(stringResource(R.string.routines_dates_section), style = MaterialTheme.typography.labelLarge)
+                DateWindowFields(
+                    startDate = startDate,
+                    endDate = endDate,
+                    onStartChange = { startDate = it },
+                    onEndChange = { endDate = it }
+                )
 
                 if (canRotate) {
                     Row(
@@ -465,13 +478,16 @@ private fun RoutineFormDialog(
                             scheduledDays = selectedDays,
                             reminderTime = reminderTime,
                             intervalDays = if (frequency == RoutineFrequency.EVERY_N_DAYS) intervalDays else null,
+                            startDate = startDate,
+                            endDate = endDate,
                             rotationEnabled = canRotate && rotationEnabled,
                             assignedTo = if (canRotate && rotationEnabled) assignedTo else null
                         )
                     )
                 },
                 enabled = title.isNotBlank() &&
-                    (frequency != RoutineFrequency.WEEKLY || selectedDays.isNotEmpty())
+                    (frequency != RoutineFrequency.WEEKLY || selectedDays.isNotEmpty()) &&
+                    !endBeforeStart
             ) {
                 Text(stringResource(confirmLabelRes))
             }
@@ -644,6 +660,32 @@ fun RoutineCard(
                         )
                     }
                 }
+
+                // Lifetime window badge: finished (end passed) or not started yet.
+                val cardToday = LocalDate.now()
+                when {
+                    RoutineSchedule.isFinishedOn(routine, cardToday) -> {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.routines_finished_badge),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    RoutineSchedule.isNotStartedOn(routine, cardToday) && routine.startDate != null -> {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.routines_starts_on,
+                                formatRoutineDate(routine.startDate)
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
 
             IconButton(onClick = onOpenDetail) {
@@ -710,6 +752,8 @@ fun RoutineCard(
             initialDays = routine.scheduledDays,
             initialReminderTime = routine.reminderTime,
             initialIntervalDays = routine.intervalDays,
+            initialStartDate = routine.startDate,
+            initialEndDate = routine.endDate,
             initialRotationEnabled = routine.rotationEnabled,
             initialAssignedTo = routine.assignedTo,
             members = members,
@@ -765,6 +809,8 @@ private val RoutineFrequency.stringRes: Int
         RoutineFrequency.WEEKLY -> R.string.routines_frequency_weekly
         RoutineFrequency.CUSTOM -> R.string.routines_frequency_custom
         RoutineFrequency.EVERY_N_DAYS -> R.string.routines_frequency_interval
+        RoutineFrequency.MONTHLY -> R.string.routines_frequency_monthly
+        RoutineFrequency.YEARLY -> R.string.routines_frequency_yearly
     }
 
 private val DAY_LABELS = listOf(

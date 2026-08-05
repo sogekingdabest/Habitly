@@ -232,6 +232,8 @@ class RoutinesViewModel @Inject constructor(
         reminderTime: Int?,
         intervalDays: Int? = routine.intervalDays,
         pausedUntil: Long? = routine.pausedUntil,
+        startDate: Long? = routine.startDate,
+        endDate: Long? = routine.endDate,
         rotationEnabled: Boolean = routine.rotationEnabled,
         assignedTo: String? = routine.assignedTo
     ) {
@@ -242,7 +244,7 @@ class RoutinesViewModel @Inject constructor(
             updateRoutineUseCase(
                 state.currentUserId, state.currentHouseholdId, routine, title, description,
                 frequency, scheduledDays, reminderTime, intervalDays, pausedUntil,
-                rotationEnabled, assignedTo
+                startDate, endDate, rotationEnabled, assignedTo
             )
                 .onSuccess {
                     // Reschedules with the new data; if reminderTime is null, the use case cancels
@@ -256,6 +258,8 @@ class RoutinesViewModel @Inject constructor(
                             reminderTime = reminderTime,
                             intervalDays = intervalDays,
                             pausedUntil = pausedUntil,
+                            startDate = startDate,
+                            endDate = endDate,
                             rotationEnabled = rotationEnabled,
                             assignedTo = assignedTo
                         ),

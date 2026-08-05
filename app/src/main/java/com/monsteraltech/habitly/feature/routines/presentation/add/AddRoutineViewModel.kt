@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 data class AddRoutineUiState(
@@ -31,6 +33,9 @@ data class AddRoutineUiState(
     val frequency: RoutineFrequency = RoutineFrequency.DAILY,
     val selectedDays: List<Int> = emptyList(),
     val intervalDays: Int = DEFAULT_INTERVAL_DAYS,
+    /** Optional lifetime window (epoch ms). Also the calendar anchor for monthly/yearly. */
+    val startDate: Long? = null,
+    val endDate: Long? = null,
     val reminderEnabled: Boolean = false,
     /** Reminder time in minutes from midnight; only counts with [reminderEnabled]. */
     val reminderMinutes: Int = DEFAULT_REMINDER_MINUTES,
@@ -49,10 +54,14 @@ data class AddRoutineUiState(
     val canRotate: Boolean
         get() = type == RoutineType.HOUSEHOLD && householdMembers.size > 1
 
+    private val endBeforeStart: Boolean
+        get() = startDate != null && endDate != null && endDate < startDate
+
     // A weekly with no days would never be due; a custom with no days counts daily.
     val canSave: Boolean
         get() = title.isNotBlank() &&
-            (frequency != RoutineFrequency.WEEKLY || selectedDays.isNotEmpty())
+            (frequency != RoutineFrequency.WEEKLY || selectedDays.isNotEmpty()) &&
+            !endBeforeStart
 }
 
 @HiltViewModel
@@ -119,8 +128,18 @@ class AddRoutineViewModel @Inject constructor(
 
     fun onFrequencyChange(frequency: RoutineFrequency) = _uiState.update {
         val keepsDays = frequency == RoutineFrequency.WEEKLY || frequency == RoutineFrequency.CUSTOM
-        it.copy(frequency = frequency, selectedDays = if (keepsDays) it.selectedDays else emptyList())
+        val needsAnchor = frequency == RoutineFrequency.MONTHLY || frequency == RoutineFrequency.YEARLY
+        it.copy(
+            frequency = frequency,
+            selectedDays = if (keepsDays) it.selectedDays else emptyList(),
+            // Monthly/yearly need an anchor date; default it to today so the day is explicit.
+            startDate = if (needsAnchor && it.startDate == null) todayStartOfDayMillis() else it.startDate
+        )
     }
+
+    fun onStartDateChange(startDate: Long?) = _uiState.update { it.copy(startDate = startDate) }
+
+    fun onEndDateChange(endDate: Long?) = _uiState.update { it.copy(endDate = endDate) }
 
     fun onDayToggle(day: Int) = _uiState.update {
         it.copy(
@@ -129,8 +148,8 @@ class AddRoutineViewModel @Inject constructor(
         )
     }
 
-    fun onIntervalChange(delta: Int) = _uiState.update {
-        it.copy(intervalDays = (it.intervalDays + delta).coerceIn(MIN_INTERVAL_DAYS, MAX_INTERVAL_DAYS))
+    fun onIntervalSet(value: Int) = _uiState.update {
+        it.copy(intervalDays = value.coerceIn(MIN_INTERVAL_DAYS, MAX_INTERVAL_DAYS))
     }
 
     fun onReminderToggle(enabled: Boolean) = _uiState.update { it.copy(reminderEnabled = enabled) }
@@ -173,6 +192,8 @@ class AddRoutineViewModel @Inject constructor(
                 scheduledDays = state.selectedDays,
                 reminderTime = if (state.reminderEnabled) state.reminderMinutes else null,
                 intervalDays = if (state.frequency == RoutineFrequency.EVERY_N_DAYS) state.intervalDays else null,
+                startDate = state.startDate,
+                endDate = state.endDate,
                 rotationEnabled = rotates,
                 assignedTo = if (rotates) state.assignedTo else null
             )
@@ -197,3 +218,7 @@ private const val MAX_INTERVAL_DAYS = 365
 
 /** 09:00, a reasonable default reminder time. */
 private const val DEFAULT_REMINDER_MINUTES = 9 * 60
+
+/** Today at local start-of-day, epoch ms — the default anchor for a new monthly/yearly routine. */
+private fun todayStartOfDayMillis(): Long =
+    LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()

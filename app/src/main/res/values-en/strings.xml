@@ -72,6 +72,26 @@
     </plurals>
     <string name="routines_interval_less">Decrease interval</string>
     <string name="routines_interval_more">Increase interval</string>
+    <!-- Monthly/yearly frequency and interval presets (Phase 1) -->
+    <string name="routines_frequency_monthly">Monthly</string>
+    <string name="routines_frequency_yearly">Yearly</string>
+    <string name="routines_frequency_monthly_desc">Once a month, on the same day</string>
+    <string name="routines_frequency_yearly_desc">Once a year, on the same date</string>
+    <string name="routines_interval_field_label">Every how many days</string>
+    <string name="routines_interval_presets_label">Quick:</string>
+    <string name="routines_monthly_anchor_hint">Repeats on day %1$d every month</string>
+    <string name="routines_yearly_anchor_hint">Repeats every %1$s</string>
+    <!-- Routine lifetime window (Phase 1) -->
+    <string name="routines_dates_section">Duration</string>
+    <string name="routines_dates_hint">Optional. Leave blank so it never expires.</string>
+    <string name="routines_start_date_label">Starts</string>
+    <string name="routines_end_date_label">Ends</string>
+    <string name="routines_date_none">No date</string>
+    <string name="routines_date_clear">Clear date</string>
+    <string name="routines_date_confirm">OK</string>
+    <string name="routines_end_before_start">The end date can\'t be before the start</string>
+    <string name="routines_finished_badge">Finished</string>
+    <string name="routines_starts_on">Starts on %s</string>
     <string name="routines_streak_protected">🛡️ Streak protected: one miss was forgiven</string>
     <!-- Progress sheet -->
     <string name="routines_detail_open">View progress</string>
