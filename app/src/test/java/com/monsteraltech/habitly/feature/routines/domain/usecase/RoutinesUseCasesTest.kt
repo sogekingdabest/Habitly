@@ -1,6 +1,7 @@
 package com.monsteraltech.habitly.feature.routines.domain.usecase
 
 import com.monsteraltech.habitly.feature.routines.data.repository.FakeRoutinesRepository
+import com.monsteraltech.habitly.feature.routines.domain.model.NotificationLevel
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
@@ -347,6 +348,81 @@ class RoutinesUseCasesTest {
         val updated = fakeRepository.observePersonalRoutines(userId).first()
         assertEquals(RoutineFrequency.WEEKLY, updated[0].frequency)
         assertEquals(days, updated[0].scheduledDays)
+    }
+
+    // --- Icono y nivel de notificación (Fase 2) ---
+
+    @Test
+    fun `add routine stores icon and notification level`() = runBlocking {
+        addUseCase(
+            userId = userId,
+            householdId = householdId,
+            title = "Colada",
+            description = "",
+            type = RoutineType.PERSONAL,
+            icon = "🧺",
+            notificationLevel = NotificationLevel.HIGH
+        )
+
+        val stored = fakeRepository.observePersonalRoutines(userId).first()
+        assertEquals("🧺", stored[0].icon)
+        assertEquals(NotificationLevel.HIGH, stored[0].notificationLevel)
+    }
+
+    @Test
+    fun `add routine defaults to no icon and the default level`() = runBlocking {
+        addUseCase(userId, householdId, "Sin icono", "", RoutineType.PERSONAL)
+
+        val stored = fakeRepository.observePersonalRoutines(userId).first()
+        assertEquals("", stored[0].icon)
+        assertEquals(NotificationLevel.DEFAULT, stored[0].notificationLevel)
+    }
+
+    @Test
+    fun `update routine changes icon and notification level`() = runBlocking {
+        val routine = Routine(
+            id = "r1",
+            title = "Test",
+            type = RoutineType.PERSONAL,
+            authorId = userId,
+            icon = "🧹",
+            notificationLevel = NotificationLevel.DEFAULT
+        )
+        fakeRepository.addPersonalRoutine(routine)
+
+        updateUseCase(
+            userId = userId,
+            householdId = householdId,
+            routine = routine,
+            title = "Test",
+            description = "",
+            icon = "🐕",
+            notificationLevel = NotificationLevel.SILENT
+        )
+
+        val updated = fakeRepository.observePersonalRoutines(userId).first()
+        assertEquals("🐕", updated[0].icon)
+        assertEquals(NotificationLevel.SILENT, updated[0].notificationLevel)
+    }
+
+    @Test
+    fun `update routine keeps icon and level when not passed`() = runBlocking {
+        val routine = Routine(
+            id = "r1",
+            title = "Test",
+            type = RoutineType.PERSONAL,
+            authorId = userId,
+            icon = "🧺",
+            notificationLevel = NotificationLevel.HIGH
+        )
+        fakeRepository.addPersonalRoutine(routine)
+
+        // Renaming must not silently wipe the icon or drop the level back to default.
+        updateUseCase(userId, householdId, routine, "Otro título", "")
+
+        val updated = fakeRepository.observePersonalRoutines(userId).first()
+        assertEquals("🧺", updated[0].icon)
+        assertEquals(NotificationLevel.HIGH, updated[0].notificationLevel)
     }
 
     @Test

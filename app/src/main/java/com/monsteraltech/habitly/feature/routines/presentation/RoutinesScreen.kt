@@ -37,13 +37,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
+import com.monsteraltech.habitly.feature.routines.domain.model.NotificationLevel
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
 import com.monsteraltech.habitly.feature.routines.presentation.components.AnchorHintText
 import com.monsteraltech.habitly.feature.routines.presentation.components.DateWindowFields
 import com.monsteraltech.habitly.feature.routines.presentation.components.HouseholdBalanceCard
+import com.monsteraltech.habitly.feature.routines.presentation.components.IconPickerField
 import com.monsteraltech.habitly.feature.routines.presentation.components.IntervalSelector
+import com.monsteraltech.habitly.feature.routines.presentation.components.NotificationLevelSelector
 import com.monsteraltech.habitly.feature.routines.presentation.components.formatRoutineDate
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
 import com.monsteraltech.habitly.ui.components.HabitlySwipeRow
@@ -67,6 +70,8 @@ data class RoutineFormResult(
     val intervalDays: Int?,
     val startDate: Long? = null,
     val endDate: Long? = null,
+    val icon: String = "",
+    val notificationLevel: NotificationLevel = NotificationLevel.DEFAULT,
     val rotationEnabled: Boolean = false,
     val assignedTo: String? = null
 )
@@ -176,6 +181,7 @@ fun RoutinesScreen(
                                         routine, form.title, form.description, form.frequency,
                                         form.scheduledDays, form.reminderTime, form.intervalDays,
                                         routine.pausedUntil, form.startDate, form.endDate,
+                                        form.icon, form.notificationLevel,
                                         form.rotationEnabled, form.assignedTo
                                     )
                                 },
@@ -239,6 +245,8 @@ private fun RoutineFormDialog(
     initialIntervalDays: Int? = null,
     initialStartDate: Long? = null,
     initialEndDate: Long? = null,
+    initialIcon: String = "",
+    initialNotificationLevel: NotificationLevel = NotificationLevel.DEFAULT,
     initialRotationEnabled: Boolean = false,
     initialAssignedTo: String? = null,
     members: List<String> = emptyList(),
@@ -253,6 +261,8 @@ private fun RoutineFormDialog(
     var intervalDays by remember { mutableIntStateOf(initialIntervalDays ?: DEFAULT_INTERVAL_DAYS) }
     var startDate by remember { mutableStateOf(initialStartDate) }
     var endDate by remember { mutableStateOf(initialEndDate) }
+    var icon by remember { mutableStateOf(initialIcon) }
+    var notificationLevel by remember { mutableStateOf(initialNotificationLevel) }
     var rotationEnabled by remember { mutableStateOf(initialRotationEnabled) }
     var assignedTo by remember { mutableStateOf(initialAssignedTo) }
     var showTimePicker by remember { mutableStateOf(false) }
@@ -283,6 +293,9 @@ private fun RoutineFormDialog(
                     label = { Text(stringResource(R.string.routines_field_description)) },
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Text(stringResource(R.string.routines_icon_label), style = MaterialTheme.typography.labelLarge)
+                IconPickerField(icon = icon, onIconChange = { icon = it })
 
                 if (showTypeSelector) {
                     Text(stringResource(R.string.routines_type_label), style = MaterialTheme.typography.labelLarge)
@@ -454,6 +467,17 @@ private fun RoutineFormDialog(
                     }
                 }
 
+                if (reminderTime != null) {
+                    Text(
+                        stringResource(R.string.routines_level_label),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    NotificationLevelSelector(
+                        level = notificationLevel,
+                        onLevelChange = { notificationLevel = it }
+                    )
+                }
+
                 if (showTimePicker) {
                     TimePickerDialog(
                         initialMinutes = reminderTime,
@@ -480,6 +504,8 @@ private fun RoutineFormDialog(
                             intervalDays = if (frequency == RoutineFrequency.EVERY_N_DAYS) intervalDays else null,
                             startDate = startDate,
                             endDate = endDate,
+                            icon = icon,
+                            notificationLevel = notificationLevel,
                             rotationEnabled = canRotate && rotationEnabled,
                             assignedTo = if (canRotate && rotationEnabled) assignedTo else null
                         )
@@ -584,7 +610,9 @@ fun RoutineCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = routine.title,
+                    // The emoji rides in the same Text as the title so it wraps and strikes through
+                    // with it, instead of floating in its own column.
+                    text = if (routine.icon.isBlank()) routine.title else "${routine.icon} ${routine.title}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
@@ -754,6 +782,8 @@ fun RoutineCard(
             initialIntervalDays = routine.intervalDays,
             initialStartDate = routine.startDate,
             initialEndDate = routine.endDate,
+            initialIcon = routine.icon,
+            initialNotificationLevel = routine.notificationLevel,
             initialRotationEnabled = routine.rotationEnabled,
             initialAssignedTo = routine.assignedTo,
             members = members,

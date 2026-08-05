@@ -50,6 +50,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.BuildConfig
 import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.routines.data.notification.RoutineChannels
 import com.monsteraltech.habitly.feature.settings.domain.model.AppLanguage
 import com.monsteraltech.habitly.feature.settings.domain.model.ThemeMode
 import com.monsteraltech.habitly.ui.components.HabitlyCard
@@ -198,6 +199,26 @@ fun SettingsScreen(
                     checked = uiState.remindersEnabled,
                     onCheckedChange = viewModel::onRemindersToggled
                 )
+                SettingsDivider()
+                // Android freezes a channel's sound and vibration when it is created, so the app
+                // cannot offer its own picker. Instead each level links into its own system screen,
+                // where the user can set any tone and pattern they like.
+                SettingsRowHeader(
+                    icon = Icons.Filled.Notifications,
+                    title = stringResource(R.string.settings_notification_sounds)
+                )
+                NOTIFICATION_LEVEL_ROWS.forEach { (channelId, labelRes) ->
+                    SettingsClickableRow(
+                        icon = Icons.AutoMirrored.Filled.OpenInNew,
+                        title = stringResource(R.string.settings_notification_level_row, stringResource(labelRes)),
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                .putExtra(Settings.EXTRA_CHANNEL_ID, channelId)
+                            runCatching { context.startActivity(intent) }
+                        }
+                    )
+                }
                 SettingsDivider()
                 SettingsClickableRow(
                     icon = Icons.AutoMirrored.Filled.OpenInNew,
@@ -538,3 +559,10 @@ private fun AppLanguage.labelRes(): Int = when (this) {
     AppLanguage.GALICIAN -> R.string.settings_language_gl
     AppLanguage.ENGLISH -> R.string.settings_language_en
 }
+
+/** Reminder levels, each linking into its own system notification-channel screen. */
+private val NOTIFICATION_LEVEL_ROWS = listOf(
+    RoutineChannels.CHANNEL_SILENT to R.string.routines_level_silent,
+    RoutineChannels.CHANNEL_DEFAULT to R.string.routines_level_default,
+    RoutineChannels.CHANNEL_HIGH to R.string.routines_level_high
+)

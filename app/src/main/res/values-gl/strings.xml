@@ -90,6 +90,31 @@
     <string name="routines_end_before_start">A data de fin non pode ser anterior ao inicio</string>
     <string name="routines_finished_badge">Rematada</string>
     <string name="routines_starts_on">Comeza o %s</string>
+    <!-- Canles de notificación por nivel (Fase 2) -->
+    <string name="routines_channel_group">Recordatorios de rutinas</string>
+    <string name="routines_channel_silent">Silencioso</string>
+    <string name="routines_channel_default">Normal</string>
+    <string name="routines_channel_high">Importante</string>
+    <string name="routines_channel_desc">Toca aquí para escoller o son e a vibración deste nivel.</string>
+    <string name="routines_notification_snooze">Adiar</string>
+    <string name="routines_notification_done">Feito</string>
+    <string name="routines_level_label">Como queres que avise</string>
+    <string name="routines_level_silent">Silencioso</string>
+    <string name="routines_level_default">Normal</string>
+    <string name="routines_level_high">Importante</string>
+    <string name="settings_notification_sounds">Son dos avisos</string>
+    <string name="settings_notification_sounds_desc">Escolle o son e a vibración de cada nivel</string>
+    <string name="settings_notification_level_row">Nivel «%s»</string>
+    <!-- Emoji da rutina (Fase 2) -->
+    <string name="routines_icon_label">Icona</string>
+    <string name="routines_icon_none">Sen icona</string>
+    <string name="routines_icon_choose">Escolle unha icona</string>
+    <string name="routines_icon_clear">Quitar icona</string>
+    <string name="routines_icon_group_home">Casa</string>
+    <string name="routines_icon_group_kitchen">Cociña</string>
+    <string name="routines_icon_group_health">Saúde</string>
+    <string name="routines_icon_group_pets">Mascotas</string>
+    <string name="routines_icon_group_other">Outros</string>
     <string name="routines_streak_protected">🛡️ Racha protexida: perdoóuseche un fallo</string>
     <!-- Ficha de progreso -->
     <string name="routines_detail_open">Ver progreso</string>

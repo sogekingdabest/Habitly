@@ -9,6 +9,7 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.household.domain.usecase.GetMemberProfilesUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveHouseholdUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
+import com.monsteraltech.habitly.feature.routines.domain.model.NotificationLevel
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.usecase.AddRoutineUseCase
@@ -36,6 +37,9 @@ data class AddRoutineUiState(
     /** Optional lifetime window (epoch ms). Also the calendar anchor for monthly/yearly. */
     val startDate: Long? = null,
     val endDate: Long? = null,
+    /** Emoji shown next to the title and in the reminder. Empty means none. */
+    val icon: String = "",
+    val notificationLevel: NotificationLevel = NotificationLevel.DEFAULT,
     val reminderEnabled: Boolean = false,
     /** Reminder time in minutes from midnight; only counts with [reminderEnabled]. */
     val reminderMinutes: Int = DEFAULT_REMINDER_MINUTES,
@@ -152,6 +156,11 @@ class AddRoutineViewModel @Inject constructor(
         it.copy(intervalDays = value.coerceIn(MIN_INTERVAL_DAYS, MAX_INTERVAL_DAYS))
     }
 
+    fun onIconChange(icon: String) = _uiState.update { it.copy(icon = icon) }
+
+    fun onNotificationLevelChange(level: NotificationLevel) =
+        _uiState.update { it.copy(notificationLevel = level) }
+
     fun onReminderToggle(enabled: Boolean) = _uiState.update { it.copy(reminderEnabled = enabled) }
 
     fun onReminderTimeChange(hour: Int, minute: Int) =
@@ -194,6 +203,8 @@ class AddRoutineViewModel @Inject constructor(
                 intervalDays = if (state.frequency == RoutineFrequency.EVERY_N_DAYS) state.intervalDays else null,
                 startDate = state.startDate,
                 endDate = state.endDate,
+                icon = state.icon,
+                notificationLevel = state.notificationLevel,
                 rotationEnabled = rotates,
                 assignedTo = if (rotates) state.assignedTo else null
             )

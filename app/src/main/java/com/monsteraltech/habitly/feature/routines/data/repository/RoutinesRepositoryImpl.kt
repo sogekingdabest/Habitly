@@ -226,6 +226,8 @@ class RoutinesRepositoryImpl @Inject constructor(
                     mapOf(
                         "title" to routine.title.trim(),
                         "description" to routine.description.trim(),
+                        "icon" to routine.icon,
+                        "notificationLevel" to routine.notificationLevel.name,
                         "frequency" to routine.frequency.name,
                         "scheduledDays" to routine.scheduledDays,
                         "reminderTime" to routine.reminderTime,
