@@ -123,8 +123,12 @@
     <string name="routines_comment_delete">Borrar comentario</string>
     <string name="routines_comment_author_you">Ti</string>
     <string name="routines_error_comment">Non se puido publicar o comentario</string>
-    <string name="routines_comments_count">%1$d comentarios</string>
     <string name="routines_comments_new">Comentarios novos</string>
+    <string name="routines_comments_add">Comentar</string>
+    <plurals name="routines_comments_count">
+        <item quantity="one">%1$d comentario</item>
+        <item quantity="other">%1$d comentarios</item>
+    </plurals>
     <!-- Notas (Fase 4) -->
     <string name="notes_title">Notas</string>
     <string name="notes_tab_personal">As miñas notas</string>

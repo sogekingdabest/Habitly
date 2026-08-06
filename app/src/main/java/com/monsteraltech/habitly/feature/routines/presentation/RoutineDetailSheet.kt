@@ -31,12 +31,15 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -72,11 +75,16 @@ fun RoutineDetailSheet(
     val routine = detail.routine
     val today = LocalDate.now()
 
+    val scrollState = rememberScrollState()
+    // Where the comments start inside the scrolling content, measured once laid out. There is no
+    // other way to jump to a section of a plain scrolling Column.
+    var commentsOffset by remember { mutableIntStateOf(0) }
+
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -124,15 +132,8 @@ fun RoutineDetailSheet(
                 )
             }
 
-            HorizontalDivider()
-
-            PauseSection(
-                pausedUntil = detail.routine.pausedUntil,
-                today = today,
-                onPause = onPause
-            )
-
-            // Only shared routines have anyone to talk to.
+            // Only shared routines have anyone to talk to. Above the holiday switch on purpose:
+            // it is the part people come back to, and buried last nobody found it.
             if (routine.type == RoutineType.HOUSEHOLD) {
                 HorizontalDivider()
                 CommentsSection(
@@ -141,8 +142,26 @@ fun RoutineDetailSheet(
                     memberNicknames = memberNicknames,
                     onDraftChange = onCommentDraftChange,
                     onSend = onSendComment,
-                    onDelete = onDeleteComment
+                    onDelete = onDeleteComment,
+                    modifier = Modifier.onGloballyPositioned {
+                        commentsOffset = it.positionInParent().y.toInt()
+                    }
                 )
+            }
+
+            HorizontalDivider()
+
+            PauseSection(
+                pausedUntil = detail.routine.pausedUntil,
+                today = today,
+                onPause = onPause
+            )
+        }
+
+        // Runs once the comments have been measured, which is why the offset is a key.
+        LaunchedEffect(detail.focusComments, commentsOffset) {
+            if (detail.focusComments && commentsOffset > 0) {
+                scrollState.animateScrollTo(commentsOffset)
             }
         }
     }
@@ -155,9 +174,10 @@ private fun CommentsSection(
     memberNicknames: Map<String, String>,
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
-    onDelete: (String) -> Unit
+    onDelete: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = stringResource(R.string.routines_comments_title),
             style = MaterialTheme.typography.titleSmall,

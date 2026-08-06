@@ -53,7 +53,12 @@ data class RoutineDetailState(
     /** Live comments on the routine. Only household routines have them. */
     val comments: List<RoutineComment> = emptyList(),
     val commentDraft: String = "",
-    val isSendingComment: Boolean = false
+    val isSendingComment: Boolean = false,
+    /**
+     * Opened from the card's comment row, so the sheet scrolls straight to the conversation
+     * instead of leaving the user to discover that it scrolls at all.
+     */
+    val focusComments: Boolean = false
 ) {
     /** How many times it was due in the part of the month already elapsed. */
     fun expectedInMonth(today: LocalDate = LocalDate.now()): Int {
@@ -323,9 +328,15 @@ class RoutinesViewModel @Inject constructor(
 
     // ---------- Detail sheet with the completion calendar ----------
 
-    fun onOpenRoutineDetail(routine: Routine) {
+    fun onOpenRoutineDetail(routine: Routine, focusComments: Boolean = false) {
         _uiState.update {
-            it.copy(routineDetail = RoutineDetailState(routine = routine, month = YearMonth.now()))
+            it.copy(
+                routineDetail = RoutineDetailState(
+                    routine = routine,
+                    month = YearMonth.now(),
+                    focusComments = focusComments
+                )
+            )
         }
         loadCompletions()
         observeComments(routine)
