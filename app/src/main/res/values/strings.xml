@@ -120,6 +120,16 @@
     <string name="routines_icon_group_health">Salud</string>
     <string name="routines_icon_group_pets">Mascotas</string>
     <string name="routines_icon_group_other">Otros</string>
+    <!-- Comentarios en rutinas compartidas (Fase 3) -->
+    <string name="routines_comments_title">Comentarios</string>
+    <string name="routines_comments_empty">Aún no hay comentarios. Deja una nota para los demás.</string>
+    <string name="routines_comment_hint">Escribe un comentario…</string>
+    <string name="routines_comment_send">Enviar comentario</string>
+    <string name="routines_comment_delete">Borrar comentario</string>
+    <string name="routines_comment_author_you">Tú</string>
+    <string name="routines_error_comment">No se pudo publicar el comentario</string>
+    <string name="routines_comments_count">%1$d comentarios</string>
+    <string name="routines_comments_new">Comentarios nuevos</string>
     <string name="routines_streak_protected">🛡️ Racha protegida: se te perdonó un fallo</string>
     <!-- Ficha de progreso -->
     <string name="routines_detail_open">Ver progreso</string>

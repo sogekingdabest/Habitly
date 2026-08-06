@@ -1,7 +1,9 @@
 package com.monsteraltech.habitly.feature.routines.domain.usecase
 
+import com.monsteraltech.habitly.feature.routines.domain.model.MAX_COMMENT_LENGTH
 import com.monsteraltech.habitly.feature.routines.domain.model.NotificationLevel
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineComment
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.repository.RoutinesRepository
@@ -258,6 +260,53 @@ class ReturnRotationUseCase @Inject constructor(
             assignedTo = userId
         )
     }
+}
+
+// ---------- Comentarios ----------
+
+class ObserveRoutineCommentsUseCase @Inject constructor(
+    private val repository: RoutinesRepository
+) {
+    operator fun invoke(householdId: String, routineId: String): Flow<List<RoutineComment>> =
+        repository.observeComments(householdId, routineId)
+}
+
+class AddRoutineCommentUseCase @Inject constructor(
+    private val repository: RoutinesRepository
+) {
+    /**
+     * Posts a comment on a household routine. Trims and caps the text here rather than in the
+     * screen, so the same rules hold whoever calls it.
+     */
+    suspend operator fun invoke(
+        householdId: String,
+        routineId: String,
+        authorId: String,
+        text: String
+    ): Result<Unit> {
+        val clean = text.trim().take(MAX_COMMENT_LENGTH)
+        if (clean.isEmpty()) return Result.failure(Exception("El comentario no puede estar vacío"))
+        if (householdId.isBlank() || routineId.isBlank() || authorId.isBlank()) {
+            return Result.failure(Exception("Faltan datos para publicar el comentario"))
+        }
+
+        val comment = RoutineComment(
+            id = UUID.randomUUID().toString(),
+            text = clean,
+            authorId = authorId
+        )
+        return repository.addComment(householdId, routineId, comment)
+    }
+}
+
+class DeleteRoutineCommentUseCase @Inject constructor(
+    private val repository: RoutinesRepository
+) {
+    suspend operator fun invoke(
+        householdId: String,
+        routineId: String,
+        commentId: String
+    ): Result<Unit> = repository.deleteComment(householdId, routineId, commentId)
 }
 
 /**

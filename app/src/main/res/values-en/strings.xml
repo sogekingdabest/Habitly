@@ -117,6 +117,16 @@
     <string name="routines_icon_group_health">Health</string>
     <string name="routines_icon_group_pets">Pets</string>
     <string name="routines_icon_group_other">Other</string>
+    <!-- Comments on shared routines (Phase 3) -->
+    <string name="routines_comments_title">Comments</string>
+    <string name="routines_comments_empty">No comments yet. Leave a note for the others.</string>
+    <string name="routines_comment_hint">Write a comment…</string>
+    <string name="routines_comment_send">Send comment</string>
+    <string name="routines_comment_delete">Delete comment</string>
+    <string name="routines_comment_author_you">You</string>
+    <string name="routines_error_comment">Couldn\'t post the comment</string>
+    <string name="routines_comments_count">%1$d comments</string>
+    <string name="routines_comments_new">New comments</string>
     <string name="routines_streak_protected">🛡️ Streak protected: one miss was forgiven</string>
     <!-- Progress sheet -->
     <string name="routines_detail_open">View progress</string>

@@ -4,24 +4,30 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -36,6 +42,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineComment
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
 import com.monsteraltech.habitly.feature.routines.presentation.components.CompletionHeatmap
 import java.time.LocalDate
@@ -53,7 +61,12 @@ fun RoutineDetailSheet(
     detail: RoutineDetailState,
     onDismiss: () -> Unit,
     onMonthShift: (Long) -> Unit,
-    onPause: (Long?) -> Unit
+    onPause: (Long?) -> Unit,
+    currentUserId: String = "",
+    memberNicknames: Map<String, String> = emptyMap(),
+    onCommentDraftChange: (String) -> Unit = {},
+    onSendComment: () -> Unit = {},
+    onDeleteComment: (String) -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val routine = detail.routine
@@ -118,8 +131,137 @@ fun RoutineDetailSheet(
                 today = today,
                 onPause = onPause
             )
+
+            // Only shared routines have anyone to talk to.
+            if (routine.type == RoutineType.HOUSEHOLD) {
+                HorizontalDivider()
+                CommentsSection(
+                    detail = detail,
+                    currentUserId = currentUserId,
+                    memberNicknames = memberNicknames,
+                    onDraftChange = onCommentDraftChange,
+                    onSend = onSendComment,
+                    onDelete = onDeleteComment
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun CommentsSection(
+    detail: RoutineDetailState,
+    currentUserId: String,
+    memberNicknames: Map<String, String>,
+    onDraftChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onDelete: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = stringResource(R.string.routines_comments_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        if (detail.comments.isEmpty()) {
+            Text(
+                text = stringResource(R.string.routines_comments_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            detail.comments.forEach { comment ->
+                CommentRow(
+                    comment = comment,
+                    isMine = comment.authorId == currentUserId,
+                    authorName = if (comment.authorId == currentUserId) {
+                        stringResource(R.string.routines_comment_author_you)
+                    } else {
+                        memberNicknames[comment.authorId]
+                            ?: stringResource(R.string.routines_completed_by_unknown)
+                    },
+                    onDelete = { onDelete(comment.id) }
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = detail.commentDraft,
+                onValueChange = onDraftChange,
+                placeholder = { Text(stringResource(R.string.routines_comment_hint)) },
+                modifier = Modifier.weight(1f),
+                maxLines = 3,
+                shape = MaterialTheme.shapes.medium
+            )
+            FilledTonalIconButton(
+                onClick = onSend,
+                enabled = detail.commentDraft.isNotBlank() && !detail.isSendingComment
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Send,
+                    contentDescription = stringResource(R.string.routines_comment_send)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommentRow(
+    comment: RoutineComment,
+    isMine: Boolean,
+    authorName: String,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "$authorName · ${comment.createdAt.toShortTime()}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(text = comment.text, style = MaterialTheme.typography.bodyMedium)
+            }
+            // Only your own: the rules let any member write here, but the app should not invite
+            // anyone to delete someone else's words.
+            if (isMine) {
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.routines_comment_delete),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Comment timestamp as "5 ago, 18:04" — enough to place it without a full date. */
+private fun Long.toShortTime(): String {
+    val dateTime = java.time.Instant.ofEpochMilli(this)
+        .atZone(java.time.ZoneId.systemDefault())
+        .toLocalDateTime()
+    val locale = Locale.getDefault()
+    val monthName = dateTime.month.getDisplayName(TextStyle.SHORT, locale)
+    return "%d %s, %02d:%02d".format(
+        dateTime.dayOfMonth, monthName, dateTime.hour, dateTime.minute
+    )
 }
 
 @Composable

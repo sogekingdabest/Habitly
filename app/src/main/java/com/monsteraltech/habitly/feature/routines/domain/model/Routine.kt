@@ -77,6 +77,15 @@ data class Routine(
     val assignedTo: String? = null,
     /** On completion, the turn passes automatically to the next household member. */
     val rotationEnabled: Boolean = false,
+    /**
+     * How many comments the routine has. Denormalised so the list can show the badge without one
+     * read per routine, and kept in step with `FieldValue.increment` in the same batch that writes
+     * the comment.
+     *
+     * Deliberately absent from the field map in `updateRoutine`: editing a routine must not
+     * overwrite a counter that only the comment writes own.
+     */
+    val commentCount: Int = 0,
     /** Current streak, in scheduled occurrences (not calendar days). Denormalised. */
     val currentStreak: Int = 0,
     /** Best streak ever. Denormalised. */
