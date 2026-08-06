@@ -2,6 +2,7 @@ package com.monsteraltech.habitly.feature.routines.presentation
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -15,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -190,6 +192,9 @@ fun RoutinesScreen(
                                 },
                                 onDelete = { viewModel.onDeleteRoutine(routine) },
                                 onOpenDetail = { viewModel.onOpenRoutineDetail(routine) },
+                                onOpenComments = {
+                                    viewModel.onOpenRoutineDetail(routine, focusComments = true)
+                                },
                                 onMoveUp = {
                                     val currentIndex = filteredRoutines.indexOfFirst { it.id == routine.id }
                                     if (currentIndex > 0) {
@@ -542,6 +547,7 @@ fun RoutineCard(
     onEdit: (RoutineFormResult) -> Unit,
     onDelete: () -> Unit,
     onOpenDetail: () -> Unit = {},
+    onOpenComments: () -> Unit = {},
     isPaused: Boolean = false,
     completedByName: String? = null,
     assignedToName: String? = null,
@@ -699,17 +705,49 @@ fun RoutineCard(
                     }
                 }
 
-                // Comments: the count is what makes them discoverable at all, and the dot marks
-                // the ones added since this user last opened the routine.
-                if (routine.commentCount > 0) {
+                // Comments: every shared routine shows the way in, even with none written yet.
+                // Showing it only once a comment existed left nobody able to write the first one,
+                // and the count alone was not an invitation to write.
+                //
+                // It rides in the text column rather than with the action icons: those already
+                // fill the row, and a fourth one would squeeze the title on a narrow phone. It
+                // also gets to carry the word "comment", which a grey glyph could not.
+                if (routine.type == RoutineType.HOUSEHOLD) {
+                    val commentsTint = if (hasNewComments) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(role = Role.Button, onClick = onOpenComments)
+                            .padding(vertical = 4.dp, horizontal = 6.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.ChatBubbleOutline,
+                            contentDescription = null,
+                            tint = commentsTint,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "💬 ${routine.commentCount}",
+                            text = if (routine.commentCount > 0) {
+                                pluralStringResource(
+                                    R.plurals.routines_comments_count,
+                                    routine.commentCount,
+                                    routine.commentCount
+                                )
+                            } else {
+                                stringResource(R.string.routines_comments_add)
+                            },
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = commentsTint,
                             fontWeight = FontWeight.SemiBold
                         )
+                        // The dot marks comments added since this user last opened the routine.
                         if (hasNewComments) {
                             Spacer(modifier = Modifier.width(6.dp))
                             Box(

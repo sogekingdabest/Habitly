@@ -125,8 +125,12 @@
     <string name="routines_comment_delete">Delete comment</string>
     <string name="routines_comment_author_you">You</string>
     <string name="routines_error_comment">Couldn\'t post the comment</string>
-    <string name="routines_comments_count">%1$d comments</string>
     <string name="routines_comments_new">New comments</string>
+    <string name="routines_comments_add">Comment</string>
+    <plurals name="routines_comments_count">
+        <item quantity="one">%1$d comment</item>
+        <item quantity="other">%1$d comments</item>
+    </plurals>
     <!-- Notes (Phase 4) -->
     <string name="notes_title">Notes</string>
     <string name="notes_tab_personal">My notes</string>
