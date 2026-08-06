@@ -145,6 +145,9 @@
     <string name="notes_save">Guardar</string>
     <string name="notes_cancel">Cancelar</string>
     <string name="notes_delete">Borrar nota</string>
+    <string name="notes_author_you">Tú</string>
+    <string name="notes_author_unknown">un miembro</string>
+    <string name="notes_edited">editado %1$s</string>
     <string name="notes_empty">Todavía no hay notas. Toca + para crear la primera.</string>
     <string name="notes_error_load">No se pudieron cargar las notas</string>
     <string name="notes_error_save">No se pudo guardar la nota</string>

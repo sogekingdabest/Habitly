@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.feature.household.domain.usecase.GetMemberProfilesUseCase
+import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveHouseholdUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
 import com.monsteraltech.habitly.feature.notes.domain.model.MAX_NOTE_LENGTH
 import com.monsteraltech.habitly.feature.notes.domain.model.Note
@@ -29,6 +31,8 @@ data class NotesUiState(
     val isLoading: Boolean = true,
     val currentUserId: String = "",
     val currentHouseholdId: String = "",
+    /** Member id to display name, so a shared note can say who wrote it. */
+    val memberNicknames: Map<String, String> = emptyMap(),
     /** The note being written or edited; null when the editor is closed. */
     val editing: NoteEditorState? = null,
     val isSaving: Boolean = false,
@@ -53,6 +57,8 @@ class NotesViewModel @Inject constructor(
     private val updateNoteUseCase: UpdateNoteUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
     private val observeUserProfileUseCase: ObserveUserProfileUseCase,
+    private val observeHouseholdUseCase: ObserveHouseholdUseCase,
+    private val getMemberProfilesUseCase: GetMemberProfilesUseCase,
     firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -61,6 +67,7 @@ class NotesViewModel @Inject constructor(
 
     private val currentUserId: String = firebaseAuth.currentUser?.uid ?: ""
     private var notesJob: Job? = null
+    private var membersJob: Job? = null
 
     init {
         _uiState.update { it.copy(currentUserId = currentUserId) }
@@ -69,6 +76,25 @@ class NotesViewModel @Inject constructor(
                 val householdId = profile?.activeHouseholdId.orEmpty()
                 _uiState.update { it.copy(currentHouseholdId = householdId) }
                 observeNotes(householdId)
+                if (householdId.isNotBlank()) loadMemberNicknames(householdId)
+            }
+        }
+    }
+
+    /**
+     * Names come from the household document itself, the same way the routines screen resolves
+     * them: no Firestore read per member.
+     */
+    private fun loadMemberNicknames(householdId: String) {
+        membersJob?.cancel()
+        membersJob = viewModelScope.launch {
+            observeHouseholdUseCase(householdId).collectLatest { household ->
+                val nicknames = household?.let {
+                    getMemberProfilesUseCase(it)
+                        .filter { profile -> profile.nickname.isNotBlank() || profile.displayName.isNotBlank() }
+                        .associate { profile -> profile.id to profile.nickname.ifBlank { profile.displayName } }
+                }.orEmpty()
+                _uiState.update { it.copy(memberNicknames = nicknames) }
             }
         }
     }

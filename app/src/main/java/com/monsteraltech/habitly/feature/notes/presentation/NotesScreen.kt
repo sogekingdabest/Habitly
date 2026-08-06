@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -140,6 +141,8 @@ fun NotesScreen(
                     items(notes, key = { it.id }) { note ->
                         NoteCard(
                             note = note,
+                            currentUserId = uiState.currentUserId,
+                            memberNicknames = uiState.memberNicknames,
                             onClick = { viewModel.onEditNote(note) },
                             onDelete = { viewModel.onDeleteNote(note) }
                         )
@@ -196,10 +199,18 @@ fun NotesScreen(
 }
 
 @Composable
-private fun NoteCard(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
-    HabitlyCard(shape = LeafCornerLarge, onClick = onClick) {
+private fun NoteCard(
+    note: Note,
+    currentUserId: String,
+    memberNicknames: Map<String, String>,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    // 16dp once, from the card. The Row used to add its own on top of the card's default 20dp,
+    // which left a two-line note swimming in 36dp of margin on every side.
+    HabitlyCard(shape = LeafCornerLarge, contentPadding = PaddingValues(16.dp), onClick = onClick) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -217,6 +228,21 @@ private fun NoteCard(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
                         maxLines = 3
                     )
                 }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = note.byline(currentUserId, memberNicknames),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            // Tapping the card already opens the editor, but nothing said so: the only visible
+            // control was the bin, which reads as "you may delete this, not change it".
+            IconButton(onClick = onClick) {
+                Icon(
+                    Icons.Filled.Edit,
+                    contentDescription = stringResource(R.string.notes_edit),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
             }
             IconButton(onClick = onDelete) {
                 Icon(
@@ -227,4 +253,41 @@ private fun NoteCard(note: Note, onClick: () -> Unit, onDelete: () -> Unit) {
             }
         }
     }
+}
+
+/**
+ * "Sonia · 6 ago, 16:41" on a shared note, just the time on a personal one — on your own board
+ * there is no one else it could be from.
+ *
+ * The time shown is the last change, not the creation, because that is what the board sorts by:
+ * a note that climbs back to the top has to say why.
+ */
+@Composable
+private fun Note.byline(currentUserId: String, memberNicknames: Map<String, String>): String {
+    val moment = updatedAt.toShortDateTime()
+    val stamp = if (updatedAt > createdAt) {
+        stringResource(R.string.notes_edited, moment)
+    } else {
+        moment
+    }
+
+    if (type != NoteType.HOUSEHOLD) return stamp
+
+    val author = if (authorId == currentUserId) {
+        stringResource(R.string.notes_author_you)
+    } else {
+        memberNicknames[authorId] ?: stringResource(R.string.notes_author_unknown)
+    }
+    return "$author · $stamp"
+}
+
+private fun Long.toShortDateTime(): String {
+    val dateTime = java.time.Instant.ofEpochMilli(this)
+        .atZone(java.time.ZoneId.systemDefault())
+        .toLocalDateTime()
+    val locale = java.util.Locale.getDefault()
+    val monthName = dateTime.month.getDisplayName(java.time.format.TextStyle.SHORT, locale)
+    return "%d %s, %02d:%02d".format(
+        dateTime.dayOfMonth, monthName, dateTime.hour, dateTime.minute
+    )
 }

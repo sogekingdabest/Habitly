@@ -142,6 +142,9 @@
     <string name="notes_save">Save</string>
     <string name="notes_cancel">Cancel</string>
     <string name="notes_delete">Delete note</string>
+    <string name="notes_author_you">You</string>
+    <string name="notes_author_unknown">a member</string>
+    <string name="notes_edited">edited %1$s</string>
     <string name="notes_empty">No notes yet. Tap + to create the first one.</string>
     <string name="notes_error_load">Couldn\'t load the notes</string>
     <string name="notes_error_save">Couldn\'t save the note</string>
