@@ -127,6 +127,28 @@
     <string name="routines_error_comment">Couldn\'t post the comment</string>
     <string name="routines_comments_count">%1$d comments</string>
     <string name="routines_comments_new">New comments</string>
+    <!-- Notes (Phase 4) -->
+    <string name="notes_title">Notes</string>
+    <string name="notes_tab_personal">My notes</string>
+    <string name="notes_tab_household">Household</string>
+    <string name="notes_add">New note</string>
+    <string name="notes_new">New note</string>
+    <string name="notes_edit">Edit note</string>
+    <string name="notes_hint">Write here. The first line becomes the title.</string>
+    <string name="notes_save">Save</string>
+    <string name="notes_cancel">Cancel</string>
+    <string name="notes_delete">Delete note</string>
+    <string name="notes_empty">No notes yet. Tap + to create the first one.</string>
+    <string name="notes_error_load">Couldn\'t load the notes</string>
+    <string name="notes_error_save">Couldn\'t save the note</string>
+    <string name="notes_household_entry">Household notes</string>
+    <string name="notes_household_entry_desc">A board shared with everyone at home</string>
+    <string name="notes_dashboard_title">Notes</string>
+    <string name="notes_dashboard_empty">No notes yet</string>
+    <plurals name="notes_dashboard_count">
+        <item quantity="one">%d note</item>
+        <item quantity="other">%d notes</item>
+    </plurals>
     <string name="routines_streak_protected">🛡️ Streak protected: one miss was forgiven</string>
     <!-- Progress sheet -->
     <string name="routines_detail_open">View progress</string>

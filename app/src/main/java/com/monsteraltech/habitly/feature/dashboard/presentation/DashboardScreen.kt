@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -77,6 +78,7 @@ fun DashboardScreen(
     onNavigateToShopping: () -> Unit = {},
     onNavigateToRoutines: () -> Unit = {},
     onNavigateToAddRoutine: () -> Unit = {},
+    onNavigateToNotes: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -148,6 +150,14 @@ fun DashboardScreen(
                     ShoppingSummaryCard(
                         pendingNames = uiState.pendingShoppingItems.map { it.name },
                         onClick = onNavigateToShopping
+                    )
+                }
+
+                item {
+                    NotesSummaryCard(
+                        count = uiState.notesCount,
+                        latestHeading = uiState.latestNoteHeading,
+                        onClick = onNavigateToNotes
                     )
                 }
 
@@ -321,6 +331,53 @@ private fun ProgressRing(progress: Float) {
                 size = arcSize,
                 style = Stroke(width = stroke, cap = StrokeCap.Round)
             )
+        }
+    }
+}
+
+/** Notes at a glance: how many there are and what the most recent one says. */
+@Composable
+private fun NotesSummaryCard(
+    count: Int,
+    latestHeading: String,
+    onClick: () -> Unit
+) {
+    HabitlyCard(shape = LeafCornerLarge, onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconHalo {
+                Icon(
+                    Icons.Outlined.Description,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.notes_dashboard_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (count == 0) {
+                    Text(
+                        text = stringResource(R.string.notes_dashboard_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.habitly.textSecondary
+                    )
+                } else {
+                    Text(
+                        text = latestHeading,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = pluralStringResource(R.plurals.notes_dashboard_count, count, count),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.habitly.textSecondary
+                    )
+                }
+            }
         }
     }
 }
