@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.feature.dashboard.presentation.DashboardScreen
 import com.monsteraltech.habitly.feature.household.presentation.HouseholdScreen
 import com.monsteraltech.habitly.feature.household.presentation.OnboardingScreen
+import com.monsteraltech.habitly.feature.notes.presentation.NotesScreen
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.presentation.RoutinesScreen
 import com.monsteraltech.habitly.feature.routines.presentation.add.AddRoutineScreen
@@ -75,6 +76,9 @@ object HiddenRoutes {
     // Adding a product no longer navigates: it is a bottom sheet inside ShoppingScreen.
     const val RoutinesAdd = "routines_add"
     const val Settings = "settings"
+    // Full screen rather than a sixth tab: the bottom bar already carries five with the
+    // assistant standing out in the middle.
+    const val Notes = "notes"
 }
 
 @Composable
@@ -241,7 +245,8 @@ private fun MainContent(
                         navController.navigate(
                             "${HiddenRoutes.RoutinesAdd}?${AddRoutineViewModel.TYPE_ARG}=${RoutineType.PERSONAL.name}"
                         )
-                    }
+                    },
+                    onNavigateToNotes = { navController.navigate(HiddenRoutes.Notes) }
                 )
             }
             composable(BottomNavRoute.Shopping.route) {
@@ -263,7 +268,8 @@ private fun MainContent(
             }
             composable(BottomNavRoute.Household.route) {
                 HouseholdScreen(
-                    onNavigateToSettings = { navController.navigate(HiddenRoutes.Settings) }
+                    onNavigateToSettings = { navController.navigate(HiddenRoutes.Settings) },
+                    onNavigateToNotes = { navController.navigate(HiddenRoutes.Notes) }
                 )
             }
             composable(HiddenRoutes.Settings) {
@@ -271,6 +277,9 @@ private fun MainContent(
                     onNavigateBack = { navController.popBackStack() },
                     onSignOut = onSignOut
                 )
+            }
+            composable(HiddenRoutes.Notes) {
+                NotesScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(HiddenRoutes.ShoppingHistory) {
                 HistoryScreen(

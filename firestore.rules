@@ -36,6 +36,21 @@ service cloud.firestore {
           allow read, write: if isSignedIn() && request.auth.uid == userId;
         }
       }
+
+      // Notas personales del usuario.
+      //
+      // Hace falta declararla: las reglas de Firestore NO se heredan, así que el
+      // `allow` del documento /users/{userId} de arriba no alcanza a sus
+      // subcolecciones. Sin esta regla, las notas personales fallan con
+      // PERMISSION_DENIED aunque el usuario sea su dueño.
+      //
+      // Se declara estrecha —solo `notes`— en vez de un comodín /{sub=**} sobre
+      // /users, para no conceder de golpe acceso a subcolecciones que todavía no
+      // existen. Las notas de casa viven en households/{id}/notes y las cubre el
+      // comodín de esa rama.
+      match /notes/{noteId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     // ─────────────────────────────────────────────────────────────

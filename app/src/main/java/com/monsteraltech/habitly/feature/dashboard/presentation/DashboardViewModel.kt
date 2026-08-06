@@ -7,6 +7,7 @@ import com.monsteraltech.habitly.feature.dashboard.data.ConnectivityObserver
 import com.monsteraltech.habitly.feature.household.domain.model.Household
 import com.monsteraltech.habitly.feature.household.domain.usecase.GetMemberProfilesUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveHouseholdUseCase
+import com.monsteraltech.habitly.feature.notes.domain.usecase.ObserveNotesUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
@@ -50,6 +51,9 @@ data class DashboardUiState(
     val todayByMember: List<MemberTally> = emptyList(),
     /** Current uid, used to mark household routines assigned to this user with "your turn". */
     val currentUserId: String = "",
+    /** Notes, personal and household together, for the summary card. */
+    val notesCount: Int = 0,
+    val latestNoteHeading: String = "",
     /** Offline: anything ticked stays on the phone and uploads when the connection returns. */
     val isOffline: Boolean = false,
     val error: String? = null
@@ -66,6 +70,7 @@ class DashboardViewModel @Inject constructor(
     private val observeHouseholdUseCase: ObserveHouseholdUseCase,
     private val observeShoppingListUseCase: ObserveShoppingListUseCase,
     private val observeRoutinesUseCase: ObserveRoutinesUseCase,
+    private val observeNotesUseCase: ObserveNotesUseCase,
     private val toggleRoutineUseCase: ToggleRoutineUseCase,
     private val getMemberProfilesUseCase: GetMemberProfilesUseCase,
     private val connectivityObserver: ConnectivityObserver,
@@ -87,13 +92,17 @@ class DashboardViewModel @Inject constructor(
             val householdFlow = observeHouseholdUseCase(householdId)
             val shoppingFlow = observeShoppingListUseCase(householdId)
             val routinesFlow = observeRoutinesUseCase(currentUserId, householdId)
+            // Already merges personal and household notes, which keeps this combine within the
+            // typed overloads instead of needing the vararg form.
+            val notesFlow = observeNotesUseCase(currentUserId, householdId)
 
             combine(
                 householdFlow,
                 shoppingFlow,
                 routinesFlow,
+                notesFlow,
                 connectivityObserver.isOnline
-            ) { household, shoppingList, routines, isOnline ->
+            ) { household, shoppingList, routines, notes, isOnline ->
                 val today = LocalDate.now()
                 val pendingShopping = shoppingList.filter { !it.isChecked }
 
@@ -114,6 +123,8 @@ class DashboardViewModel @Inject constructor(
                     todayRoutinesDone = completedToday.size,
                     todayByMember = tallyByMember(completedToday, household),
                     currentUserId = currentUserId,
+                    notesCount = notes.size,
+                    latestNoteHeading = notes.firstOrNull()?.heading.orEmpty(),
                     isOffline = !isOnline
                 )
             }.catch { e ->

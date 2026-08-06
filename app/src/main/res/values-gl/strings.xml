@@ -125,6 +125,28 @@
     <string name="routines_error_comment">Non se puido publicar o comentario</string>
     <string name="routines_comments_count">%1$d comentarios</string>
     <string name="routines_comments_new">Comentarios novos</string>
+    <!-- Notas (Fase 4) -->
+    <string name="notes_title">Notas</string>
+    <string name="notes_tab_personal">As miñas notas</string>
+    <string name="notes_tab_household">Da Casa</string>
+    <string name="notes_add">Nova nota</string>
+    <string name="notes_new">Nova nota</string>
+    <string name="notes_edit">Editar nota</string>
+    <string name="notes_hint">Escribe aquí. A primeira liña será o título.</string>
+    <string name="notes_save">Gardar</string>
+    <string name="notes_cancel">Cancelar</string>
+    <string name="notes_delete">Borrar nota</string>
+    <string name="notes_empty">Aínda non hai notas. Toca + para crear a primeira.</string>
+    <string name="notes_error_load">Non se puideron cargar as notas</string>
+    <string name="notes_error_save">Non se puido gardar a nota</string>
+    <string name="notes_household_entry">Notas da casa</string>
+    <string name="notes_household_entry_desc">Un taboleiro compartido cos da casa</string>
+    <string name="notes_dashboard_title">Notas</string>
+    <string name="notes_dashboard_empty">Sen notas aínda</string>
+    <plurals name="notes_dashboard_count">
+        <item quantity="one">%d nota</item>
+        <item quantity="other">%d notas</item>
+    </plurals>
     <string name="routines_streak_protected">🛡️ Racha protexida: perdoóuseche un fallo</string>
     <!-- Ficha de progreso -->
     <string name="routines_detail_open">Ver progreso</string>
