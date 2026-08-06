@@ -250,10 +250,13 @@ fun HouseholdScreen(
                 HabitlyCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = LeafCornerMedium,
+                    // The card already pads its content; the Row was adding a second 16dp on top
+                    // of that default 20dp, so two short lines sat in a very tall box.
+                    contentPadding = PaddingValues(16.dp),
                     onClick = onNavigateToNotes
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
