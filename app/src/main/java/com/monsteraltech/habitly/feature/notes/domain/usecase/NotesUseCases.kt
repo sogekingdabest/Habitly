@@ -83,3 +83,32 @@ class DeleteNoteUseCase @Inject constructor(
     suspend operator fun invoke(userId: String, householdId: String, note: Note): Result<Unit> =
         repository.deleteNote(userId, householdId, note)
 }
+
+/** Restores a just-deleted note with the same id and timestamps, so Undo is lossless. */
+class RestoreNoteUseCase @Inject constructor(
+    private val repository: NotesRepository
+) {
+    suspend operator fun invoke(userId: String, householdId: String, note: Note): Result<Unit> =
+        repository.addNote(userId, householdId, note)
+}
+
+class SetNotePinnedUseCase @Inject constructor(
+    private val repository: NotesRepository
+) {
+    suspend operator fun invoke(
+        userId: String,
+        householdId: String,
+        note: Note,
+        pinned: Boolean
+    ): Result<Unit> {
+        if (userId.isBlank()) return Result.failure(Exception("Falta el usuario"))
+        if (note.type == NoteType.HOUSEHOLD && householdId.isBlank()) {
+            return Result.failure(Exception("Falta la casa"))
+        }
+        return repository.setNotePinned(
+            userId,
+            householdId,
+            note.copy(isPinned = pinned, updatedAt = System.currentTimeMillis())
+        )
+    }
+}

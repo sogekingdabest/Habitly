@@ -50,6 +50,7 @@ import com.monsteraltech.habitly.feature.dashboard.presentation.DashboardScreen
 import com.monsteraltech.habitly.feature.household.presentation.HouseholdScreen
 import com.monsteraltech.habitly.feature.household.presentation.OnboardingScreen
 import com.monsteraltech.habitly.feature.notes.presentation.NotesScreen
+import com.monsteraltech.habitly.feature.notes.domain.model.NoteType
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.presentation.RoutinesScreen
 import com.monsteraltech.habitly.feature.routines.presentation.add.AddRoutineScreen
@@ -79,6 +80,9 @@ object HiddenRoutes {
     // Full screen rather than a sixth tab: the bottom bar already carries five with the
     // assistant standing out in the middle.
     const val Notes = "notes"
+    const val NotesTypeArg = "type"
+
+    fun notes(type: NoteType): String = "$Notes?$NotesTypeArg=${type.name}"
 }
 
 @Composable
@@ -196,23 +200,28 @@ private fun MainContent(
         BottomNavRoute.Routines,
         BottomNavRoute.Household
     )
+    val showBottomBar = items.any { item ->
+        currentDestination?.hierarchy?.any { destination -> destination.route == item.route } == true
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            HabitlyBottomBar(
-                items = items,
-                currentDestination = currentDestination,
-                onSelect = { screen ->
-                    navController.navigate(screen.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
+            if (showBottomBar) {
+                HabitlyBottomBar(
+                    items = items,
+                    currentDestination = currentDestination,
+                    onSelect = { screen ->
+                        navController.navigate(screen.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
                     }
-                }
-            )
+                )
+            }
         }
     ) { innerPadding ->
         NavHost(
@@ -246,7 +255,7 @@ private fun MainContent(
                             "${HiddenRoutes.RoutinesAdd}?${AddRoutineViewModel.TYPE_ARG}=${RoutineType.PERSONAL.name}"
                         )
                     },
-                    onNavigateToNotes = { navController.navigate(HiddenRoutes.Notes) }
+                    onNavigateToNotes = { type -> navController.navigate(HiddenRoutes.notes(type)) }
                 )
             }
             composable(BottomNavRoute.Shopping.route) {
@@ -269,7 +278,7 @@ private fun MainContent(
             composable(BottomNavRoute.Household.route) {
                 HouseholdScreen(
                     onNavigateToSettings = { navController.navigate(HiddenRoutes.Settings) },
-                    onNavigateToNotes = { navController.navigate(HiddenRoutes.Notes) }
+                    onNavigateToNotes = { navController.navigate(HiddenRoutes.notes(NoteType.HOUSEHOLD)) }
                 )
             }
             composable(HiddenRoutes.Settings) {
@@ -278,8 +287,23 @@ private fun MainContent(
                     onSignOut = onSignOut
                 )
             }
-            composable(HiddenRoutes.Notes) {
-                NotesScreen(onNavigateBack = { navController.popBackStack() })
+            composable(
+                route = "${HiddenRoutes.Notes}?${HiddenRoutes.NotesTypeArg}={${HiddenRoutes.NotesTypeArg}}",
+                arguments = listOf(
+                    navArgument(HiddenRoutes.NotesTypeArg) {
+                        type = NavType.StringType
+                        defaultValue = NoteType.PERSONAL.name
+                    }
+                )
+            ) { entry ->
+                val initialType = entry.arguments
+                    ?.getString(HiddenRoutes.NotesTypeArg)
+                    ?.let { name -> NoteType.entries.find { it.name == name } }
+                    ?: NoteType.PERSONAL
+                NotesScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    initialType = initialType
+                )
             }
             composable(HiddenRoutes.ShoppingHistory) {
                 HistoryScreen(

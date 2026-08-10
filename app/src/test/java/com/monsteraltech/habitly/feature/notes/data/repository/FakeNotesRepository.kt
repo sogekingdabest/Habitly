@@ -34,6 +34,13 @@ class FakeNotesRepository : NotesRepository {
         return Result.success(Unit)
     }
 
+    override suspend fun setNotePinned(userId: String, householdId: String, note: Note): Result<Unit> {
+        if (shouldFail) return Result.failure(Exception("Fake error"))
+        updateCalls++
+        listFor(note.type).value = listFor(note.type).value.map { if (it.id == note.id) note else it }
+        return Result.success(Unit)
+    }
+
     override suspend fun deleteNote(userId: String, householdId: String, note: Note): Result<Unit> {
         if (shouldFail) return Result.failure(Exception("Fake error"))
         deleteCalls++

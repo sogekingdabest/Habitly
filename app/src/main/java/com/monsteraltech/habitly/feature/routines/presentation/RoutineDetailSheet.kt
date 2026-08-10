@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -72,52 +73,108 @@ fun RoutineDetailSheet(
     onDeleteComment: (String) -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        RoutineDetailContent(
+            detail = detail,
+            onMonthShift = onMonthShift,
+            onPause = onPause,
+            currentUserId = currentUserId,
+            memberNicknames = memberNicknames,
+            onCommentDraftChange = onCommentDraftChange,
+            onSendComment = onSendComment,
+            onDeleteComment = onDeleteComment,
+            modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp)
+        )
+    }
+}
+
+/** Permanent detail surface used beside the routine list on wide screens. */
+@Composable
+fun RoutineDetailPane(
+    detail: RoutineDetailState,
+    onDismiss: () -> Unit,
+    onMonthShift: (Long) -> Unit,
+    onPause: (Long?) -> Unit,
+    currentUserId: String = "",
+    memberNicknames: Map<String, String> = emptyMap(),
+    onCommentDraftChange: (String) -> Unit = {},
+    onSendComment: () -> Unit = {},
+    onDeleteComment: (String) -> Unit = {}
+) {
+    RoutineDetailContent(
+        detail = detail,
+        onMonthShift = onMonthShift,
+        onPause = onPause,
+        currentUserId = currentUserId,
+        memberNicknames = memberNicknames,
+        onCommentDraftChange = onCommentDraftChange,
+        onSendComment = onSendComment,
+        onDeleteComment = onDeleteComment,
+        onClose = onDismiss,
+        modifier = Modifier.fillMaxSize().padding(24.dp)
+    )
+}
+
+@Composable
+private fun RoutineDetailContent(
+    detail: RoutineDetailState,
+    onMonthShift: (Long) -> Unit,
+    onPause: (Long?) -> Unit,
+    currentUserId: String,
+    memberNicknames: Map<String, String>,
+    onCommentDraftChange: (String) -> Unit,
+    onSendComment: () -> Unit,
+    onDeleteComment: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    onClose: (() -> Unit)? = null
+) {
     val routine = detail.routine
     val today = LocalDate.now()
-
     val scrollState = rememberScrollState()
-    // Where the comments start inside the scrolling content, measured once laid out. There is no
-    // other way to jump to a section of a plain scrolling Column.
     var commentsOffset by remember { mutableIntStateOf(0) }
-
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(scrollState)
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = routine.title,
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
             )
+            if (onClose != null) {
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.routines_detail_close))
+                }
+            }
+        }
 
-            StatsRow(detail = detail, today = today)
+        StatsRow(detail = detail, today = today)
 
-            if (routine.streakGraceUsed && routine.currentStreak > 0) {
+        if (routine.streakGraceUsed && routine.currentStreak > 0) {
                 Text(
                     text = stringResource(R.string.routines_streak_protected),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary
                 )
-            }
+        }
 
-            HorizontalDivider()
+        HorizontalDivider()
 
-            MonthSelector(
+        MonthSelector(
                 month = detail.month,
                 canGoForward = detail.month.isBefore(YearMonth.now()),
                 onMonthShift = onMonthShift
-            )
+        )
 
-            if (detail.isLoading) {
+        if (detail.isLoading) {
                 Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else {
+        } else {
                 CompletionHeatmap(
                     month = detail.month,
                     completedDates = detail.completedDates,
@@ -130,39 +187,36 @@ fun RoutineDetailSheet(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
+        }
 
-            // Only shared routines have anyone to talk to. Above the holiday switch on purpose:
-            // it is the part people come back to, and buried last nobody found it.
-            if (routine.type == RoutineType.HOUSEHOLD) {
-                HorizontalDivider()
-                CommentsSection(
-                    detail = detail,
-                    currentUserId = currentUserId,
-                    memberNicknames = memberNicknames,
-                    onDraftChange = onCommentDraftChange,
-                    onSend = onSendComment,
-                    onDelete = onDeleteComment,
-                    modifier = Modifier.onGloballyPositioned {
-                        commentsOffset = it.positionInParent().y.toInt()
-                    }
-                )
-            }
-
+        // Keep the conversation above holiday mode: it is the section people revisit.
+        if (routine.type == RoutineType.HOUSEHOLD) {
             HorizontalDivider()
-
-            PauseSection(
-                pausedUntil = detail.routine.pausedUntil,
-                today = today,
-                onPause = onPause
+            CommentsSection(
+                detail = detail,
+                currentUserId = currentUserId,
+                memberNicknames = memberNicknames,
+                onDraftChange = onCommentDraftChange,
+                onSend = onSendComment,
+                onDelete = onDeleteComment,
+                modifier = Modifier.onGloballyPositioned {
+                    commentsOffset = it.positionInParent().y.toInt()
+                }
             )
         }
 
-        // Runs once the comments have been measured, which is why the offset is a key.
-        LaunchedEffect(detail.focusComments, commentsOffset) {
-            if (detail.focusComments && commentsOffset > 0) {
-                scrollState.animateScrollTo(commentsOffset)
-            }
+        HorizontalDivider()
+
+        PauseSection(
+            pausedUntil = detail.routine.pausedUntil,
+            today = today,
+            onPause = onPause
+        )
+    }
+
+    LaunchedEffect(detail.focusComments, commentsOffset) {
+        if (detail.focusComments && commentsOffset > 0) {
+            scrollState.animateScrollTo(commentsOffset)
         }
     }
 }

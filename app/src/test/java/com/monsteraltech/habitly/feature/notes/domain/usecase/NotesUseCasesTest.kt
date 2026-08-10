@@ -19,6 +19,8 @@ class NotesUseCasesTest {
     private lateinit var addUseCase: AddNoteUseCase
     private lateinit var updateUseCase: UpdateNoteUseCase
     private lateinit var deleteUseCase: DeleteNoteUseCase
+    private lateinit var restoreUseCase: RestoreNoteUseCase
+    private lateinit var setPinnedUseCase: SetNotePinnedUseCase
 
     private val userId = "user1"
     private val householdId = "house1"
@@ -29,6 +31,8 @@ class NotesUseCasesTest {
         addUseCase = AddNoteUseCase(repository)
         updateUseCase = UpdateNoteUseCase(repository)
         deleteUseCase = DeleteNoteUseCase(repository)
+        restoreUseCase = RestoreNoteUseCase(repository)
+        setPinnedUseCase = SetNotePinnedUseCase(repository)
     }
 
     // ---------- Validación ----------
@@ -137,6 +141,29 @@ class NotesUseCasesTest {
         deleteUseCase(userId, householdId, note)
 
         assertTrue(repository.observeHouseholdNotes(householdId).first().isEmpty())
+    }
+
+    @Test
+    fun `restore puts a deleted note back with the same id`() = runBlocking {
+        val note = Note(id = "n1", text = "recuperable", type = NoteType.PERSONAL)
+        repository.seedPersonal(note)
+
+        deleteUseCase(userId, householdId, note)
+        restoreUseCase(userId, householdId, note)
+
+        val restored = repository.observePersonalNotes(userId).first().single()
+        assertEquals(note.id, restored.id)
+        assertEquals(note.text, restored.text)
+    }
+
+    @Test
+    fun `pinning a note persists the flag`() = runBlocking {
+        val note = Note(id = "n1", text = "importante", type = NoteType.PERSONAL)
+        repository.seedPersonal(note)
+
+        setPinnedUseCase(userId, householdId, note, pinned = true)
+
+        assertTrue(repository.observePersonalNotes(userId).first().single().isPinned)
     }
 
     @Test

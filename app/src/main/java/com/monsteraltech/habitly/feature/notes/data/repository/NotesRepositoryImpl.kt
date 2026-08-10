@@ -1,6 +1,7 @@
 package com.monsteraltech.habitly.feature.notes.data.repository
 
 import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.monsteraltech.habitly.feature.notes.domain.model.Note
@@ -43,8 +44,8 @@ class NotesRepositoryImpl @Inject constructor(
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    val notes = snapshot.documents.mapNotNull {
-                        it.toObject(Note::class.java)?.copy(id = it.id)
+                    val notes = snapshot.documents.mapNotNull { document ->
+                        document.data?.toNote(document.id)
                     }
                     trySend(notes)
                 }
@@ -55,7 +56,9 @@ class NotesRepositoryImpl @Inject constructor(
 
     override suspend fun addNote(userId: String, householdId: String, note: Note): Result<Unit> =
         runCatching {
-            collectionFor(note.type, userId, householdId).document(note.id).set(note).await()
+            collectionFor(note.type, userId, householdId).document(note.id)
+                .set(note.toFirestoreFields())
+                .await()
         }
 
     override suspend fun updateNote(userId: String, householdId: String, note: Note): Result<Unit> =
@@ -70,6 +73,23 @@ class NotesRepositoryImpl @Inject constructor(
                     )
                 ).await()
         }
+
+    override suspend fun setNotePinned(
+        userId: String,
+        householdId: String,
+        note: Note
+    ): Result<Unit> = runCatching {
+        collectionFor(note.type, userId, householdId).document(note.id)
+            .update(
+                mapOf(
+                    "isPinned" to note.isPinned,
+                    // Early builds serialised Kotlin's `isPinned` getter as `pinned`. Remove that
+                    // legacy field as each note is touched so there is only one source of truth.
+                    "pinned" to FieldValue.delete(),
+                    "updatedAt" to note.updatedAt
+                )
+            ).await()
+    }
 
     override suspend fun deleteNote(userId: String, householdId: String, note: Note): Result<Unit> =
         runCatching {
@@ -89,4 +109,40 @@ class NotesRepositoryImpl @Inject constructor(
         // A board, not an archive: enough for any household and it keeps the listener bounded.
         const val MAX_NOTES_SHOWN = 200L
     }
+}
+
+/**
+ * Firestore's JavaBean mapper interprets Kotlin Boolean getters named `isX` as property `x`, and
+ * also sees computed getters such as [Note.heading]. Keeping the wire format explicit prevents
+ * both behaviours and keeps the domain model free of persistence annotations.
+ */
+internal fun Note.toFirestoreFields(): Map<String, Any> = mapOf(
+    "text" to text.trim(),
+    "type" to type.name,
+    "isPinned" to isPinned,
+    "authorId" to authorId,
+    "createdAt" to createdAt,
+    "updatedAt" to updatedAt
+)
+
+internal fun Map<String, Any?>.toNote(
+    id: String,
+    defaultTimestamp: Long = System.currentTimeMillis()
+): Note {
+    val noteType = when (val storedType = this["type"]) {
+        is NoteType -> storedType
+        is String -> NoteType.entries.firstOrNull { it.name == storedType }
+        else -> null
+    } ?: NoteType.PERSONAL
+
+    return Note(
+        id = id,
+        text = this["text"] as? String ?: "",
+        type = noteType,
+        // `pinned` is the legacy name produced by Firestore's JavaBean interpretation.
+        isPinned = (this["isPinned"] as? Boolean) ?: (this["pinned"] as? Boolean) ?: false,
+        authorId = this["authorId"] as? String ?: "",
+        createdAt = (this["createdAt"] as? Number)?.toLong() ?: defaultTimestamp,
+        updatedAt = (this["updatedAt"] as? Number)?.toLong() ?: defaultTimestamp
+    )
 }

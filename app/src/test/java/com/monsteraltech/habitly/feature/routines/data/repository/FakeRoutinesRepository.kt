@@ -130,6 +130,7 @@ class FakeRoutinesRepository : RoutinesRepository {
         } else {
             householdRoutines.value = filtered
         }
+        stubCompletions = stubCompletions - routineId
         return Result.success(Unit)
     }
 
