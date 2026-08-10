@@ -4,6 +4,7 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.WriteBatch
 import com.monsteraltech.habitly.feature.household.domain.model.Household
 import com.monsteraltech.habitly.feature.household.domain.model.MemberProfile
 import com.monsteraltech.habitly.feature.household.domain.model.UserProfile
@@ -61,18 +62,23 @@ class HouseholdRepositoryImpl @Inject constructor(
                 ownerId = userId,
                 members = listOf(userId),
                 customStores = emptyList(),
+                joinProofs = emptyMap(),
                 memberProfiles = mapOf(
                     userId to MemberProfile(displayName = displayName, nickname = nickname)
                 )
             )
 
-            // 1) Create the household (the user is already listed as a member).
-            firestore.collection("households").document(newHouseholdId).set(household).await()
-            // 2) Mark it as the user's active household.
-            firestore.collection("users").document(userId)
-                .update("activeHouseholdId", newHouseholdId).await()
-            // 3) Register the code mapping — requires membership already, hence last.
-            registerInviteCode(inviteCode, newHouseholdId, expiresAt)
+            val householdRef = firestore.collection(HOUSEHOLDS).document(newHouseholdId)
+            val inviteRef = firestore.collection(INVITE_CODES).document(inviteCode)
+            val userRef = firestore.collection(USERS).document(userId)
+
+            // All three documents become visible together. Rules use getAfter(householdRef) to
+            // verify that the mapping is exactly the code stored by this same atomic write.
+            firestore.batch().apply {
+                set(householdRef, household)
+                update(userRef, "activeHouseholdId", newHouseholdId)
+                set(inviteRef, inviteCodeData(newHouseholdId, expiresAt))
+            }.commit().await()
 
             // The id goes back to the caller: onboarding needs it to create the template routines
             // there without re-reading the profile it just wrote.
@@ -89,7 +95,7 @@ class HouseholdRepositoryImpl @Inject constructor(
     private suspend fun generateUniqueInviteCode(): String {
         repeat(MAX_CODE_ATTEMPTS) {
             val candidate = randomCode()
-            val exists = firestore.collection("invite_codes").document(candidate).get().await().exists()
+            val exists = firestore.collection(INVITE_CODES).document(candidate).get().await().exists()
             if (!exists) return candidate
         }
         // Improbable fallback: add extra entropy.
@@ -107,20 +113,12 @@ class HouseholdRepositoryImpl @Inject constructor(
     /** When a code issued right now would expire (epoch ms). */
     private fun newInviteExpiry(): Long = System.currentTimeMillis() + INVITE_CODE_TTL_MS
 
-    private suspend fun registerInviteCode(code: String, householdId: String, expiresAt: Long) {
-        firestore.collection("invite_codes").document(code)
-            .set(
-                mapOf(
-                    "householdId" to householdId,
-                    "createdAt" to System.currentTimeMillis(),
-                    // A code without expiry is a permanent key: anyone who leaves the household,
-                    // or is removed from it, could walk back in months later with the code they
-                    // memorised. The read rule validates this field.
-                    "expiresAt" to expiresAt
-                )
-            )
-            .await()
-    }
+    private fun inviteCodeData(householdId: String, expiresAt: Long): Map<String, Any> = mapOf(
+        "householdId" to householdId,
+        "createdAt" to System.currentTimeMillis(),
+        // A code without expiry is a permanent key. Rules also cap it to the configured TTL.
+        "expiresAt" to expiresAt
+    )
 
     override fun observeUserProfile(userId: String): Flow<UserProfile?> = callbackFlow {
         val listener = firestore.collection("users").document(userId)
@@ -160,7 +158,7 @@ class HouseholdRepositoryImpl @Inject constructor(
             // same InvalidInviteCodeException: neither yields a householdId, and the user-facing
             // message is identical either way.
             val codeDoc = runCatching {
-                firestore.collection("invite_codes").document(normalizedCode).get().await()
+                firestore.collection(INVITE_CODES).document(normalizedCode).get().await()
             }.getOrNull()
 
             val newHouseholdId = codeDoc?.getString("householdId")
@@ -181,25 +179,25 @@ class HouseholdRepositoryImpl @Inject constructor(
             val batch = firestore.batch()
 
             if (!oldHouseholdId.isNullOrBlank()) {
-                val oldHouseholdRef = firestore.collection("households").document(oldHouseholdId)
-                batch.update(
-                    oldHouseholdRef,
-                    "members", FieldValue.arrayRemove(userId),
-                    memberProfilePath(userId), FieldValue.delete()
-                )
+                val oldHouseholdRef = firestore.collection(HOUSEHOLDS).document(oldHouseholdId)
+                val oldHousehold = oldHouseholdRef.get().await().toObject(Household::class.java)
+                if (oldHousehold != null) {
+                    addDepartureToBatch(batch, oldHouseholdRef, oldHousehold, userId)
+                }
             }
 
             // members and memberProfiles are written **together**, in one operation: the self-join
             // rule requires the entry added to memberProfiles to be the user's own, and split
             // across two writes the first one would be rejected.
-            val targetHouseholdRef = firestore.collection("households").document(newHouseholdId)
+            val targetHouseholdRef = firestore.collection(HOUSEHOLDS).document(newHouseholdId)
             batch.update(
                 targetHouseholdRef,
                 "members", FieldValue.arrayUnion(userId),
                 memberProfilePath(userId), MemberProfile(
                     displayName = userProfile?.displayName.orEmpty(),
                     nickname = userProfile?.nickname.orEmpty()
-                )
+                ),
+                joinProofPath(userId), normalizedCode
             )
             batch.update(userRef, "activeHouseholdId", newHouseholdId)
 
@@ -281,36 +279,14 @@ class HouseholdRepositoryImpl @Inject constructor(
 
     override suspend fun leaveHousehold(userId: String, householdId: String): Result<Unit> {
         return try {
-            val householdRef = firestore.collection("households").document(householdId)
+            val householdRef = firestore.collection(HOUSEHOLDS).document(householdId)
             val household = householdRef.get().await().toObject(Household::class.java)
-            val heir = successorIfOwnerLeaves(household, userId)
-
-            // Done before leaving, while still a member — creating the new code mapping requires
-            // membership. This invalidates the code the leaver memorised. If it fails, leaving is
-            // still the priority.
-            if (household != null && household.members.size > 1) {
-                runCatching { rotateInviteCode(householdId) }
-            }
+                ?: throw IllegalStateException("Casa no encontrada")
 
             val batch = firestore.batch()
-            if (heir != null) {
-                // If the owner leaves, nobody can remove members or delete the household. Handing
-                // ownership to the next member avoids that limbo.
-                batch.update(
-                    householdRef,
-                    "members", FieldValue.arrayRemove(userId),
-                    memberProfilePath(userId), FieldValue.delete(),
-                    "ownerId", heir
-                )
-            } else {
-                batch.update(
-                    householdRef,
-                    "members", FieldValue.arrayRemove(userId),
-                    memberProfilePath(userId), FieldValue.delete()
-                )
-            }
+            addDepartureToBatch(batch, householdRef, household, userId)
             batch.update(
-                firestore.collection("users").document(userId),
+                firestore.collection(USERS).document(userId),
                 "activeHouseholdId", ""
             )
             batch.commit().await()
@@ -331,19 +307,17 @@ class HouseholdRepositoryImpl @Inject constructor(
 
     override suspend fun removeMember(householdId: String, memberId: String): Result<Unit> {
         return try {
-            // Only the household is touched (members and their public profile). The removed member
-            // self-heals via clearActiveHousehold once it notices it no longer belongs.
-            firestore.collection("households").document(householdId)
-                .update(
-                    "members", FieldValue.arrayRemove(memberId),
-                    memberProfilePath(memberId), FieldValue.delete()
-                )
-                .await()
+            val householdRef = firestore.collection(HOUSEHOLDS).document(householdId)
+            val household = householdRef.get().await().toObject(Household::class.java)
+                ?: throw IllegalStateException("Casa no encontrada")
+            if (memberId !in household.members) return Result.success(Unit)
 
-            // Removing someone without rotating the code removes nobody: they would rejoin with
-            // the same code. If the rotation fails the removal is already done, which is what was
-            // asked for; the code can be regenerated by hand.
-            runCatching { rotateInviteCode(householdId) }
+            // Membership removal, proof deletion and code rotation are one atomic operation. A
+            // former member can never observe a state where they are out but their known code is
+            // still accepted.
+            firestore.batch().apply {
+                addDepartureToBatch(this, householdRef, household, memberId)
+            }.commit().await()
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -366,19 +340,73 @@ class HouseholdRepositoryImpl @Inject constructor(
      * person knows would keep the door open for them.
      */
     private suspend fun rotateInviteCode(householdId: String) {
-        val householdRef = firestore.collection("households").document(householdId)
+        val householdRef = firestore.collection(HOUSEHOLDS).document(householdId)
         val household = householdRef.get().await().toObject(Household::class.java)
             ?: throw IllegalStateException("Casa no encontrada")
 
-        val oldCode = household.inviteCode
         val newCode = generateUniqueInviteCode()
-
-        // 1) New mapping, 2) update the household, 3) delete the old mapping.
         val expiresAt = newInviteExpiry()
-        registerInviteCode(newCode, householdId, expiresAt)
-        householdRef.update("inviteCode", newCode, "inviteCodeExpiresAt", expiresAt).await()
+        firestore.batch().apply {
+            update(householdRef, "inviteCode", newCode, "inviteCodeExpiresAt", expiresAt)
+            set(
+                firestore.collection(INVITE_CODES).document(newCode),
+                inviteCodeData(householdId, expiresAt)
+            )
+            deleteOldInviteCode(this, household.inviteCode)
+        }.commit().await()
+    }
+
+    /**
+     * Adds a membership departure to [batch]. When other members remain, it also rotates the
+     * invite code in that same batch and transfers ownership if necessary.
+     */
+    private suspend fun addDepartureToBatch(
+        batch: WriteBatch,
+        householdRef: DocumentReference,
+        household: Household,
+        leavingUserId: String
+    ) {
+        if (household.members.none { it != leavingUserId }) {
+            // An empty household would leave its invite code as a key to orphaned shared data.
+            // Delete both parent document and mapping atomically when the final member leaves.
+            batch.delete(householdRef)
+            deleteOldInviteCode(batch, household.inviteCode)
+            return
+        }
+
+        val updates = mutableListOf<Any>(
+            "members", FieldValue.arrayRemove(leavingUserId),
+            memberProfilePath(leavingUserId), FieldValue.delete(),
+            joinProofPath(leavingUserId), FieldValue.delete()
+        )
+        successorIfOwnerLeaves(household, leavingUserId)?.let { heir ->
+            updates.add("ownerId")
+            updates.add(heir)
+        }
+
+        val newCode = generateUniqueInviteCode()
+        val expiresAt = newInviteExpiry()
+        updates.add("inviteCode")
+        updates.add(newCode)
+        updates.add("inviteCodeExpiresAt")
+        updates.add(expiresAt)
+        batch.set(
+            firestore.collection(INVITE_CODES).document(newCode),
+            inviteCodeData(householdRef.id, expiresAt)
+        )
+        deleteOldInviteCode(batch, household.inviteCode)
+
+        batch.update(
+            householdRef,
+            updates[0] as String,
+            updates[1],
+            *updates.drop(2).toTypedArray()
+        )
+    }
+
+    private fun deleteOldInviteCode(batch: WriteBatch, oldCode: String) {
         if (oldCode.isNotBlank()) {
-            firestore.collection("invite_codes").document(oldCode).delete().await()
+            batch.delete(firestore.collection(INVITE_CODES).document(oldCode))
         }
     }
 
@@ -403,21 +431,12 @@ class HouseholdRepositoryImpl @Inject constructor(
             //    owned the household, hand it over before disappearing.
             val householdId = profile?.activeHouseholdId
             if (!householdId.isNullOrBlank()) {
-                val householdRef = firestore.collection("households").document(householdId)
+                val householdRef = firestore.collection(HOUSEHOLDS).document(householdId)
                 val household = householdRef.get().await().toObject(Household::class.java)
-                val heir = successorIfOwnerLeaves(household, userId)
-
-                if (heir != null) {
-                    householdRef.update(
-                        "members", FieldValue.arrayRemove(userId),
-                        memberProfilePath(userId), FieldValue.delete(),
-                        "ownerId", heir
-                    ).await()
-                } else {
-                    householdRef.update(
-                        "members", FieldValue.arrayRemove(userId),
-                        memberProfilePath(userId), FieldValue.delete()
-                    ).await()
+                if (household != null) {
+                    firestore.batch().apply {
+                        addDepartureToBatch(this, householdRef, household, userId)
+                    }.commit().await()
                 }
             }
 
@@ -455,8 +474,15 @@ class HouseholdRepositoryImpl @Inject constructor(
     private fun memberProfilePath(userId: String): FieldPath =
         FieldPath.of(MEMBER_PROFILES, userId)
 
+    private fun joinProofPath(userId: String): FieldPath =
+        FieldPath.of(JOIN_PROOFS, userId)
+
     companion object {
+        private const val USERS = "users"
+        private const val HOUSEHOLDS = "households"
+        private const val INVITE_CODES = "invite_codes"
         private const val MEMBER_PROFILES = "memberProfiles"
+        private const val JOIN_PROOFS = "joinProofs"
 
         /** Lifetime of an invite code. Can be regenerated by hand at any time. */
         private const val INVITE_CODE_TTL_MS = 7L * 24 * 60 * 60 * 1000

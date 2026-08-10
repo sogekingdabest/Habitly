@@ -13,6 +13,28 @@ service cloud.firestore {
         && request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.members;
     }
 
+    function validInviteCode(code) {
+      return code is string
+        && code.size() >= 6
+        && code.size() <= 8
+        && code.matches('^[A-HJ-NP-Z2-9]+$');
+    }
+
+    function validInviteExpiry(expiresAt) {
+      return expiresAt is int
+        && expiresAt > request.time.toMillis()
+        && expiresAt <= request.time.toMillis() + 691200000;
+    }
+
+    function validMemberProfile(profile) {
+      return profile is map
+        && profile.keys().hasOnly(['displayName', 'nickname'])
+        && profile.displayName is string
+        && profile.displayName.size() <= 100
+        && profile.nickname is string
+        && profile.nickname.size() <= 50;
+    }
+
     // ─────────────────────────────────────────────────────────────
     // Perfiles de usuario
     // ─────────────────────────────────────────────────────────────
@@ -78,14 +100,42 @@ service cloud.firestore {
         && (resource == null
             || resource.data.get('expiresAt', 0) > request.time.toMillis());
       allow list: if false;
-      // Solo un miembro de la casa referenciada puede crear su mapping.
-      allow create: if isSignedIn()
-        && request.auth.uid in get(/databases/$(database)/documents/households/$(request.resource.data.householdId)).data.members
-        && request.resource.data.expiresAt is int;
-      // Al regenerar el código, un miembro puede borrar el mapping antiguo.
-      allow delete: if isSignedIn()
-        && request.auth.uid in get(/databases/$(database)/documents/households/$(resource.data.householdId)).data.members;
+
+      // El mapping solo puede nacer en el mismo batch que deja ese código como el oficial de la
+      // casa. getAfter cubre tanto la creación de una casa como una rotación atómica.
+      allow create: if validInviteMapping();
+
+      // Un mapping no se borra suelto: el mismo batch debe rotar el código de la casa o borrarla.
+      allow delete: if validInviteDeletion();
       allow update: if false;
+
+      function validInviteMapping() {
+        let data = request.resource.data;
+        let householdPath = /databases/$(database)/documents/households/$(data.householdId);
+        let householdAfter = getAfter(householdPath).data;
+        return isSignedIn()
+          && data.keys().hasOnly(['householdId', 'createdAt', 'expiresAt'])
+          && data.householdId is string
+          && data.createdAt is int
+          && data.createdAt >= request.time.toMillis() - 300000
+          && data.createdAt <= request.time.toMillis() + 300000
+          && validInviteCode(code)
+          && validInviteExpiry(data.expiresAt)
+          && code == householdAfter.inviteCode
+          && data.expiresAt == householdAfter.inviteCodeExpiresAt
+          && ((exists(householdPath)
+                && request.auth.uid in get(householdPath).data.members)
+              || request.auth.uid in householdAfter.members);
+      }
+
+      function validInviteDeletion() {
+        let householdPath = /databases/$(database)/documents/households/$(resource.data.householdId);
+        return isSignedIn()
+          && exists(householdPath)
+          && request.auth.uid in get(householdPath).data.members
+          && (!existsAfter(householdPath)
+              || getAfter(householdPath).data.inviteCode != code);
+      }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -96,15 +146,18 @@ service cloud.firestore {
       // Solo los miembros pueden leer la casa (incluye inviteCode y members).
       allow read: if isSignedIn() && request.auth.uid in resource.data.members;
 
-      // Al crear, el creador debe figurar como miembro.
-      allow create: if isSignedIn()
-        && request.auth.uid in request.resource.data.members;
+      allow create: if validHouseholdCreation();
 
       // Borrar la casa (con su historial de compra y sus rutinas) es cosa solo del
       // propietario. Antes bastaba con ser miembro: cualquiera podía borrarle a los
       // demás años de datos.
-      allow update: if isMemberUpdate() || isSelfJoin();
-      allow delete: if isOwner();
+      allow update: if isContentUpdate()
+        || isOwnProfileUpdate()
+        || isOwnerBackfill()
+        || isInviteRotation()
+        || isMembershipDeparture()
+        || isSelfJoin();
+      allow delete: if isHouseholdDeletion();
 
       function isMemberSelf() {
         return isSignedIn() && request.auth.uid in resource.data.members;
@@ -124,9 +177,32 @@ service cloud.firestore {
         return isSignedIn() && request.auth.uid == ownerOrFallback();
       }
 
-      /** Un miembro se quita a sí mismo de la casa (salir), sin tocar a nadie más. */
-      function isSelfLeave() {
-        return request.resource.data.members == resource.data.members.removeAll([request.auth.uid]);
+      function isHouseholdDeletion() {
+        let mappingPath = /databases/$(database)/documents/invite_codes/$(resource.data.inviteCode);
+        return isOwner()
+          && (!validInviteCode(resource.data.inviteCode) || !existsAfter(mappingPath));
+      }
+
+      function validHouseholdCreation() {
+        let data = request.resource.data;
+        return isSignedIn()
+          && data.keys().hasOnly([
+            'id', 'name', 'inviteCode', 'inviteCodeExpiresAt', 'ownerId', 'members',
+            'customStores', 'memberProfiles', 'joinProofs'
+          ])
+          && data.id == householdId
+          && data.name is string
+          && data.name.size() > 0
+          && data.name.size() <= 100
+          && validInviteCode(data.inviteCode)
+          && validInviteExpiry(data.inviteCodeExpiresAt)
+          && data.ownerId == request.auth.uid
+          && data.members == [request.auth.uid]
+          && data.customStores is list
+          && data.customStores.size() <= 50
+          && data.joinProofs == {}
+          && data.memberProfiles.keys().hasOnly([request.auth.uid])
+          && validMemberProfile(data.memberProfiles[request.auth.uid]);
       }
 
       /**
@@ -135,55 +211,115 @@ service cloud.firestore {
        * autoproclamarse propietario.
        */
       function isOwnerBackfill() {
-        return resource.data.get('ownerId', '') == ''
+        return isMemberSelf()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ownerId'])
+          && resource.data.get('ownerId', '') == ''
           && request.resource.data.ownerId == request.auth.uid
           && request.auth.uid == resource.data.members[0];
       }
 
-      function isMemberUpdate() {
+      function isContentUpdate() {
         return isMemberSelf()
-          // La lista de miembros solo la toca el propietario (expulsar) o uno mismo
-          // para salirse. Un miembro cualquiera no puede echar a otro.
-          && (request.resource.data.members == resource.data.members
-              || isOwner()
-              || isSelfLeave())
-          // ownerId es inmutable salvo que lo traspase el propio propietario (incluido el
-          // traspaso automático al salirse) o que se rellene por primera vez en una casa
-          // antigua. Un miembro cualquiera no puede autoproclamarse dueño.
-          && (request.resource.data.get('ownerId', '') == resource.data.get('ownerId', '')
-              || isOwner()
-              || isOwnerBackfill());
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['name', 'customStores'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 100
+          && request.resource.data.customStores is list
+          && request.resource.data.customStores.size() <= 50;
       }
 
-      // Un no-miembro solo puede hacer una cosa: añadirse a sí mismo (y a su propio
-      // perfil público) sin tocar nada más.
-      //
-      // OJO con lo que esta regla NO puede comprobar: que quien se une conozca el
-      // código de invitación. El cliente no puede leer el documento de la casa —la
-      // lectura exige ser miembro—, así que comparar el inviteCode entrante contra el
-      // guardado se cumpliría solo: request.resource.data es el estado POSTERIOR a la
-      // escritura y arrastra el campo aunque el cliente no lo envíe. La defensa real es
-      // que el householdId no sea obtenible, y por eso /users está cerrado.
-      // Endurecimiento pendiente: mover la unión a una Cloud Function que valide el
-      // código en servidor (requiere plan Blaze).
+      function isOwnProfileUpdate() {
+        let beforeProfiles = resource.data.get('memberProfiles', {});
+        let afterProfiles = request.resource.data.get('memberProfiles', {});
+        return isMemberSelf()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberProfiles'])
+          && afterProfiles.diff(beforeProfiles).affectedKeys().hasOnly([request.auth.uid])
+          && validMemberProfile(afterProfiles[request.auth.uid]);
+      }
+
+      function validRotatedInvite() {
+        let after = request.resource.data;
+        let mappingPath = /databases/$(database)/documents/invite_codes/$(after.inviteCode);
+        return validInviteCode(after.inviteCode)
+          && validInviteExpiry(after.inviteCodeExpiresAt)
+          && after.inviteCode != resource.data.inviteCode
+          && existsAfter(mappingPath)
+          && getAfter(mappingPath).data.householdId == householdId
+          && getAfter(mappingPath).data.expiresAt == after.inviteCodeExpiresAt;
+      }
+
+      function isInviteRotation() {
+        return isMemberSelf()
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['inviteCode', 'inviteCodeExpiresAt'])
+          && validRotatedInvite();
+      }
+
+      function isMembershipDeparture() {
+        let before = resource.data;
+        let after = request.resource.data;
+        let removed = before.members.toSet().difference(after.members.toSet());
+        let afterProfiles = after.get('memberProfiles', {});
+        let beforeProfiles = before.get('memberProfiles', {});
+        let afterProofs = after.get('joinProofs', {});
+        let beforeProofs = before.get('joinProofs', {});
+        let requesterLeaves = removed.hasOnly([request.auth.uid]);
+        let ownerRemoves = isOwner() && request.auth.uid in after.members;
+        let ownerBefore = before.get('ownerId', '') != ''
+          ? before.ownerId
+          : before.members[0];
+        let expectedOwner = requesterLeaves
+          && request.auth.uid == ownerBefore
+          && after.members.size() > 0
+          ? after.members[0]
+          : ownerBefore;
+        return isMemberSelf()
+          && before.members.toSet().hasAll(after.members.toSet())
+          && removed.size() == 1
+          && after.members.size() == before.members.size() - 1
+          && after.members.size() > 0
+          && (requesterLeaves || ownerRemoves)
+          && afterProfiles.diff(beforeProfiles).affectedKeys().hasOnly(removed)
+          && afterProofs.diff(beforeProofs).affectedKeys().hasOnly(removed)
+          && afterProfiles.keys().toSet().hasOnly(after.members.toSet())
+          && afterProofs.keys().toSet().hasOnly(after.members.toSet())
+          && after.get('ownerId', '') == expectedOwner
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'members', 'memberProfiles', 'joinProofs', 'ownerId',
+            'inviteCode', 'inviteCodeExpiresAt'
+          ])
+          && validRotatedInvite();
+      }
+
+      // Un no-miembro solo puede añadirse a sí mismo y debe escribir una prueba explícita. A
+      // diferencia de comparar inviteCode sobre request.resource (que sería tautológico), el nuevo
+      // joinProof no existía antes: el cliente tiene que conocer realmente el código vigente.
       function isSelfJoin() {
         let before = resource.data;
         let after = request.resource.data;
+        let beforeProfiles = before.get('memberProfiles', {});
+        let afterProfiles = after.get('memberProfiles', {});
+        let beforeProofs = before.get('joinProofs', {});
+        let afterProofs = after.get('joinProofs', {});
         return isSignedIn()
           && !(request.auth.uid in before.members)
-          && after.diff(before).affectedKeys().hasOnly(['members', 'memberProfiles'])
-          && after.members.hasAll(before.members)
-          && after.members.size() == before.members.size() + 1
-          && request.auth.uid in after.members
-          // Solo puede crear SU entrada de perfil, no tocar la de los demás. El get con
-          // valor por defecto cubre las casas creadas antes de que el campo existiera.
-          && after.get('memberProfiles', {}).diff(before.get('memberProfiles', {}))
-               .affectedKeys().hasOnly([request.auth.uid]);
+          && after.diff(before).affectedKeys()
+               .hasOnly(['members', 'memberProfiles', 'joinProofs'])
+          && after.members == before.members.concat([request.auth.uid])
+          && afterProfiles.diff(beforeProfiles).affectedKeys().hasOnly([request.auth.uid])
+          && validMemberProfile(afterProfiles[request.auth.uid])
+          && afterProofs.diff(beforeProofs).affectedKeys().hasOnly([request.auth.uid])
+          && afterProofs[request.auth.uid] == before.inviteCode
+          && validInviteCode(before.inviteCode)
+          && before.inviteCodeExpiresAt > request.time.toMillis();
       }
 
-      // Subcolecciones (shopping_items, shopping_history, routines de casa, …):
-      // solo accesibles por miembros de la casa.
-      match /{document=**} {
+      // Documentos de subcolecciones (shopping_items, shopping_history, routines de casa, …):
+      // solo accesibles por miembros de la casa. En rules v2 un comodín recursivo puede coincidir
+      // con cero segmentos, por eso exigimos primero collection/document; usar solo /{doc=**}
+      // también alcanzaría al documento household y anularía todas las reglas de update de arriba.
+      match /{collection}/{document}/{nested=**} {
         allow read, write: if isSignedIn()
           && request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.members;
       }
