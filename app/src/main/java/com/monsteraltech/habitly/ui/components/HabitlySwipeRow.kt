@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HabitlySwipeRow(
     onPrimaryAction: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     primaryIcon: ImageVector = Icons.Outlined.Check,
     dismissOnDelete: Boolean = true,
@@ -56,6 +56,7 @@ fun HabitlySwipeRow(
         state = state,
         modifier = modifier,
         backgroundContent = { SwipeBackground(state.dismissDirection, primaryIcon) },
+        enableDismissFromEndToStart = onDelete != null,
         onDismiss = { direction ->
             when (direction) {
                 SwipeToDismissBoxValue.StartToEnd -> {
@@ -67,7 +68,7 @@ fun HabitlySwipeRow(
 
                 SwipeToDismissBoxValue.EndToStart -> {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onDelete()
+                    onDelete?.invoke()
                     if (!dismissOnDelete) scope.launch { state.reset() }
                 }
 
@@ -87,13 +88,15 @@ fun HabitlySwipeRow(
 fun Modifier.swipeRowSemantics(
     primaryLabel: String,
     onPrimaryAction: () -> Unit,
-    deleteLabel: String,
-    onDelete: () -> Unit,
+    deleteLabel: String? = null,
+    onDelete: (() -> Unit)? = null,
 ): Modifier = semantics {
-    customActions = listOf(
-        CustomAccessibilityAction(primaryLabel) { onPrimaryAction(); true },
-        CustomAccessibilityAction(deleteLabel) { onDelete(); true },
-    )
+    customActions = buildList {
+        add(CustomAccessibilityAction(primaryLabel) { onPrimaryAction(); true })
+        if (deleteLabel != null && onDelete != null) {
+            add(CustomAccessibilityAction(deleteLabel) { onDelete(); true })
+        }
+    }
 }
 
 /** Background revealed by the swipe: green with a tick to the right, red with a bin to the left. */

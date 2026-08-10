@@ -245,7 +245,10 @@ class RoutinesViewModel @Inject constructor(
 
         viewModelScope.launch {
             deleteRoutineUseCase(state.currentUserId, state.currentHouseholdId, routine)
-                .onSuccess { cancelReminderUseCase(routine.id) }
+                .onSuccess {
+                    cancelReminderUseCase(routine.id)
+                    if (routine.type == RoutineType.HOUSEHOLD) loadWeeklyBalance()
+                }
                 .onFailure { _uiState.update { it.copy(errorRes = R.string.routines_error_delete) } }
         }
     }

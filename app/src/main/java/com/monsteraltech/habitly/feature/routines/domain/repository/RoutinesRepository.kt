@@ -27,6 +27,7 @@ interface RoutinesRepository {
     /** The days the routine was completed within the range, and who did it. */
     suspend fun getCompletions(userId: String, householdId: String, routineId: String, type: RoutineType, from: LocalDate, to: LocalDate): Result<List<RoutineCompletion>>
 
+    /** Deletes the routine and all of its nested completion/comment data. */
     suspend fun deleteRoutine(userId: String, householdId: String, routineId: String, type: RoutineType): Result<Unit>
 
     /**

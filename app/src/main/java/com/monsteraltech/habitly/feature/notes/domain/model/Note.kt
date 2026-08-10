@@ -21,6 +21,8 @@ data class Note(
     val id: String = "",
     val text: String = "",
     val type: NoteType = NoteType.PERSONAL,
+    /** Pinned notes stay above the rest of their board. Missing Firestore fields default to false. */
+    val isPinned: Boolean = false,
     val authorId: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()

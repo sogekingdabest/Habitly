@@ -15,5 +15,7 @@ interface NotesRepository {
     /** Saves the note's text. Everything else about it stays as it was. */
     suspend fun updateNote(userId: String, householdId: String, note: Note): Result<Unit>
 
+    suspend fun setNotePinned(userId: String, householdId: String, note: Note): Result<Unit>
+
     suspend fun deleteNote(userId: String, householdId: String, note: Note): Result<Unit>
 }

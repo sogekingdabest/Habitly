@@ -1,5 +1,6 @@
 package com.monsteraltech.habitly.feature.routines.presentation
 
+import android.content.res.Configuration
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,8 +15,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -23,12 +24,15 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -37,6 +41,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.R
@@ -54,7 +60,7 @@ import com.monsteraltech.habitly.feature.routines.presentation.components.Notifi
 import com.monsteraltech.habitly.feature.routines.presentation.components.formatRoutineDate
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
 import com.monsteraltech.habitly.ui.components.HabitlySwipeRow
-import com.monsteraltech.habitly.ui.components.HabitlyToggleCard
+import com.monsteraltech.habitly.ui.components.HabitlyCard
 import com.monsteraltech.habitly.ui.components.MeshArrangement
 import com.monsteraltech.habitly.ui.components.RitualToggle
 import com.monsteraltech.habitly.ui.components.swipeRowSemantics
@@ -80,6 +86,8 @@ data class RoutineFormResult(
     val assignedTo: String? = null
 )
 
+private enum class RoutineListMode { TODAY, ALL }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutinesScreen(
@@ -88,13 +96,24 @@ fun RoutinesScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var selectedModeIndex by rememberSaveable { mutableIntStateOf(0) }
+    var selectedTypeIndex by rememberSaveable { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
     val today = LocalDate.now()
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val selectedRoutineType = if (selectedTypeIndex == 0) {
+        RoutineType.PERSONAL
+    } else {
+        RoutineType.HOUSEHOLD
+    }
 
-    val tabs = listOf(
+    val typeTabs = listOf(
         stringResource(R.string.routines_tab_personal),
         stringResource(R.string.routines_tab_household)
+    )
+    val modeTabs = listOf(
+        stringResource(R.string.routines_filter_today),
+        stringResource(R.string.routines_filter_all)
     )
 
     LaunchedEffect(uiState.errorRes) {
@@ -109,31 +128,70 @@ fun RoutinesScreen(
         containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    onNavigateToAddRoutine(
-                        if (selectedTabIndex == 0) RoutineType.PERSONAL else RoutineType.HOUSEHOLD
-                    )
-                },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.routines_add_routine))
+            if (!isLandscape) {
+                FloatingActionButton(
+                    onClick = { onNavigateToAddRoutine(selectedRoutineType) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.routines_add_routine))
+                }
             }
         }
     ) { paddingValues ->
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
-                tabs.forEachIndexed { index, title ->
+        val isWide = maxWidth >= 1000.dp
+        val listPanel: @Composable (Modifier) -> Unit = { panelModifier ->
+        Column(
+            modifier = panelModifier
+        ) {
+            PrimaryTabRow(selectedTabIndex = selectedModeIndex) {
+                modeTabs.forEachIndexed { index, title ->
                     Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
+                        selected = selectedModeIndex == index,
+                        onClick = {
+                            selectedModeIndex = index
+                            viewModel.onCloseRoutineDetail()
+                        },
                         text = { Text(title, fontWeight = FontWeight.Bold) }
                     )
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
+                    typeTabs.forEachIndexed { index, title ->
+                        SegmentedButton(
+                            selected = selectedTypeIndex == index,
+                            onClick = {
+                                selectedTypeIndex = index
+                                viewModel.onCloseRoutineDetail()
+                            },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = typeTabs.size)
+                        ) {
+                            Text(title)
+                        }
+                    }
+                }
+                if (isLandscape) {
+                    FilledTonalIconButton(
+                        onClick = { onNavigateToAddRoutine(selectedRoutineType) }
+                    ) {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = stringResource(R.string.routines_add_routine)
+                        )
+                    }
                 }
             }
 
@@ -142,13 +200,44 @@ fun RoutinesScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                val currentType = if (selectedTabIndex == 0) RoutineType.PERSONAL else RoutineType.HOUSEHOLD
-                val filteredRoutines = uiState.routines.filter { it.type == currentType }.sortedBy { it.order }
+                val currentType = selectedRoutineType
+                val currentMode = if (selectedModeIndex == 0) RoutineListMode.TODAY else RoutineListMode.ALL
+                val routinesOfType = uiState.routines
+                    .filter { it.type == currentType }
+                    .sortedBy { it.order }
+                val filteredRoutines = routinesOfType.filter { routine ->
+                    currentMode == RoutineListMode.ALL ||
+                        RoutineSchedule.isPendingOn(routine, today) ||
+                        RoutineSchedule.isCompletedOn(routine, today)
+                }
+                val routineGroups: List<Pair<Int?, List<Routine>>> = if (currentMode == RoutineListMode.TODAY) {
+                    listOf(null to filteredRoutines)
+                } else {
+                    val finished = routinesOfType.filter { RoutineSchedule.isFinishedOn(it, today) }
+                    val upcoming = routinesOfType.filter {
+                        it !in finished && RoutineSchedule.isNotStartedOn(it, today)
+                    }
+                    val paused = routinesOfType.filter {
+                        it !in finished && it !in upcoming && RoutineSchedule.isPausedOn(it, today)
+                    }
+                    val active = routinesOfType.filter {
+                        it !in finished && it !in upcoming && it !in paused
+                    }
+                    listOf(
+                        R.string.routines_group_active to active,
+                        R.string.routines_group_paused to paused,
+                        R.string.routines_group_upcoming to upcoming,
+                        R.string.routines_group_finished to finished
+                    )
+                }
 
-                if (filteredRoutines.isEmpty()) {
+                if (routineGroups.all { it.second.isEmpty() }) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = stringResource(R.string.routines_empty_message),
+                            text = stringResource(
+                                if (currentMode == RoutineListMode.TODAY) R.string.routines_empty_today
+                                else R.string.routines_empty_message
+                            ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -158,18 +247,20 @@ fun RoutinesScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        if (currentType == RoutineType.HOUSEHOLD) {
-                            item(key = "balance") {
-                                HouseholdBalanceCard(
-                                    balance = uiState.weeklyBalance,
-                                    memberNicknames = uiState.memberNicknames,
-                                    members = uiState.householdMembers,
-                                    currentUserId = uiState.currentUserId
-                                )
+                        routineGroups.forEach { (titleRes, groupedRoutines) ->
+                            if (titleRes != null && groupedRoutines.isNotEmpty()) {
+                                item(key = "group_$titleRes") {
+                                    Text(
+                                        text = stringResource(titleRes),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
                             }
-                        }
-
-                        items(filteredRoutines, key = { it.id }) { routine ->
+                        items(groupedRoutines, key = { it.id }) { routine ->
+                            val currentIndex = routinesOfType.indexOfFirst { it.id == routine.id }
                             RoutineCard(
                                 routine = routine,
                                 isCompleted = RoutineSchedule.isCompletedOn(routine, today),
@@ -195,45 +286,103 @@ fun RoutinesScreen(
                                 onOpenComments = {
                                     viewModel.onOpenRoutineDetail(routine, focusComments = true)
                                 },
-                                onMoveUp = {
-                                    val currentIndex = filteredRoutines.indexOfFirst { it.id == routine.id }
-                                    if (currentIndex > 0) {
-                                        val newOrder = filteredRoutines.toMutableList()
+                                onMoveUp = if (currentMode == RoutineListMode.ALL && currentIndex > 0) {
+                                    {
+                                        val newOrder = routinesOfType.toMutableList()
                                         val item = newOrder.removeAt(currentIndex)
                                         newOrder.add(currentIndex - 1, item)
                                         viewModel.onReorderRoutine(currentType, newOrder.map { it.id })
                                     }
-                                },
-                                onMoveDown = {
-                                    val currentIndex = filteredRoutines.indexOfFirst { it.id == routine.id }
-                                    if (currentIndex < filteredRoutines.size - 1) {
-                                        val newOrder = filteredRoutines.toMutableList()
+                                } else null,
+                                onMoveDown = if (
+                                    currentMode == RoutineListMode.ALL && currentIndex < routinesOfType.lastIndex
+                                ) {
+                                    {
+                                        val newOrder = routinesOfType.toMutableList()
                                         val item = newOrder.removeAt(currentIndex)
                                         newOrder.add(currentIndex + 1, item)
                                         viewModel.onReorderRoutine(currentType, newOrder.map { it.id })
                                     }
-                                }
+                                } else null
                             )
                         }
+                        }
+
+                        if (currentType == RoutineType.HOUSEHOLD && currentMode == RoutineListMode.ALL) {
+                            item(key = "balance") {
+                                HouseholdBalanceCard(
+                                    balance = uiState.weeklyBalance,
+                                    memberNicknames = uiState.memberNicknames,
+                                    members = uiState.householdMembers,
+                                    currentUserId = uiState.currentUserId
+                                )
+                            }
+                        }
+                    }
+            }
+        }
+        }
+        }
+
+        if (isWide) {
+            Row(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .widthIn(max = 1400.dp)
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+            ) {
+                listPanel(Modifier.weight(0.5f).fillMaxHeight())
+                VerticalDivider()
+                Box(
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val detail = uiState.routineDetail
+                    if (detail == null) {
+                        Text(
+                            text = stringResource(R.string.routines_select_detail),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        RoutineDetailPane(
+                            detail = detail,
+                            onDismiss = viewModel::onCloseRoutineDetail,
+                            onMonthShift = viewModel::onDetailMonthShift,
+                            onPause = { viewModel.onSetPaused(detail.routine, it) },
+                            currentUserId = uiState.currentUserId,
+                            memberNicknames = uiState.memberNicknames,
+                            onCommentDraftChange = viewModel::onCommentDraftChange,
+                            onSendComment = viewModel::onSendComment,
+                            onDeleteComment = viewModel::onDeleteComment
+                        )
                     }
                 }
             }
+        } else {
+            listPanel(
+                Modifier
+                    .fillMaxHeight()
+                    .widthIn(max = 840.dp)
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+            )
+            uiState.routineDetail?.let { detail ->
+                RoutineDetailSheet(
+                    detail = detail,
+                    onDismiss = viewModel::onCloseRoutineDetail,
+                    onMonthShift = viewModel::onDetailMonthShift,
+                    onPause = { viewModel.onSetPaused(detail.routine, it) },
+                    currentUserId = uiState.currentUserId,
+                    memberNicknames = uiState.memberNicknames,
+                    onCommentDraftChange = viewModel::onCommentDraftChange,
+                    onSendComment = viewModel::onSendComment,
+                    onDeleteComment = viewModel::onDeleteComment
+                )
+            }
+        }
         }
     }
-    }
-
-    uiState.routineDetail?.let { detail ->
-        RoutineDetailSheet(
-            detail = detail,
-            onDismiss = { viewModel.onCloseRoutineDetail() },
-            onMonthShift = { viewModel.onDetailMonthShift(it) },
-            onPause = { viewModel.onSetPaused(detail.routine, it) },
-            currentUserId = uiState.currentUserId,
-            memberNicknames = uiState.memberNicknames,
-            onCommentDraftChange = viewModel::onCommentDraftChange,
-            onSendComment = viewModel::onSendComment,
-            onDeleteComment = viewModel::onDeleteComment
-        )
     }
 }
 
@@ -241,7 +390,7 @@ fun RoutinesScreen(
  * Form shared by create and edit: these used to be two near-identical dialogs, and each new field
  * (like the interval) had to be added in both.
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun RoutineFormDialog(
     dialogTitleRes: Int,
@@ -285,12 +434,78 @@ private fun RoutineFormDialog(
     // Rotation only makes sense in a household with more than one member.
     val canRotate = type == RoutineType.HOUSEHOLD && members.size > 1
 
-    AlertDialog(
+    val canSave = title.isNotBlank() &&
+        (frequency != RoutineFrequency.WEEKLY || selectedDays.isNotEmpty()) &&
+        !endBeforeStart
+
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(dialogTitleRes)) },
-        text = {
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text(stringResource(dialogTitleRes)) },
+                        navigationIcon = {
+                            IconButton(onClick = onDismiss) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = stringResource(R.string.routines_cancel)
+                                )
+                            }
+                        }
+                    )
+                },
+                bottomBar = {
+                    Surface(shadowElevation = 8.dp) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .imePadding()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = onDismiss) {
+                                Text(stringResource(R.string.routines_cancel))
+                            }
+                            Button(
+                                onClick = {
+                                    onConfirm(
+                                        RoutineFormResult(
+                                            title = title,
+                                            description = description,
+                                            type = type,
+                                            frequency = frequency,
+                                            scheduledDays = selectedDays,
+                                            reminderTime = reminderTime,
+                                            intervalDays = if (frequency == RoutineFrequency.EVERY_N_DAYS) intervalDays else null,
+                                            startDate = startDate,
+                                            endDate = endDate,
+                                            icon = icon,
+                                            notificationLevel = notificationLevel,
+                                            rotationEnabled = canRotate && rotationEnabled,
+                                            assignedTo = if (canRotate && rotationEnabled) assignedTo else null
+                                        )
+                                    )
+                                },
+                                enabled = canSave
+                            ) {
+                                Text(stringResource(confirmLabelRes))
+                            }
+                        }
+                    }
+                }
+            ) { contentPadding ->
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding)
+                    .verticalScroll(rememberScrollState())
+                    .widthIn(max = 760.dp)
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedTextField(
@@ -502,41 +717,9 @@ private fun RoutineFormDialog(
                     )
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(
-                        RoutineFormResult(
-                            title = title,
-                            description = description,
-                            type = type,
-                            frequency = frequency,
-                            scheduledDays = selectedDays,
-                            reminderTime = reminderTime,
-                            intervalDays = if (frequency == RoutineFrequency.EVERY_N_DAYS) intervalDays else null,
-                            startDate = startDate,
-                            endDate = endDate,
-                            icon = icon,
-                            notificationLevel = notificationLevel,
-                            rotationEnabled = canRotate && rotationEnabled,
-                            assignedTo = if (canRotate && rotationEnabled) assignedTo else null
-                        )
-                    )
-                },
-                enabled = title.isNotBlank() &&
-                    (frequency != RoutineFrequency.WEEKLY || selectedDays.isNotEmpty()) &&
-                    !endBeforeStart
-            ) {
-                Text(stringResource(confirmLabelRes))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.routines_cancel))
             }
         }
-    )
+    }
 }
 
 @Composable
@@ -555,39 +738,33 @@ fun RoutineCard(
     members: List<String> = emptyList(),
     memberNicknames: Map<String, String> = emptyMap(),
     hasNewComments: Boolean = false,
-    onMoveUp: () -> Unit = {},
-    onMoveDown: () -> Unit = {}
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
     val newCommentsLabel = stringResource(R.string.routines_comments_new)
 
     val toggleLabel = stringResource(
         if (isCompleted) R.string.routines_a11y_uncomplete else R.string.routines_a11y_complete
     )
-    val deleteLabel = stringResource(R.string.routines_delete_routine)
-
-    // Swipe right toggles done; swipe left opens the delete confirmation (hence
-    // `dismissOnDelete = false`: the card stays put until the user confirms).
+    // Completing is deliberately the only swipe gesture. Destructive and administrative actions
+    // live in the overflow menu, where they are discoverable without crowding the row.
     HabitlySwipeRow(
         onPrimaryAction = onToggle,
-        onDelete = { showDeleteDialog = true },
-        dismissOnDelete = false,
         modifier = Modifier.fillMaxWidth()
     ) {
-    HabitlyToggleCard(
-        checked = isCompleted,
-        onCheckedChange = { onToggle() },
+    HabitlyCard(
         modifier = Modifier
             .fillMaxWidth()
             .swipeRowSemantics(
                 primaryLabel = toggleLabel,
-                onPrimaryAction = onToggle,
-                deleteLabel = deleteLabel,
-                onDelete = { showDeleteDialog = true }
+                onPrimaryAction = onToggle
             ),
         shape = LeafCornerMedium,
-        contentPadding = PaddingValues(0.dp)
+        contentPadding = PaddingValues(0.dp),
+        onClick = onOpenDetail
     ) {
         Row(
             modifier = Modifier
@@ -595,34 +772,20 @@ fun RoutineCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(end = 4.dp)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .toggleable(
+                        value = isCompleted,
+                        onValueChange = { onToggle() },
+                        role = Role.Checkbox
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                IconButton(onClick = onMoveUp, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        Icons.Default.KeyboardArrowUp,
-                        contentDescription = stringResource(R.string.routines_move_up),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                IconButton(onClick = onMoveDown, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        Icons.Default.KeyboardArrowDown,
-                        contentDescription = stringResource(R.string.routines_move_down),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                RitualToggle(checked = isCompleted, size = 28.dp)
             }
 
-            Spacer(modifier = Modifier.width(4.dp))
-
-            // Visual completion indicator; the accessible toggle is the card (Role.Checkbox).
-            RitualToggle(checked = isCompleted, size = 28.dp)
-
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -705,13 +868,7 @@ fun RoutineCard(
                     }
                 }
 
-                // Comments: every shared routine shows the way in, even with none written yet.
-                // Showing it only once a comment existed left nobody able to write the first one,
-                // and the count alone was not an invitation to write.
-                //
-                // It rides in the text column rather than with the action icons: those already
-                // fill the row, and a fourth one would squeeze the title on a narrow phone. It
-                // also gets to carry the word "comment", which a grey glyph could not.
+                // Every shared routine shows how to enter the conversation, including an empty one.
                 if (routine.type == RoutineType.HOUSEHOLD) {
                     val commentsTint = if (hasNewComments) {
                         MaterialTheme.colorScheme.primary
@@ -747,7 +904,6 @@ fun RoutineCard(
                             color = commentsTint,
                             fontWeight = FontWeight.SemiBold
                         )
-                        // The dot marks comments added since this user last opened the routine.
                         if (hasNewComments) {
                             Spacer(modifier = Modifier.width(6.dp))
                             Box(
@@ -790,28 +946,65 @@ fun RoutineCard(
                 }
             }
 
-            IconButton(onClick = onOpenDetail) {
-                Icon(
-                    Icons.Filled.CalendarMonth,
-                    contentDescription = stringResource(R.string.routines_detail_open),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-
-            IconButton(onClick = { showEditDialog = true }) {
-                Icon(
-                    Icons.Filled.Edit,
-                    contentDescription = stringResource(R.string.routines_edit_routine),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-
-            IconButton(onClick = { showDeleteDialog = true }) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.routines_delete_routine),
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                )
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = stringResource(R.string.routines_more_actions),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.routines_edit_routine)) },
+                        leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            showEditDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.routines_move_up)) },
+                        leadingIcon = { Icon(Icons.Filled.KeyboardArrowUp, contentDescription = null) },
+                        enabled = onMoveUp != null,
+                        onClick = {
+                            menuExpanded = false
+                            onMoveUp?.invoke()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.routines_move_down)) },
+                        leadingIcon = { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null) },
+                        enabled = onMoveDown != null,
+                        onClick = {
+                            menuExpanded = false
+                            onMoveDown?.invoke()
+                        }
+                    )
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(R.string.routines_delete_routine),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            showDeleteDialog = true
+                        }
+                    )
+                }
             }
         }
     }

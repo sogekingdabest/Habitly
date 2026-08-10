@@ -3,6 +3,7 @@ package com.monsteraltech.habitly.feature.routines.domain.usecase
 import com.monsteraltech.habitly.feature.routines.data.repository.FakeRoutinesRepository
 import com.monsteraltech.habitly.feature.routines.domain.model.NotificationLevel
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
+import com.monsteraltech.habitly.feature.routines.domain.model.RoutineCompletion
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineFrequency
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import kotlinx.coroutines.flow.first
@@ -224,6 +225,29 @@ class RoutinesUseCasesTest {
         assertTrue(result.isSuccess)
         val routines = fakeRepository.observeHouseholdRoutines(householdId).first()
         assertTrue(routines.isEmpty())
+    }
+
+    @Test
+    fun `delete routine removes its completion history`() = runBlocking {
+        val routine = Routine(id = "r1", title = "To Delete", type = RoutineType.HOUSEHOLD, authorId = userId)
+        val completionDate = java.time.LocalDate.of(2026, 8, 10)
+        fakeRepository.addHouseholdRoutine(routine)
+        fakeRepository.stubCompletions = mapOf(
+            routine.id to listOf(RoutineCompletion(completionDate, userId))
+        )
+
+        val result = deleteUseCase(userId, householdId, routine)
+        val remaining = fakeRepository.getCompletions(
+            userId = userId,
+            householdId = householdId,
+            routineId = routine.id,
+            type = routine.type,
+            from = completionDate,
+            to = completionDate
+        ).getOrThrow()
+
+        assertTrue(result.isSuccess)
+        assertTrue(remaining.isEmpty())
     }
 
     @Test

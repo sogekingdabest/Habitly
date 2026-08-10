@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
+import com.monsteraltech.habitly.feature.notes.domain.model.NoteType
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
 import com.monsteraltech.habitly.ui.components.HabitlyCard
@@ -78,7 +79,7 @@ fun DashboardScreen(
     onNavigateToShopping: () -> Unit = {},
     onNavigateToRoutines: () -> Unit = {},
     onNavigateToAddRoutine: () -> Unit = {},
-    onNavigateToNotes: () -> Unit = {},
+    onNavigateToNotes: (NoteType) -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -157,7 +158,8 @@ fun DashboardScreen(
                     NotesSummaryCard(
                         count = uiState.notesCount,
                         latestHeading = uiState.latestNoteHeading,
-                        onClick = onNavigateToNotes
+                        latestType = uiState.latestNoteType,
+                        onClick = { onNavigateToNotes(uiState.latestNoteType ?: NoteType.PERSONAL) }
                     )
                 }
 
@@ -340,6 +342,7 @@ private fun ProgressRing(progress: Float) {
 private fun NotesSummaryCard(
     count: Int,
     latestHeading: String,
+    latestType: NoteType?,
     onClick: () -> Unit
 ) {
     HabitlyCard(shape = LeafCornerLarge, onClick = onClick) {
@@ -370,6 +373,14 @@ private fun NotesSummaryCard(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1
+                    )
+                    Text(
+                        text = stringResource(
+                            if (latestType == NoteType.HOUSEHOLD) R.string.notes_scope_household
+                            else R.string.notes_scope_personal
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = pluralStringResource(R.plurals.notes_dashboard_count, count, count),

@@ -1,23 +1,37 @@
 package com.monsteraltech.habitly.feature.notes.presentation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -29,16 +43,21 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +72,7 @@ import com.monsteraltech.habitly.feature.notes.domain.model.Note
 import com.monsteraltech.habitly.feature.notes.domain.model.NoteType
 import com.monsteraltech.habitly.ui.components.HabitlyCard
 import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
+import com.monsteraltech.habitly.ui.theme.habitly
 
 /**
  * The notes board: personal on one tab, the household's on the other. Full screen behind a hidden
@@ -62,14 +82,27 @@ import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
 @Composable
 fun NotesScreen(
     onNavigateBack: () -> Unit,
+    initialType: NoteType = NoteType.PERSONAL,
     viewModel: NotesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var selectedTabIndex by rememberSaveable(initialType) {
+        mutableIntStateOf(if (initialType == NoteType.PERSONAL) 0 else 1)
+    }
+    var pendingAfterClose by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    fun continueAfterClosingEditor(action: () -> Unit) {
+        if (uiState.editing == null || viewModel.onRequestCloseEditor()) action()
+        else pendingAfterClose = action
+    }
 
     val currentType = if (selectedTabIndex == 0) NoteType.PERSONAL else NoteType.HOUSEHOLD
+
+    BackHandler(enabled = uiState.editing != null) {
+        continueAfterClosingEditor { }
+    }
 
     LaunchedEffect(uiState.errorRes) {
         uiState.errorRes?.let { res ->
@@ -78,12 +111,23 @@ fun NotesScreen(
         }
     }
 
+    LaunchedEffect(uiState.recentlyDeleted?.id) {
+        if (uiState.recentlyDeleted == null) return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = context.getString(R.string.notes_deleted),
+            actionLabel = context.getString(R.string.common_undo),
+            duration = SnackbarDuration.Long
+        )
+        if (result == SnackbarResult.ActionPerformed) viewModel.onRestoreDeletedNote()
+        else viewModel.onDeletedMessageShown()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.notes_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { continueAfterClosingEditor(onNavigateBack) }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_back)
@@ -95,7 +139,7 @@ fun NotesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { viewModel.onNewNote(currentType) },
+                onClick = { continueAfterClosingEditor { viewModel.onNewNote(currentType) } },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
@@ -103,48 +147,103 @@ fun NotesScreen(
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
-                listOf(R.string.notes_tab_personal, R.string.notes_tab_household)
-                    .forEachIndexed { index, titleRes ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { Text(stringResource(titleRes), fontWeight = FontWeight.Bold) }
-                        )
-                    }
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(padding)) {
+            val isWide = maxWidth >= 900.dp
+            val notes = uiState.notesOf(currentType)
+            val listPanel: @Composable (Modifier) -> Unit = { modifier ->
+                NotesListPanel(
+                    modifier = modifier,
+                    selectedTabIndex = selectedTabIndex,
+                    onTabSelected = {
+                        val index = it
+                        continueAfterClosingEditor { selectedTabIndex = index }
+                    },
+                    notes = notes,
+                    isLoading = uiState.isLoading,
+                    currentUserId = uiState.currentUserId,
+                    memberNicknames = uiState.memberNicknames,
+                    searchQuery = uiState.searchQuery,
+                    sortOrder = uiState.sortOrder,
+                    selectedNoteId = uiState.editing?.note?.id,
+                    onSearchChange = viewModel::onSearchChange,
+                    onSortChange = viewModel::onSortChange,
+                    onOpenNote = { note ->
+                        if (uiState.editing?.note?.id != note.id) {
+                            continueAfterClosingEditor { viewModel.onEditNote(note) }
+                        }
+                    },
+                    onTogglePinned = viewModel::onTogglePinned,
+                    onDelete = viewModel::onDeleteNote
+                )
             }
 
-            val notes = uiState.notesOf(currentType)
-
-            when {
-                uiState.isLoading -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
-
-                notes.isEmpty() -> Box(
-                    modifier = Modifier.fillMaxSize().padding(32.dp),
-                    contentAlignment = Alignment.Center
+            if (isWide) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .widthIn(max = 1280.dp)
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
                 ) {
-                    Text(
-                        text = stringResource(R.string.notes_empty),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    listPanel(Modifier.weight(0.42f).fillMaxHeight())
+                    VerticalDivider()
+                    Box(
+                        modifier = Modifier.weight(0.58f).fillMaxHeight().padding(24.dp),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        val editor = uiState.editing
+                        if (editor == null) {
+                            Text(
+                                text = stringResource(R.string.notes_select_note),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        } else {
+                            HabitlyCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = LeafCornerLarge,
+                                contentPadding = PaddingValues(24.dp)
+                            ) {
+                                NoteEditor(
+                                    editor = editor,
+                                    isSaving = uiState.isSaving,
+                                    onTitleChange = viewModel::onTitleChange,
+                                    onBodyChange = viewModel::onBodyChange,
+                                    onClose = { continueAfterClosingEditor { } },
+                                    onSave = viewModel::onSaveNote
+                                )
+                            }
+                        }
+                    }
                 }
+            } else {
+                listPanel(
+                    Modifier
+                        .fillMaxHeight()
+                        .widthIn(max = 760.dp)
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                )
 
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(notes, key = { it.id }) { note ->
-                        NoteCard(
-                            note = note,
-                            currentUserId = uiState.currentUserId,
-                            memberNicknames = uiState.memberNicknames,
-                            onClick = { viewModel.onEditNote(note) },
-                            onDelete = { viewModel.onDeleteNote(note) }
+                uiState.editing?.let { editor ->
+                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    ModalBottomSheet(
+                        onDismissRequest = { continueAfterClosingEditor { } },
+                        sheetState = sheetState
+                    ) {
+                        NoteEditor(
+                            editor = editor,
+                            isSaving = uiState.isSaving,
+                            onTitleChange = viewModel::onTitleChange,
+                            onBodyChange = viewModel::onBodyChange,
+                            onClose = { continueAfterClosingEditor { } },
+                            onSave = viewModel::onSaveNote,
+                            modifier = Modifier
+                                .widthIn(max = 760.dp)
+                                .fillMaxWidth()
+                                .align(Alignment.CenterHorizontally)
+                                .padding(horizontal = 24.dp)
+                                .padding(bottom = 32.dp)
                         )
                     }
                 }
@@ -152,46 +251,106 @@ fun NotesScreen(
         }
     }
 
-    uiState.editing?.let { editor ->
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(onDismissRequest = viewModel::onCloseEditor, sheetState = sheetState) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+    if (uiState.showDiscardConfirmation) {
+        AlertDialog(
+            onDismissRequest = {
+                pendingAfterClose = null
+                viewModel.onKeepEditing()
+            },
+            title = { Text(stringResource(R.string.notes_discard_title)) },
+            text = { Text(stringResource(R.string.notes_discard_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val action = pendingAfterClose
+                        pendingAfterClose = null
+                        viewModel.onDiscardEditorChanges()
+                        action?.invoke()
+                    }
+                ) { Text(stringResource(R.string.notes_discard_confirm)) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingAfterClose = null
+                        viewModel.onKeepEditing()
+                    }
+                ) { Text(stringResource(R.string.notes_keep_editing)) }
+            }
+        )
+    }
+}
+
+@Composable
+private fun NotesListPanel(
+    modifier: Modifier,
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    notes: List<Note>,
+    isLoading: Boolean,
+    currentUserId: String,
+    memberNicknames: Map<String, String>,
+    searchQuery: String,
+    sortOrder: NoteSortOrder,
+    selectedNoteId: String?,
+    onSearchChange: (String) -> Unit,
+    onSortChange: (NoteSortOrder) -> Unit,
+    onOpenNote: (Note) -> Unit,
+    onTogglePinned: (Note) -> Unit,
+    onDelete: (Note) -> Unit
+) {
+    Column(modifier = modifier) {
+        PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
+            listOf(R.string.notes_tab_personal, R.string.notes_tab_household)
+                .forEachIndexed { index, titleRes ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { onTabSelected(index) },
+                        text = { Text(stringResource(titleRes), fontWeight = FontWeight.Bold) }
+                    )
+                }
+        }
+
+        NotesSearchAndSort(
+            query = searchQuery,
+            sortOrder = sortOrder,
+            onQueryChange = onSearchChange,
+            onSortChange = onSortChange
+        )
+
+        when {
+            isLoading -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator() }
+
+            notes.isEmpty() -> Box(
+                modifier = Modifier.fillMaxSize().padding(32.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = stringResource(
-                        if (editor.note == null) R.string.notes_new else R.string.notes_edit
+                        if (searchQuery.isBlank()) R.string.notes_empty else R.string.notes_search_empty
                     ),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                OutlinedTextField(
-                    value = editor.draft,
-                    onValueChange = viewModel::onDraftChange,
-                    placeholder = { Text(stringResource(R.string.notes_hint)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 4,
-                    maxLines = 10,
-                    shape = MaterialTheme.shapes.medium
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = viewModel::onCloseEditor) {
-                        Text(stringResource(R.string.notes_cancel))
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    TextButton(
-                        onClick = viewModel::onSaveNote,
-                        enabled = editor.canSave && !uiState.isSaving
-                    ) {
-                        Text(stringResource(R.string.notes_save))
-                    }
+            }
+
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(notes, key = { it.id }) { note ->
+                    NoteCard(
+                        note = note,
+                        selected = note.id == selectedNoteId,
+                        currentUserId = currentUserId,
+                        memberNicknames = memberNicknames,
+                        onClick = { onOpenNote(note) },
+                        onTogglePinned = { onTogglePinned(note) },
+                        onDelete = { onDelete(note) }
+                    )
                 }
             }
         }
@@ -199,26 +358,169 @@ fun NotesScreen(
 }
 
 @Composable
+private fun NotesSearchAndSort(
+    query: String,
+    sortOrder: NoteSortOrder,
+    onQueryChange: (String) -> Unit,
+    onSortChange: (NoteSortOrder) -> Unit
+) {
+    var sortExpanded by remember { androidx.compose.runtime.mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.weight(1f),
+            placeholder = { Text(stringResource(R.string.notes_search)) },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = stringResource(R.string.notes_search_clear)
+                        )
+                    }
+                }
+            },
+            singleLine = true,
+            shape = MaterialTheme.shapes.medium
+        )
+        Box {
+            IconButton(onClick = { sortExpanded = true }) {
+                Icon(
+                    Icons.Filled.Sort,
+                    contentDescription = stringResource(R.string.notes_sort)
+                )
+            }
+            DropdownMenu(
+                expanded = sortExpanded,
+                onDismissRequest = { sortExpanded = false }
+            ) {
+                NoteSortOrder.entries.forEach { order ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(order.labelRes)) },
+                        leadingIcon = {
+                            if (order == sortOrder) Icon(Icons.Filled.Check, contentDescription = null)
+                        },
+                        onClick = {
+                            sortExpanded = false
+                            onSortChange(order)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NoteEditor(
+    editor: NoteEditorState,
+    isSaving: Boolean,
+    onTitleChange: (String) -> Unit,
+    onBodyChange: (String) -> Unit,
+    onClose: () -> Unit,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(if (editor.note == null) R.string.notes_new else R.string.notes_edit),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onClose) {
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.notes_cancel))
+            }
+        }
+        OutlinedTextField(
+            value = editor.title,
+            onValueChange = onTitleChange,
+            label = { Text(stringResource(R.string.notes_field_title)) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = MaterialTheme.shapes.medium
+        )
+        OutlinedTextField(
+            value = editor.body,
+            onValueChange = onBodyChange,
+            label = { Text(stringResource(R.string.notes_field_body)) },
+            placeholder = { Text(stringResource(R.string.notes_hint)) },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 8,
+            maxLines = 18,
+            shape = MaterialTheme.shapes.medium
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = onClose) { Text(stringResource(R.string.notes_cancel)) }
+            Spacer(modifier = Modifier.width(8.dp))
+            TextButton(
+                onClick = onSave,
+                enabled = editor.canSave && !isSaving
+            ) { Text(stringResource(R.string.notes_save)) }
+        }
+    }
+}
+
+private val NoteSortOrder.labelRes: Int
+    get() = when (this) {
+        NoteSortOrder.UPDATED_DESC -> R.string.notes_sort_recent
+        NoteSortOrder.UPDATED_ASC -> R.string.notes_sort_oldest
+        NoteSortOrder.TITLE -> R.string.notes_sort_title
+    }
+
+@Composable
 private fun NoteCard(
     note: Note,
+    selected: Boolean,
     currentUserId: String,
     memberNicknames: Map<String, String>,
     onClick: () -> Unit,
+    onTogglePinned: () -> Unit,
     onDelete: () -> Unit
 ) {
-    // 16dp once, from the card. The Row used to add its own on top of the card's default 20dp,
-    // which left a two-line note swimming in 36dp of margin on every side.
-    HabitlyCard(shape = LeafCornerLarge, contentPadding = PaddingValues(16.dp), onClick = onClick) {
+    var menuExpanded by remember { androidx.compose.runtime.mutableStateOf(false) }
+    HabitlyCard(
+        shape = LeafCornerLarge,
+        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.habitly.card,
+        contentPadding = PaddingValues(16.dp),
+        onClick = onClick
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = note.heading,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (note.isPinned) {
+                        Icon(
+                            Icons.Filled.PushPin,
+                            contentDescription = stringResource(R.string.notes_pinned),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(end = 6.dp)
+                        )
+                    }
+                    Text(
+                        text = note.heading,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 if (note.body.isNotBlank()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -235,33 +537,64 @@ private fun NoteCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            // Tapping the card already opens the editor, but nothing said so: the only visible
-            // control was the bin, which reads as "you may delete this, not change it".
-            IconButton(onClick = onClick) {
-                Icon(
-                    Icons.Filled.Edit,
-                    contentDescription = stringResource(R.string.notes_edit),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.notes_delete),
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                )
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = stringResource(R.string.notes_more_actions)
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.notes_edit)) },
+                        leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            onClick()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (note.isPinned) R.string.notes_unpin else R.string.notes_pin
+                                )
+                            )
+                        },
+                        leadingIcon = { Icon(Icons.Filled.PushPin, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            onTogglePinned()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(R.string.notes_delete),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onDelete()
+                        }
+                    )
+                }
             }
         }
     }
 }
 
-/**
- * "Sonia · 6 ago, 16:41" on a shared note, just the time on a personal one — on your own board
- * there is no one else it could be from.
- *
- * The time shown is the last change, not the creation, because that is what the board sorts by:
- * a note that climbs back to the top has to say why.
- */
 @Composable
 private fun Note.byline(currentUserId: String, memberNicknames: Map<String, String>): String {
     val moment = updatedAt.toShortDateTime()

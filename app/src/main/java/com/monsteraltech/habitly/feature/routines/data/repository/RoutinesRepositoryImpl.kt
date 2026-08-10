@@ -209,7 +209,13 @@ class RoutinesRepositoryImpl @Inject constructor(
         type: RoutineType
     ): Result<Unit> {
         return try {
-            documentFor(type, userId, householdId, routineId).delete().await()
+            val routineRef = documentFor(type, userId, householdId, routineId)
+            // Firestore does not cascade document deletion to nested collections. Delete the
+            // bounded batches first and the parent last, so a failure never leaves an invisible
+            // routine with completion or comment documents still accruing storage.
+            deleteCollection(routineRef.collection("completions"))
+            deleteCollection(routineRef.collection("comments"))
+            routineRef.delete().await()
             widgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -356,11 +362,25 @@ class RoutinesRepositoryImpl @Inject constructor(
     private fun documentFor(type: RoutineType, userId: String, householdId: String, routineId: String) =
         collectionFor(type, userId, householdId).document(routineId)
 
+    private suspend fun deleteCollection(collection: CollectionReference) {
+        while (true) {
+            val documents = collection.limit(DELETE_BATCH_SIZE.toLong()).get().await().documents
+            if (documents.isEmpty()) return
+
+            firestore.batch().apply {
+                documents.forEach { delete(it.reference) }
+            }.commit().await()
+        }
+    }
+
     private companion object {
         // Caps the history reads: ~1 year is more than enough for the streak.
         const val MAX_COMPLETIONS_SCANNED = 370L
 
         // Caps the live listener: a routine's conversation is a handful of lines, not a chat log.
         const val MAX_COMMENTS_SHOWN = 100L
+
+        // Leaves room below Firestore's 500-operation batch limit if more operations are added.
+        const val DELETE_BATCH_SIZE = 400
     }
 }

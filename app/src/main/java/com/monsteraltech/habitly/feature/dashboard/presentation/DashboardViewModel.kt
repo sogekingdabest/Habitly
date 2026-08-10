@@ -8,6 +8,7 @@ import com.monsteraltech.habitly.feature.household.domain.model.Household
 import com.monsteraltech.habitly.feature.household.domain.usecase.GetMemberProfilesUseCase
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveHouseholdUseCase
 import com.monsteraltech.habitly.feature.notes.domain.usecase.ObserveNotesUseCase
+import com.monsteraltech.habitly.feature.notes.domain.model.NoteType
 import com.monsteraltech.habitly.feature.household.domain.usecase.ObserveUserProfileUseCase
 import com.monsteraltech.habitly.feature.routines.domain.model.Routine
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
@@ -54,6 +55,7 @@ data class DashboardUiState(
     /** Notes, personal and household together, for the summary card. */
     val notesCount: Int = 0,
     val latestNoteHeading: String = "",
+    val latestNoteType: NoteType? = null,
     /** Offline: anything ticked stays on the phone and uploads when the connection returns. */
     val isOffline: Boolean = false,
     val error: String? = null
@@ -125,6 +127,7 @@ class DashboardViewModel @Inject constructor(
                     currentUserId = currentUserId,
                     notesCount = notes.size,
                     latestNoteHeading = notes.firstOrNull()?.heading.orEmpty(),
+                    latestNoteType = notes.firstOrNull()?.type,
                     isOffline = !isOnline
                 )
             }.catch { e ->
