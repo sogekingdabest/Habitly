@@ -6,12 +6,20 @@
 ![Android](https://img.shields.io/badge/Android-29+-3DDC84?style=for-the-badge&logo=android&logoColor=white)
 ![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202026.03-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)
+[![CI](https://github.com/sogekingdabest/Habitly/actions/workflows/ci.yml/badge.svg)](https://github.com/sogekingdabest/Habitly/actions/workflows/ci.yml)
 
 **Smart household management powered by on-device AI**
 
 [English](#english) · [Español](#español) · [Galego](#galego)
 
 </div>
+
+---
+
+Security issues should be reported privately as described in [SECURITY.md](SECURITY.md). Before a
+production release, follow the [production security checklist](docs/production-security-checklist.md).
+Contributions are welcome through [CONTRIBUTING.md](CONTRIBUTING.md). Brand and listing assets have
+separate terms in [ASSETS_LICENSE.md](ASSETS_LICENSE.md).
 
 ---
 

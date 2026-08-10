@@ -123,6 +123,10 @@ fabric.properties
 # Firebase
 firebase-debug.log
 firestore-debug.log
+.firebase/
+
+# Node tooling used by Firestore rules tests
+node_modules/
 
 # Coverage
 coverage/

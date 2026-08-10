@@ -35,6 +35,14 @@ data class Household(
     var members: List<String> = emptyList(),
     var customStores: List<String> = emptyList(),
     /**
+     * Proof submitted by each member when joining, keyed by uid.
+     *
+     * Firestore rules compare a newly-added value with the household's current invite code. This
+     * prevents someone who merely knows the document id (for example, a former member) from adding
+     * themselves again. Proofs are removed with membership and become harmless after code rotation.
+     */
+    var joinProofs: Map<String, String> = emptyMap(),
+    /**
      * Public profile of each member, keyed by uid. Kept up to date wherever membership changes
      * (create, join, leave, remove) and when a nickname is edited.
      *
