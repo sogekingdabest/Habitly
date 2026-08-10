@@ -106,6 +106,14 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    // The app changes language at runtime and ships every locale in the base module, so Play must
+    // not split translations into language packs that may not be installed yet.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
 }
 
 // litertlm 0.14.0 se compiló con Kotlin 2.2 (-Xjvm-default=all), así que llama a

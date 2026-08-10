@@ -42,8 +42,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun HabitlySwipeRow(
     onPrimaryAction: () -> Unit,
-    onDelete: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onDelete: (() -> Unit)? = null,
     primaryIcon: ImageVector = Icons.Outlined.Check,
     dismissOnDelete: Boolean = true,
     content: @Composable RowScope.() -> Unit,

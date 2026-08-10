@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -58,10 +59,11 @@ fun RegisterScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val webClientId = stringResource(R.string.default_web_client_id)
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(webClientId) {
         viewModel.effects.collect { effect ->
             when (effect) {
                 is RegisterEffect.NavigateToEmailVerification -> {
@@ -77,8 +79,6 @@ fun RegisterScreen(
                     coroutineScope.launch {
                         try {
                             val credentialManager = CredentialManager.create(context)
-                            val webClientId = context.getString(R.string.default_web_client_id)
-
                             val rawNonce = UUID.randomUUID().toString()
                             val bytes = rawNonce.toByteArray()
                             val md = MessageDigest.getInstance("SHA-256")
@@ -109,6 +109,9 @@ fun RegisterScreen(
                             }
                         } catch (e: GetCredentialCancellationException) {
                             viewModel.onIntent(RegisterIntent.GoogleSignInCancelled)
+                        } catch (e: NoCredentialException) {
+                            Log.i("RegisterScreen", "No Google credentials are available", e)
+                            viewModel.onIntent(RegisterIntent.GoogleSignInFailed)
                         } catch (e: Exception) {
                             Log.e("RegisterScreen", "Google Sign In Failed", e)
                             viewModel.onIntent(RegisterIntent.GoogleSignInFailed)

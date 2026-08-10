@@ -39,11 +39,11 @@ fun PromptInput(
     input: String,
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
+    modifier: Modifier = Modifier,
     isGenerating: Boolean = false,
     onStop: () -> Unit = {},
     onVoiceInput: (() -> Unit)? = null,
-    quickPrompts: List<QuickPromptChip> = emptyList(),
-    modifier: Modifier = Modifier
+    quickPrompts: List<QuickPromptChip> = emptyList()
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         // The chips leave as soon as you start typing: you have already decided what to ask, and

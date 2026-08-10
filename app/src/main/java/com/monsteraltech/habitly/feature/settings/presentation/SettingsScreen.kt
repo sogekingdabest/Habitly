@@ -3,7 +3,6 @@ package com.monsteraltech.habitly.feature.settings.presentation
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -46,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monsteraltech.habitly.BuildConfig
@@ -80,7 +80,7 @@ fun SettingsScreen(
     val openLinkError = stringResource(R.string.legal_open_error)
     val openUrl: (String) -> Unit = { url ->
         try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(context, openLinkError, Toast.LENGTH_SHORT).show()
         }
@@ -259,7 +259,7 @@ fun SettingsScreen(
                     onClick = {
                         val market = Intent(
                             Intent.ACTION_VIEW,
-                            Uri.parse("market://details?id=${context.packageName}")
+                            "market://details?id=${context.packageName}".toUri()
                         )
                         try {
                             context.startActivity(market)
@@ -268,7 +268,7 @@ fun SettingsScreen(
                                 context.startActivity(
                                     Intent(
                                         Intent.ACTION_VIEW,
-                                        Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")
+                                        "https://play.google.com/store/apps/details?id=${context.packageName}".toUri()
                                     )
                                 )
                             }

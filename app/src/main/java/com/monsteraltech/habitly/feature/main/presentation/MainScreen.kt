@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -165,7 +166,7 @@ private fun MainContent(
     // "Share with Habitly": the review sheet sits on top of whichever tab was open.
     val importSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     if (sharedText != null) {
-        val context = LocalContext.current
+        val resources = LocalResources.current
         ImportSharedTextSheet(
             sharedText = sharedText,
             sheetState = importSheetState,
@@ -174,7 +175,7 @@ private fun MainContent(
                 val message = buildString {
                     if (products > 0) {
                         append(
-                            context.resources.getQuantityString(
+                            resources.getQuantityString(
                                 R.plurals.ai_added_to_list, products, products
                             )
                         )
@@ -182,7 +183,7 @@ private fun MainContent(
                     if (routines > 0) {
                         if (isNotEmpty()) append(" · ")
                         append(
-                            context.resources.getQuantityString(
+                            resources.getQuantityString(
                                 R.plurals.ai_routines_created, routines, routines
                             )
                         )

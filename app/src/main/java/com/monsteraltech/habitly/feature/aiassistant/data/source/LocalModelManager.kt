@@ -1,6 +1,7 @@
 package com.monsteraltech.habitly.feature.aiassistant.data.source
 
 import android.content.Context
+import android.os.storage.StorageManager
 import android.util.Log
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiModelConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -206,14 +207,17 @@ class LocalModelManager @Inject constructor(
     /** The margin avoids filling the disk: Android degrades badly with storage at the limit. */
     private fun checkFreeSpace(config: AiModelConfig, tempFile: File) {
         val needed = (config.sizeBytes - tempFile.length()).coerceAtLeast(0L) + FREE_SPACE_MARGIN_BYTES
-        // usableSpace returns 0 when the system cannot answer; do not block in that case.
-        val usable = modelDir.usableSpace
-        if (usable in 1 until needed) {
-            val missingMb = (needed - usable) / 1_000_000
+        val storageManager = context.getSystemService(StorageManager::class.java)
+        val storageUuid = storageManager.getUuidForPath(modelDir)
+        val allocatable = storageManager.getAllocatableBytes(storageUuid)
+        if (allocatable < needed) {
+            val missingMb = (needed - allocatable) / 1_000_000
             throw NonRetryableDownloadException(
                 "No hay espacio suficiente para el modelo: faltan $missingMb MB libres"
             )
         }
+        // Makes clearable cache space actually available before starting a multi-gigabyte file.
+        storageManager.allocateBytes(storageUuid, needed)
     }
 
     /** Replays the hash over what was already downloaded, before resuming. */

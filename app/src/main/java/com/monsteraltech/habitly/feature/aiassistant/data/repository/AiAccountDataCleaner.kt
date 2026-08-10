@@ -1,6 +1,7 @@
 package com.monsteraltech.habitly.feature.aiassistant.data.repository
 
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.monsteraltech.habitly.feature.aiassistant.data.source.local.AiAssistantDatabase
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiAssistantRepository
 import com.monsteraltech.habitly.feature.login.domain.account.AccountDataCleaner
@@ -28,7 +29,7 @@ class AiAccountDataCleaner @Inject constructor(
         withContext(Dispatchers.IO) {
             database.clearAllTables()
             // commit, not apply: the deletion must reach disk before the account counts as deleted.
-            sharedPreferences.edit().clear().commit()
+            sharedPreferences.edit(commit = true) { clear() }
         }
     }
 }

@@ -15,7 +15,6 @@
     <string name="routines_type_label">Tipo de rutina:</string>
     <string name="routines_type_personal">Persoal</string>
     <string name="routines_type_household">Da Casa</string>
-    <string name="routines_create">Crear</string>
     <string name="routines_cancel">Cancelar</string>
     <string name="routines_empty_message">Non tes rutinas deste tipo</string>
     <string name="routines_empty_today">Non tes ningunha rutina para hoxe</string>
@@ -29,7 +28,6 @@
     <string name="routines_more_actions">Máis accións</string>
     <string name="routines_edit_routine_title">Editar Rutina</string>
     <string name="routines_save">Gardar</string>
-    <string name="routines_error_empty_title">O título non pode estar baleiro</string>
     <string name="routines_error_save">Non se puido gardar a rutina. Téntao de novo</string>
     <string name="routines_error_update">Non se puido actualizar a rutina. Téntao de novo</string>
     <string name="routines_error_delete">Non se puido eliminar a rutina. Téntao de novo</string>
@@ -53,8 +51,6 @@
     <string name="routines_reminder_set">Recordatorio ás %s</string>
     <string name="routines_notification_title">Recordatorio de Rutina</string>
     <string name="routines_notification_text">É hora de: %s</string>
-    <string name="routines_notification_channel_name">Recordatorios de Rutinas</string>
-    <string name="routines_notification_channel_desc">Notificacións para lembrar rutinas pendentes</string>
 
     <plurals name="routines_streak">
         <item quantity="one">🔥 %d día seguido</item>
@@ -112,7 +108,6 @@
     <string name="routines_level_default">Normal</string>
     <string name="routines_level_high">Importante</string>
     <string name="settings_notification_sounds">Son dos avisos</string>
-    <string name="settings_notification_sounds_desc">Escolle o son e a vibración de cada nivel</string>
     <string name="settings_notification_level_row">Nivel «%s»</string>
     <!-- Emoji da rutina (Fase 2) -->
     <string name="routines_icon_label">Icona</string>
@@ -186,7 +181,6 @@
     </plurals>
     <string name="routines_streak_protected">🛡️ Racha protexida: perdoóuseche un fallo</string>
     <!-- Ficha de progreso -->
-    <string name="routines_detail_open">Ver progreso</string>
     <string name="routines_detail_current_streak">Racha actual</string>
     <string name="routines_detail_best_streak">Mellor racha</string>
     <string name="routines_detail_completion">Cumprimento</string>
@@ -327,7 +321,10 @@
         <item quantity="one">Tes %d produto pendente</item>
         <item quantity="other">Tes %d produtos pendentes</item>
     </plurals>
-    <string name="dashboard_and_more">…e %d máis</string>
+    <plurals name="dashboard_and_more">
+        <item quantity="one">…e %d máis</item>
+        <item quantity="other">…e %d máis</item>
+    </plurals>
 
     <!-- Shopping -->
     <string name="shopping_title">Lista da Compra</string>
@@ -354,7 +351,10 @@
     <string name="shopping_clear_confirm_title">Limpar produtos marcados?</string>
     <string name="shopping_clear_confirm_message">Eliminaranse da lista todos os produtos marcados. Esta acción non se pode desfacer.</string>
     <string name="shopping_completed">Completados</string>
-    <string name="shopping_progress">%1$d/%2$d produtos</string>
+    <plurals name="shopping_progress">
+        <item quantity="one">%1$d/%2$d produto</item>
+        <item quantity="other">%1$d/%2$d produtos</item>
+    </plurals>
     <!-- Despensa -->
     <string name="shopping_tab_list">Lista</string>
     <string name="shopping_tab_pantry">Despensa</string>
@@ -376,17 +376,13 @@
 
     <!-- Add product -->
     <string name="addproduct_title">Engadir Produto</string>
-    <string name="addproduct_info">Información do produto</string>
     <string name="addproduct_name">Nome do artigo</string>
     <string name="addproduct_quantity">Cantidade</string>
     <string name="addproduct_unit">Unidade</string>
-    <string name="addproduct_store_category">Supermercado e categoría</string>
     <string name="addproduct_store">Supermercado</string>
     <string name="addproduct_category">Categoría (opcional)</string>
     <string name="addproduct_no_category">Sen categoría</string>
-    <string name="addproduct_notes_title">Notas adicionais</string>
     <string name="addproduct_notes">Notas (opcional)</string>
-    <string name="addproduct_save">Gardar produto</string>
 
     <!-- History -->
     <string name="history_title">Historial de Compras</string>
@@ -425,7 +421,6 @@
     <string name="household_delete_confirm_button">Borrar conta</string>
 
     <!-- Legal / información -->
-    <string name="legal_section_title">Información</string>
     <string name="legal_privacy">Política de privacidade</string>
     <string name="legal_terms">Termos e condicións</string>
     <string name="legal_open_error">Non se puido abrir a ligazón</string>
@@ -435,10 +430,6 @@
     <string name="ai_new_conversation">Nova Conversa</string>
     <string name="ai_title">Asistente IA</string>
     <string name="ai_change_model">Cambiar modelo</string>
-    <string name="ai_selecting">Seleccionando…</string>
-    <string name="ai_status_ready">Listo</string>
-    <string name="ai_status_downloading">Descargando…</string>
-    <string name="ai_status_not_downloaded">Non descargado</string>
     <string name="ai_menu">Menú</string>
     <string name="ai_new_chat">Novo chat</string>
     <string name="ai_delete_chat_confirm_title">Eliminar conversa?</string>
@@ -470,7 +461,6 @@
     <string name="ai_delete_model">Borrar o modelo</string>
     <!-- Compatibilidade dos modelos coa memoria do dispositivo -->
     <string name="ai_model_ram_required">Precisa %s de RAM</string>
-    <string name="ai_model_unsupported_badge">Non compatible</string>
     <string name="ai_model_unsupported_error">O teu dispositivo non ten memoria abondo para este modelo</string>
     <string name="ai_model_unsupported_title">Modelo non compatible</string>
     <string name="ai_model_unsupported_message">%1$s precisa %2$s de RAM e o teu dispositivo ten %3$s. Cargalo pecharía a aplicación.\n\nProba cun modelo máis lixeiro desde o menú de arriba.</string>
@@ -510,7 +500,10 @@
         <item quantity="one">%d rutina proposta</item>
         <item quantity="other">%d rutinas propostas</item>
     </plurals>
-    <string name="ai_routine_more">+%d máis</string>
+    <plurals name="ai_routine_more">
+        <item quantity="one">+%d máis</item>
+        <item quantity="other">+%d máis</item>
+    </plurals>
     <string name="ai_preparing_suggestions">Preparando suxestións…</string>
     <plurals name="ai_routines_created">
         <item quantity="one">%d rutina creada</item>
@@ -597,4 +590,141 @@
     <!-- Asistente IA: notificación de descarga do modelo -->
     <string name="ai_download_notification_title">Descargando modelo de IA</string>
     <string name="ai_download_channel_name">Descargas de modelos de IA</string>
+    <!-- Fluxos de rutinas e modelos iniciais -->
+    <string name="routines_a11y_complete">Marcar como feita</string>
+    <string name="routines_a11y_uncomplete">Marcar como non feita</string>
+    <string name="templates_title">Con que rutinas comezamos?</string>
+    <string name="templates_subtitle">Estas son as habituais nunha casa. Desmarca as que non che encaixen; despois poderás editalas ou borralas.</string>
+    <string name="templates_skip">Prefiro comezar de cero</string>
+    <plurals name="templates_create_with">
+        <item quantity="one">Crear casa con %d rutina</item>
+        <item quantity="other">Crear casa con %d rutinas</item>
+    </plurals>
+    <plurals name="templates_frequency_interval">
+        <item quantity="one">Cada %d día</item>
+        <item quantity="other">Cada %d días</item>
+    </plurals>
+    <string name="template_trash">Sacar o lixo</string>
+    <string name="template_dishes">Fregar os pratos</string>
+    <string name="template_laundry">Poñer a lavadora</string>
+    <string name="template_bathroom">Limpar o baño</string>
+    <string name="template_floor">Fregar o chan</string>
+    <string name="template_dust">Quitar o po</string>
+    <string name="template_groceries">Compra semanal</string>
+    <string name="template_sheets">Cambiar as sabas</string>
+    <string name="common_done">Listo</string>
+
+    <!-- Resumo de hoxe -->
+    <plurals name="dashboard_today_progress">
+        <item quantity="one">%1$d de %2$d feita</item>
+        <item quantity="other">%1$d de %2$d feitas</item>
+    </plurals>
+    <string name="dashboard_today_nothing">Hoxe non toca ningunha rutina</string>
+    <string name="dashboard_today_by_member">Hoxe: %s</string>
+    <string name="dashboard_offline">Sen conexión · sincronizarase</string>
+    <string name="dashboard_routine_state_done">Feita</string>
+    <string name="dashboard_routine_state_pending">Pendente</string>
+
+    <!-- Busca e cantidades da compra -->
+    <string name="shopping_search">Buscar na lista</string>
+    <string name="shopping_search_clear">Borrar a busca</string>
+    <string name="shopping_search_empty">Non hai nada que coincida con «%s»</string>
+    <string name="shopping_search_empty_subtitle">Podes engadilo sen duplicar nada.</string>
+    <string name="pantry_item_removed">«%s» fóra da despensa</string>
+    <string name="shopping_a11y_check">Marcar como comprado</string>
+    <string name="shopping_a11y_uncheck">Marcar como pendente</string>
+    <string name="shopping_quantity_generic">%1$d %2$s</string>
+    <plurals name="unit_unit">
+        <item quantity="one">%d unidade</item>
+        <item quantity="other">%d unidades</item>
+    </plurals>
+    <plurals name="unit_kg">
+        <item quantity="one">%d kg</item>
+        <item quantity="other">%d kg</item>
+    </plurals>
+    <plurals name="unit_g">
+        <item quantity="one">%d g</item>
+        <item quantity="other">%d g</item>
+    </plurals>
+    <plurals name="unit_liter">
+        <item quantity="one">%d L</item>
+        <item quantity="other">%d L</item>
+    </plurals>
+    <plurals name="unit_ml">
+        <item quantity="one">%d ml</item>
+        <item quantity="other">%d ml</item>
+    </plurals>
+    <plurals name="unit_dozen">
+        <item quantity="one">%d ducia</item>
+        <item quantity="other">%d ducias</item>
+    </plurals>
+    <plurals name="unit_pack">
+        <item quantity="one">%d paquete</item>
+        <item quantity="other">%d paquetes</item>
+    </plurals>
+    <string name="addproduct_save_and_continue">Gardar e seguir</string>
+    <string name="addproduct_more_options">Máis opcións</string>
+    <string name="addproduct_duplicate_pending">Xa está na lista: «%s»</string>
+    <string name="addproduct_duplicate_checked">Xa o marcaches como comprado: «%s»</string>
+    <plurals name="addproduct_added_count">
+        <item quantity="one">%d produto engadido</item>
+        <item quantity="other">%d produtos engadidos</item>
+    </plurals>
+
+    <!-- Casa e reparto -->
+    <string name="household_owner_badge">Creou a casa</string>
+    <string name="household_member_unknown">Membro</string>
+    <string name="household_invite_code_expired">Este código xa non serve. Xera un novo para convidar.</string>
+    <plurals name="household_invite_code_expires_days">
+        <item quantity="one">Caduca en %d día</item>
+        <item quantity="other">Caduca en %d días</item>
+    </plurals>
+    <plurals name="household_invite_code_expires_hours">
+        <item quantity="one">Caduca en %d hora</item>
+        <item quantity="other">Caduca en %d horas</item>
+    </plurals>
+    <string name="household_share_title">Reparto da casa</string>
+    <plurals name="household_share_total">
+        <item quantity="one">Esta semana completastes %d rutina da casa 🎉</item>
+        <item quantity="other">Esta semana completastes %d rutinas da casa 🎉</item>
+    </plurals>
+    <plurals name="household_share_total_solo">
+        <item quantity="one">Esta semana completaches %d rutina da casa 🎉</item>
+        <item quantity="other">Esta semana completaches %d rutinas da casa 🎉</item>
+    </plurals>
+    <string name="household_share_empty">Esta semana aínda non hai ningunha rutina da casa feita.</string>
+    <plurals name="household_share_streak">
+        <item quantity="one">🔥 %d día seguido con todo feito</item>
+        <item quantity="other">🔥 %d días seguidos con todo feito</item>
+    </plurals>
+    <string name="household_share_last_week">Semana pasada: %s</string>
+    <string name="household_share_last_week_entry">%1$s %2$d</string>
+    <string name="household_share_last_week_total">Semana pasada: %d</string>
+
+    <!-- Importación de texto compartido -->
+    <string name="share_title">Engadir desde o texto compartido</string>
+    <string name="share_subtitle_ai">Leuno a IA do teu móbil. Revísao antes de gardar.</string>
+    <string name="share_subtitle_plain">Revisa o que recoñecemos antes de gardar.</string>
+    <string name="share_analyzing">Lendo o texto no teu móbil…</string>
+    <string name="share_analyzing_hint">A primeira vez pode tardar un minuto: o modelo cárgase no dispositivo e nada sae de aquí.</string>
+    <string name="share_nothing_found">Non atopei nada que engadir</string>
+    <string name="share_nothing_found_hint">Este texto non parece conter produtos nin tarefas, así que non se gardou nada.</string>
+    <string name="share_analyze_with_ai">Lelo coa IA local</string>
+    <string name="share_model_offer">Co modelo local, Habitly entende receitas enteiras.</string>
+    <string name="share_model_download">Descargar</string>
+    <string name="share_error_analyze">Non se puido ler coa IA. Isto é o que obtivemos do texto.</string>
+    <string name="share_error_save">Non se puido gardar todo. Téntao de novo.</string>
+    <string name="share_quantity_less">Quitar un de %1$s</string>
+    <string name="share_quantity_more">Engadir un de %1$s</string>
+    <plurals name="share_add_selected">
+        <item quantity="one">Engadir 1 marcado</item>
+        <item quantity="other">Engadir %d marcados</item>
+    </plurals>
+    <string name="shopping_voice_not_understood">Non entendín ningún produto. Téntao de novo.</string>
+
+    <!-- Atallos da aplicación -->
+    <string name="shortcut_add_shopping_short">Engadir</string>
+    <string name="shortcut_add_shopping_long">Engadir á compra</string>
+    <string name="shortcut_today_routines_short">Rutinas</string>
+    <string name="shortcut_today_routines_long">Rutinas de hoxe</string>
 </resources>

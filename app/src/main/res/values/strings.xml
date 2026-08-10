@@ -1,5 +1,5 @@
-<resources>
-    <string name="app_name">Habitly</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name" translatable="false">Habitly</string>
     <string name="default_web_client_id" translatable="false">819000066438-ntt3qii5r1g5o4m3b3hlr3m0jgkkeks5.apps.googleusercontent.com</string>
 
     <!-- Routines -->
@@ -18,7 +18,6 @@
     <string name="routines_type_label">Tipo de rutina:</string>
     <string name="routines_type_personal">Personal</string>
     <string name="routines_type_household">De la Casa</string>
-    <string name="routines_create">Crear</string>
     <string name="routines_cancel">Cancelar</string>
     <string name="routines_empty_message">No tienes rutinas de este tipo</string>
     <string name="routines_empty_today">No tienes ninguna rutina para hoy</string>
@@ -34,7 +33,6 @@
     <string name="routines_more_actions">Más acciones</string>
     <string name="routines_edit_routine_title">Editar Rutina</string>
     <string name="routines_save">Guardar</string>
-    <string name="routines_error_empty_title">El título no puede estar vacío</string>
     <string name="routines_error_save">No se pudo guardar la rutina. Inténtalo de nuevo</string>
     <string name="routines_error_update">No se pudo actualizar la rutina. Inténtalo de nuevo</string>
     <string name="routines_error_delete">No se pudo eliminar la rutina. Inténtalo de nuevo</string>
@@ -58,8 +56,6 @@
     <string name="routines_reminder_set">Recordatorio a las %s</string>
     <string name="routines_notification_title">Recordatorio de Rutina</string>
     <string name="routines_notification_text">Es hora de: %s</string>
-    <string name="routines_notification_channel_name">Recordatorios de Rutinas</string>
-    <string name="routines_notification_channel_desc">Notificaciones para recordar rutinas pendientes</string>
 
     <plurals name="routines_streak">
         <item quantity="one">🔥 %d día seguido</item>
@@ -86,7 +82,7 @@
     <string name="routines_interval_more">Aumentar intervalo</string>
     <!-- Frecuencia mensual/anual y presets de intervalo (Fase 1) -->
     <string name="routines_frequency_monthly">Mensual</string>
-    <string name="routines_frequency_yearly">Anual</string>
+    <string name="routines_frequency_yearly" tools:ignore="Typos">Anual</string>
     <string name="routines_frequency_monthly_desc">Una vez al mes, el mismo día</string>
     <string name="routines_frequency_yearly_desc">Una vez al año, en la misma fecha</string>
     <string name="routines_interval_field_label">Cada cuántos días</string>
@@ -117,7 +113,6 @@
     <string name="routines_level_default">Normal</string>
     <string name="routines_level_high">Importante</string>
     <string name="settings_notification_sounds">Sonido de los avisos</string>
-    <string name="settings_notification_sounds_desc">Elige el sonido y la vibración de cada nivel</string>
     <string name="settings_notification_level_row">Nivel «%s»</string>
     <!-- Emoji de la rutina (Fase 2) -->
     <string name="routines_icon_label">Icono</string>
@@ -191,7 +186,6 @@
     </plurals>
     <string name="routines_streak_protected">🛡️ Racha protegida: se te perdonó un fallo</string>
     <!-- Ficha de progreso -->
-    <string name="routines_detail_open">Ver progreso</string>
     <string name="routines_detail_current_streak">Racha actual</string>
     <string name="routines_detail_best_streak">Mejor racha</string>
     <string name="routines_detail_completion">Cumplimiento</string>
@@ -354,7 +348,10 @@
         <item quantity="one">Tienes %d producto pendiente</item>
         <item quantity="other">Tienes %d productos pendientes</item>
     </plurals>
-    <string name="dashboard_and_more">…y %d más</string>
+    <plurals name="dashboard_and_more">
+        <item quantity="one">…y %d más</item>
+        <item quantity="other">…y %d más</item>
+    </plurals>
     <plurals name="dashboard_today_progress">
         <item quantity="one">%1$d de %2$d hecha</item>
         <item quantity="other">%1$d de %2$d hechas</item>
@@ -390,7 +387,10 @@
     <string name="shopping_clear_confirm_title">¿Limpiar productos marcados?</string>
     <string name="shopping_clear_confirm_message">Se eliminarán de la lista todos los productos marcados. Esta acción no se puede deshacer.</string>
     <string name="shopping_completed">Completados</string>
-    <string name="shopping_progress">%1$d/%2$d productos</string>
+    <plurals name="shopping_progress">
+        <item quantity="one">%1$d/%2$d producto</item>
+        <item quantity="other">%1$d/%2$d productos</item>
+    </plurals>
     <string name="shopping_search">Buscar en la lista</string>
     <string name="shopping_search_clear">Borrar la búsqueda</string>
     <string name="shopping_search_empty">No hay nada que coincida con «%s»</string>
@@ -450,17 +450,13 @@
 
     <!-- Add product -->
     <string name="addproduct_title">Añadir Producto</string>
-    <string name="addproduct_info">Información del producto</string>
     <string name="addproduct_name">Nombre del artículo</string>
     <string name="addproduct_quantity">Cantidad</string>
     <string name="addproduct_unit">Unidad</string>
-    <string name="addproduct_store_category">Supermercado y categoría</string>
     <string name="addproduct_store">Supermercado</string>
     <string name="addproduct_category">Categoría (opcional)</string>
     <string name="addproduct_no_category">Sin categoría</string>
-    <string name="addproduct_notes_title">Notas adicionales</string>
     <string name="addproduct_notes">Notas (opcional)</string>
-    <string name="addproduct_save">Guardar producto</string>
     <string name="addproduct_save_and_continue">Guardar y seguir</string>
     <string name="addproduct_more_options">Más opciones</string>
     <string name="addproduct_duplicate_pending">Ya está en la lista: «%s»</string>
@@ -518,7 +514,6 @@
     <string name="household_delete_confirm_button">Borrar cuenta</string>
 
     <!-- Legal / información -->
-    <string name="legal_section_title">Información</string>
     <string name="legal_privacy">Política de privacidad</string>
     <string name="legal_terms">Términos y condiciones</string>
     <string name="legal_open_error">No se pudo abrir el enlace</string>
@@ -528,10 +523,6 @@
     <string name="ai_new_conversation">Nueva Conversación</string>
     <string name="ai_title">Asistente IA</string>
     <string name="ai_change_model">Cambiar modelo</string>
-    <string name="ai_selecting">Seleccionando…</string>
-    <string name="ai_status_ready">Listo</string>
-    <string name="ai_status_downloading">Descargando…</string>
-    <string name="ai_status_not_downloaded">No descargado</string>
     <string name="ai_menu">Menú</string>
     <string name="ai_new_chat">Nuevo chat</string>
     <string name="ai_delete_chat_confirm_title">¿Eliminar conversación?</string>
@@ -563,7 +554,6 @@
     <string name="ai_delete_model">Borrar modelo</string>
     <!-- Compatibilidad de modelos con la memoria del dispositivo -->
     <string name="ai_model_ram_required">Necesita %s de RAM</string>
-    <string name="ai_model_unsupported_badge">No compatible</string>
     <string name="ai_model_unsupported_error">Tu dispositivo no tiene memoria suficiente para este modelo</string>
     <string name="ai_model_unsupported_title">Modelo no compatible</string>
     <string name="ai_model_unsupported_message">%1$s necesita %2$s de RAM y tu dispositivo tiene %3$s. Cargarlo cerraría la aplicación.\n\nPrueba con un modelo más ligero desde el menú de arriba.</string>
@@ -599,7 +589,10 @@
         <item quantity="one">%d rutina propuesta</item>
         <item quantity="other">%d rutinas propuestas</item>
     </plurals>
-    <string name="ai_routine_more">+%d más</string>
+    <plurals name="ai_routine_more">
+        <item quantity="one">+%d más</item>
+        <item quantity="other">+%d más</item>
+    </plurals>
     <string name="ai_preparing_suggestions">Preparando sugerencias…</string>
     <plurals name="ai_routines_created">
         <item quantity="one">%d rutina creada</item>

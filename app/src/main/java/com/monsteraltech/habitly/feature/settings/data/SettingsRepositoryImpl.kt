@@ -2,6 +2,7 @@ package com.monsteraltech.habitly.feature.settings.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.monsteraltech.habitly.feature.settings.domain.model.AppLanguage
 import com.monsteraltech.habitly.feature.settings.domain.model.ThemeMode
 import com.monsteraltech.habitly.feature.settings.domain.repository.SettingsRepository
@@ -38,15 +39,15 @@ class SettingsRepositoryImpl @Inject constructor(
         observe(KEY_REMINDERS) { prefs.getBoolean(KEY_REMINDERS, true) }
 
     override fun setThemeMode(mode: ThemeMode) {
-        prefs.edit().putString(KEY_THEME, mode.name).apply()
+        prefs.edit { putString(KEY_THEME, mode.name) }
     }
 
     override fun setLanguage(language: AppLanguage) {
-        prefs.edit().putString(KEY_LANGUAGE, language.tag).apply()
+        prefs.edit { putString(KEY_LANGUAGE, language.tag) }
     }
 
     override fun setRemindersEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_REMINDERS, enabled).apply()
+        prefs.edit { putBoolean(KEY_REMINDERS, enabled) }
     }
 
     /** Emits the current value and re-emits when [key] (or the whole prefs) changes. */

@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-
     <!-- Widget (Verde niebla — modo claro). El fondo de tarjeta y las pastillas de
          recuento se pintan con drawables <shape>, así que necesitan color de recurso
          (no valen las constantes Kotlin). La variante nocturna está en values-night. -->
