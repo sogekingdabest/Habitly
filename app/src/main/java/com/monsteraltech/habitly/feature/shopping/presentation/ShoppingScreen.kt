@@ -19,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -56,8 +55,15 @@ fun ShoppingScreen(
     viewModel: ShoppingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val errorMessage = uiState.errorRes?.let { stringResource(it) }
+    val undoLabel = stringResource(R.string.common_undo)
+    val deletedItemMessage = uiState.recentlyDeletedName?.let { name ->
+        stringResource(R.string.shopping_item_deleted, name)
+    }
+    val deletedPantryMessage = uiState.recentlyDeletedPantryName?.let { name ->
+        stringResource(R.string.pantry_item_removed, name)
+    }
 
     LaunchedEffect(openQuickAdd) {
         if (openQuickAdd) {
@@ -96,9 +102,9 @@ fun ShoppingScreen(
         )
     }
 
-    LaunchedEffect(uiState.errorRes) {
-        uiState.errorRes?.let { res ->
-            snackbarHostState.showSnackbar(context.getString(res))
+    LaunchedEffect(uiState.errorRes, errorMessage) {
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(errorMessage)
             viewModel.onErrorShown()
         }
     }
@@ -114,11 +120,11 @@ fun ShoppingScreen(
         }
     }
 
-    LaunchedEffect(uiState.recentlyDeletedName) {
-        uiState.recentlyDeletedName?.let { name ->
+    LaunchedEffect(uiState.recentlyDeletedName, deletedItemMessage, undoLabel) {
+        uiState.recentlyDeletedName?.let {
             val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.shopping_item_deleted, name),
-                actionLabel = context.getString(R.string.common_undo),
+                message = checkNotNull(deletedItemMessage),
+                actionLabel = undoLabel,
                 duration = SnackbarDuration.Short
             )
             if (result == SnackbarResult.ActionPerformed) {
@@ -129,11 +135,11 @@ fun ShoppingScreen(
         }
     }
 
-    LaunchedEffect(uiState.recentlyDeletedPantryName) {
-        uiState.recentlyDeletedPantryName?.let { name ->
+    LaunchedEffect(uiState.recentlyDeletedPantryName, deletedPantryMessage, undoLabel) {
+        uiState.recentlyDeletedPantryName?.let {
             val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.pantry_item_removed, name),
-                actionLabel = context.getString(R.string.common_undo),
+                message = checkNotNull(deletedPantryMessage),
+                actionLabel = undoLabel,
                 duration = SnackbarDuration.Short
             )
             if (result == SnackbarResult.ActionPerformed) {
@@ -272,7 +278,12 @@ fun ShoppingScreen(
                     )
                     if (uiState.totalItems > 0) {
                         Text(
-                            stringResource(R.string.shopping_progress, uiState.checkedCount, uiState.totalItems),
+                            pluralStringResource(
+                                R.plurals.shopping_progress,
+                                uiState.totalItems,
+                                uiState.checkedCount,
+                                uiState.totalItems
+                            ),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -2,6 +2,7 @@ package com.monsteraltech.habitly.feature.aiassistant.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import android.util.Log
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Contents
@@ -162,7 +163,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
         val config = AvailableAiModels.models.find { it.id == modelId } ?: return
         if (_selectedModel.value.id == config.id) return
 
-        sharedPreferences.edit().putString("selected_model_id", config.id).apply()
+        sharedPreferences.edit { putString("selected_model_id", config.id) }
         _selectedModel.value = config
 
         conversationHistoryKey = null

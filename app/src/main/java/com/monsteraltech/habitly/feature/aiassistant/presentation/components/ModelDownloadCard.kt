@@ -30,8 +30,8 @@ fun ModelDownloadCard(
     progress: Float,
     isDownloading: Boolean,
     onDownload: () -> Unit,
-    onCancel: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCancel: () -> Unit = {}
 ) {
     val sizeText = remember(modelConfig) {
         modelConfig?.let { formatBytes(it.sizeBytes) } ?: "~2GB"

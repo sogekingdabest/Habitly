@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Routines -->
     <string name="routines_tab_personal">My Routines</string>
     <string name="routines_tab_household">Household</string>
@@ -15,7 +15,6 @@
     <string name="routines_type_label">Routine type:</string>
     <string name="routines_type_personal">Personal</string>
     <string name="routines_type_household">Household</string>
-    <string name="routines_create">Create</string>
     <string name="routines_cancel">Cancel</string>
     <string name="routines_empty_message">You have no routines of this type</string>
     <string name="routines_empty_today">You have no routines for today</string>
@@ -31,7 +30,6 @@
     <string name="routines_more_actions">More actions</string>
     <string name="routines_edit_routine_title">Edit Routine</string>
     <string name="routines_save">Save</string>
-    <string name="routines_error_empty_title">The title cannot be empty</string>
     <string name="routines_error_save">Couldn\'t save the routine. Please try again</string>
     <string name="routines_error_update">Couldn\'t update the routine. Please try again</string>
     <string name="routines_error_delete">Couldn\'t delete the routine. Please try again</string>
@@ -55,8 +53,6 @@
     <string name="routines_reminder_set">Reminder at %s</string>
     <string name="routines_notification_title">Routine Reminder</string>
     <string name="routines_notification_text">Time for: %s</string>
-    <string name="routines_notification_channel_name">Routine Reminders</string>
-    <string name="routines_notification_channel_desc">Notifications to remind you of pending routines</string>
 
     <plurals name="routines_streak">
         <item quantity="one">🔥 %d-day streak</item>
@@ -88,7 +84,8 @@
     <string name="routines_frequency_yearly_desc">Once a year, on the same date</string>
     <string name="routines_interval_field_label">Every how many days</string>
     <string name="routines_interval_presets_label">Quick:</string>
-    <string name="routines_monthly_anchor_hint">Repeats on day %1$d every month</string>
+    <!-- The number is a calendar day, not an amount. -->
+    <string name="routines_monthly_anchor_hint" tools:ignore="PluralsCandidate">Repeats on day %1$d every month</string>
     <string name="routines_yearly_anchor_hint">Repeats every %1$s</string>
     <!-- Routine lifetime window (Phase 1) -->
     <string name="routines_dates_section">Duration</string>
@@ -114,7 +111,6 @@
     <string name="routines_level_default">Normal</string>
     <string name="routines_level_high">Important</string>
     <string name="settings_notification_sounds">Reminder sound</string>
-    <string name="settings_notification_sounds_desc">Pick the sound and vibration for each level</string>
     <string name="settings_notification_level_row">\"%s\" level</string>
     <!-- Routine emoji (Phase 2) -->
     <string name="routines_icon_label">Icon</string>
@@ -188,7 +184,6 @@
     </plurals>
     <string name="routines_streak_protected">🛡️ Streak protected: one miss was forgiven</string>
     <!-- Progress sheet -->
-    <string name="routines_detail_open">View progress</string>
     <string name="routines_detail_current_streak">Current streak</string>
     <string name="routines_detail_best_streak">Best streak</string>
     <string name="routines_detail_completion">Completion</string>
@@ -351,7 +346,10 @@
         <item quantity="one">You have %d pending product</item>
         <item quantity="other">You have %d pending products</item>
     </plurals>
-    <string name="dashboard_and_more">…and %d more</string>
+    <plurals name="dashboard_and_more">
+        <item quantity="one">…and %d more</item>
+        <item quantity="other">…and %d more</item>
+    </plurals>
     <plurals name="dashboard_today_progress">
         <item quantity="one">%1$d of %2$d done</item>
         <item quantity="other">%1$d of %2$d done</item>
@@ -387,7 +385,10 @@
     <string name="shopping_clear_confirm_title">Clear checked products?</string>
     <string name="shopping_clear_confirm_message">All checked products will be removed from the list. This can\'t be undone.</string>
     <string name="shopping_completed">Completed</string>
-    <string name="shopping_progress">%1$d/%2$d products</string>
+    <plurals name="shopping_progress">
+        <item quantity="one">%1$d/%2$d product</item>
+        <item quantity="other">%1$d/%2$d products</item>
+    </plurals>
     <string name="shopping_search">Search the list</string>
     <string name="shopping_search_clear">Clear the search</string>
     <string name="shopping_search_empty">Nothing matches «%s»</string>
@@ -447,17 +448,13 @@
 
     <!-- Add product -->
     <string name="addproduct_title">Add Product</string>
-    <string name="addproduct_info">Product information</string>
     <string name="addproduct_name">Item name</string>
     <string name="addproduct_quantity">Quantity</string>
     <string name="addproduct_unit">Unit</string>
-    <string name="addproduct_store_category">Store and category</string>
     <string name="addproduct_store">Store</string>
     <string name="addproduct_category">Category (optional)</string>
     <string name="addproduct_no_category">No category</string>
-    <string name="addproduct_notes_title">Additional notes</string>
     <string name="addproduct_notes">Notes (optional)</string>
-    <string name="addproduct_save">Save product</string>
     <string name="addproduct_save_and_continue">Save and keep going</string>
     <string name="addproduct_more_options">More options</string>
     <string name="addproduct_duplicate_pending">Already on the list: «%s»</string>
@@ -515,7 +512,6 @@
     <string name="household_delete_confirm_button">Delete account</string>
 
     <!-- Legal / information -->
-    <string name="legal_section_title">Information</string>
     <string name="legal_privacy">Privacy policy</string>
     <string name="legal_terms">Terms and conditions</string>
     <string name="legal_open_error">Couldn\'t open the link</string>
@@ -525,10 +521,6 @@
     <string name="ai_new_conversation">New Conversation</string>
     <string name="ai_title">AI Assistant</string>
     <string name="ai_change_model">Change model</string>
-    <string name="ai_selecting">Selecting…</string>
-    <string name="ai_status_ready">Ready</string>
-    <string name="ai_status_downloading">Downloading…</string>
-    <string name="ai_status_not_downloaded">Not downloaded</string>
     <string name="ai_menu">Menu</string>
     <string name="ai_new_chat">New chat</string>
     <string name="ai_delete_chat_confirm_title">Delete conversation?</string>
@@ -560,7 +552,6 @@
     <string name="ai_delete_model">Delete model</string>
     <!-- Model compatibility with device memory -->
     <string name="ai_model_ram_required">Needs %s of RAM</string>
-    <string name="ai_model_unsupported_badge">Not compatible</string>
     <string name="ai_model_unsupported_error">Your device doesn\'t have enough memory for this model</string>
     <string name="ai_model_unsupported_title">Model not compatible</string>
     <string name="ai_model_unsupported_message">%1$s needs %2$s of RAM and your device has %3$s. Loading it would close the app.\n\nTry a lighter model from the menu above.</string>
@@ -600,7 +591,10 @@
         <item quantity="one">%d suggested routine</item>
         <item quantity="other">%d suggested routines</item>
     </plurals>
-    <string name="ai_routine_more">+%d more</string>
+    <plurals name="ai_routine_more">
+        <item quantity="one">+%d more</item>
+        <item quantity="other">+%d more</item>
+    </plurals>
     <string name="ai_preparing_suggestions">Preparing suggestions…</string>
     <plurals name="ai_routines_created">
         <item quantity="one">%d routine created</item>

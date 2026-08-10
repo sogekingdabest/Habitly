@@ -9,6 +9,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import androidx.core.app.NotificationCompat
+import androidx.core.graphics.createBitmap
 import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.routines.domain.model.NotificationLevel
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
@@ -99,7 +100,7 @@ object RoutineNotifier {
     private fun emojiBitmap(icon: String): Bitmap? {
         if (icon.isBlank()) return null
         return runCatching {
-            val bitmap = Bitmap.createBitmap(LARGE_ICON_PX, LARGE_ICON_PX, Bitmap.Config.ARGB_8888)
+            val bitmap = createBitmap(LARGE_ICON_PX, LARGE_ICON_PX)
             val canvas = Canvas(bitmap)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 textSize = LARGE_ICON_PX * 0.72f

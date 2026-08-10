@@ -4,7 +4,6 @@ import android.app.NotificationChannel
 import android.app.NotificationChannelGroup
 import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
 import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.routines.domain.model.NotificationLevel
 import com.monsteraltech.habitly.feature.settings.data.LocaleHelper
@@ -46,8 +45,6 @@ object RoutineChannels {
      * links straight into these channels and they have to exist by then.
      */
     fun ensureChannels(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         // Texts follow the language chosen in the app, not the system one.
         val ctx = LocaleHelper.wrap(context)

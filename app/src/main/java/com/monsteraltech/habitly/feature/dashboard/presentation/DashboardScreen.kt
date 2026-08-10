@@ -38,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -84,17 +83,20 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val recentlyCompleted by viewModel.recentlyCompleted.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val recentlyCompletedMessage = recentlyCompleted?.let { routine ->
+        stringResource(R.string.dashboard_routine_completed, routine.title)
+    }
+    val undoLabel = stringResource(R.string.common_undo)
 
     val dateFormatter = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault())
     val today = dateFormatter.format(Date()).replaceFirstChar { it.uppercase() }
 
-    LaunchedEffect(recentlyCompleted) {
+    LaunchedEffect(recentlyCompleted, recentlyCompletedMessage, undoLabel) {
         recentlyCompleted?.let { routine ->
             val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.dashboard_routine_completed, routine.title),
-                actionLabel = context.getString(R.string.common_undo),
+                message = checkNotNull(recentlyCompletedMessage),
+                actionLabel = undoLabel,
                 duration = SnackbarDuration.Short
             )
             if (result == SnackbarResult.ActionPerformed) {
@@ -435,7 +437,7 @@ private fun ShoppingSummaryCard(
                     val remaining = pendingNames.size - SHOPPING_PREVIEW_COUNT
                     Text(
                         text = if (remaining > 0) {
-                            stringResource(R.string.dashboard_and_more, remaining)
+                            pluralStringResource(R.plurals.dashboard_and_more, remaining, remaining)
                         } else {
                             pluralStringResource(
                                 R.plurals.dashboard_pending_products,

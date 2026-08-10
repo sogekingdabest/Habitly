@@ -2,11 +2,13 @@ package com.monsteraltech.habitly.feature.aiassistant.data.source
 
 import android.app.ActivityManager
 import android.app.ApplicationExitInfo
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import androidx.core.content.getSystemService
+import androidx.core.content.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,6 +41,7 @@ class ModelLoadWatchdog @Inject constructor(
      * Marks the start of a load attempt. Returns how many previous attempts died without reaching
      * [onLoadSucceeded], so the caller can decide whether to degrade or give up.
      */
+    @SuppressLint("ApplySharedPref")
     fun onLoadStarting(modelId: String): Int {
         val pending = sharedPreferences.getString(KEY_PENDING_MODEL, null)
         var attempts = failedAttempts(modelId)
@@ -49,30 +52,32 @@ class ModelLoadWatchdog @Inject constructor(
             Log.w(tag, "El intento anterior de cargar $modelId no terminó (intentos: $attempts). ${lastExitDiagnosis()}")
         }
 
-        sharedPreferences.edit()
-            .putString(KEY_PENDING_MODEL, modelId)
-            .putInt(attemptsKey(modelId), attempts)
-            .commit()
+        sharedPreferences.edit(commit = true) {
+            putString(KEY_PENDING_MODEL, modelId)
+            putInt(attemptsKey(modelId), attempts)
+        }
         return attempts
     }
 
     /** The engine started: marker and counter are cleared. */
+    @SuppressLint("ApplySharedPref")
     fun onLoadSucceeded(modelId: String) {
-        sharedPreferences.edit()
-            .remove(KEY_PENDING_MODEL)
-            .remove(attemptsKey(modelId))
-            .commit()
+        sharedPreferences.edit(commit = true) {
+            remove(KEY_PENDING_MODEL)
+            remove(attemptsKey(modelId))
+        }
     }
 
     /**
      * The load failed with an ordinary exception (corrupt model, bad path). The marker is removed
      * because the process is alive: this is not a silent death and must not count as one.
      */
+    @SuppressLint("ApplySharedPref")
     fun onLoadFailedGracefully(modelId: String) {
-        sharedPreferences.edit()
-            .remove(KEY_PENDING_MODEL)
-            .remove(attemptsKey(modelId))
-            .commit()
+        sharedPreferences.edit(commit = true) {
+            remove(KEY_PENDING_MODEL)
+            remove(attemptsKey(modelId))
+        }
     }
 
     /** Forgets a model's history, e.g. when it is deleted and downloaded again. */

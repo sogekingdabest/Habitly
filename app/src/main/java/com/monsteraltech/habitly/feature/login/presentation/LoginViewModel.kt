@@ -6,6 +6,7 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
@@ -108,6 +109,8 @@ class LoginViewModel @Inject constructor(
                 }
             } catch (e: GetCredentialCancellationException) {
                 _uiState.update { it.copy(isLoading = false) }
+            } catch (e: NoCredentialException) {
+                onEvent(LoginEvent.GoogleLoginError("No hay ninguna cuenta de Google disponible"))
             } catch (e: GetCredentialException) {
                 onEvent(LoginEvent.GoogleLoginError("GetCredentialException: ${e.message}"))
             } catch(e: GoogleIdTokenParsingException) {

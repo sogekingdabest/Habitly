@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- Version upgrades have their own compatibility and release-validation workflow. Keeping
+         these advisory checks out of lint lets lint remain a deterministic code-quality gate. -->
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
+    <issue id="GradleDependency" severity="ignore" />
+    <issue id="NewerVersionAvailable" severity="ignore" />
+
+    <!-- Adaptive launcher XML and density-specific legacy icons intentionally share resource
+         names; Android selects the adaptive resource on every supported API level. -->
+    <issue id="IconXmlAndPng" severity="ignore" />
+</lint>

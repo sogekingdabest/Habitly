@@ -2,6 +2,7 @@ package com.monsteraltech.habitly.feature.routines.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,7 +26,7 @@ class CommentSeenStore @Inject constructor(
 
     fun markSeen(userId: String, routineId: String, count: Int) {
         if (userId.isBlank() || routineId.isBlank()) return
-        prefs.edit().putInt(keyOf(userId, routineId), count).apply()
+        prefs.edit { putInt(keyOf(userId, routineId), count) }
     }
 
     /**

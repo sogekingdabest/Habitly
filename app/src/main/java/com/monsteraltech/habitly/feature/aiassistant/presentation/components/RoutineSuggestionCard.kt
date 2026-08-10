@@ -97,8 +97,9 @@ fun RoutineSuggestionCard(
             }
             if (routines.size > MAX_PREVIEW_ROUTINES) {
                 Text(
-                    text = stringResource(
-                        R.string.ai_routine_more,
+                    text = pluralStringResource(
+                        R.plurals.ai_routine_more,
+                        routines.size - MAX_PREVIEW_ROUTINES,
                         routines.size - MAX_PREVIEW_ROUTINES
                     ),
                     style = MaterialTheme.typography.bodySmall,

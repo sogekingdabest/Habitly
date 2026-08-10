@@ -61,7 +61,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -86,7 +85,6 @@ fun NotesScreen(
     viewModel: NotesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTabIndex by rememberSaveable(initialType) {
         mutableIntStateOf(if (initialType == NoteType.PERSONAL) 0 else 1)
@@ -99,23 +97,26 @@ fun NotesScreen(
     }
 
     val currentType = if (selectedTabIndex == 0) NoteType.PERSONAL else NoteType.HOUSEHOLD
+    val errorMessage = uiState.errorRes?.let { stringResource(it) }
+    val deletedMessage = stringResource(R.string.notes_deleted)
+    val undoLabel = stringResource(R.string.common_undo)
 
     BackHandler(enabled = uiState.editing != null) {
         continueAfterClosingEditor { }
     }
 
-    LaunchedEffect(uiState.errorRes) {
-        uiState.errorRes?.let { res ->
-            snackbarHostState.showSnackbar(context.getString(res))
+    LaunchedEffect(uiState.errorRes, errorMessage) {
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(errorMessage)
             viewModel.onErrorShown()
         }
     }
 
-    LaunchedEffect(uiState.recentlyDeleted?.id) {
+    LaunchedEffect(uiState.recentlyDeleted?.id, deletedMessage, undoLabel) {
         if (uiState.recentlyDeleted == null) return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(
-            message = context.getString(R.string.notes_deleted),
-            actionLabel = context.getString(R.string.common_undo),
+            message = deletedMessage,
+            actionLabel = undoLabel,
             duration = SnackbarDuration.Long
         )
         if (result == SnackbarResult.ActionPerformed) viewModel.onRestoreDeletedNote()

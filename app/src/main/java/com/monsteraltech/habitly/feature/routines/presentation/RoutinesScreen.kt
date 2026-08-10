@@ -94,7 +94,6 @@ fun RoutinesScreen(
     onNavigateToAddRoutine: (RoutineType) -> Unit,
     viewModel: RoutinesViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedModeIndex by rememberSaveable { mutableIntStateOf(0) }
     var selectedTypeIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -115,10 +114,11 @@ fun RoutinesScreen(
         stringResource(R.string.routines_filter_today),
         stringResource(R.string.routines_filter_all)
     )
+    val errorMessage = uiState.errorRes?.let { stringResource(it) }
 
-    LaunchedEffect(uiState.errorRes) {
-        uiState.errorRes?.let { res ->
-            snackbarHostState.showSnackbar(context.getString(res))
+    LaunchedEffect(uiState.errorRes, errorMessage) {
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(errorMessage)
             viewModel.onErrorShown()
         }
     }
