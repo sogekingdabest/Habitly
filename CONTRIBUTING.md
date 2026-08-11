@@ -23,6 +23,9 @@ Thanks for taking the time to contribute.
 The rules suite uses a Firebase demo project and the local emulator. It cannot access production
 services.
 
+Release builds and Play Console publication follow the checklist in
+[`docs/releasing.md`](docs/releasing.md).
+
 ## Pull requests
 
 - Keep changes focused and explain user-visible behavior and security implications.
