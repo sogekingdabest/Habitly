@@ -5,8 +5,14 @@ updates:
     schedule:
       interval: weekly
     groups:
-      android-dependencies:
-        patterns: ["*"]
+      # Only group libraries that are designed to move together. Everything else gets its own PR,
+      # so an SDK-incompatible AndroidX update cannot block twenty unrelated upgrades again.
+      compose-dependencies:
+        patterns: ["androidx.compose:*"]
+        update-types: ["minor", "patch"]
+      firebase-dependencies:
+        patterns: ["com.google.firebase:*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: npm
     directory: "/"
