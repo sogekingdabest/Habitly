@@ -14,12 +14,23 @@
 
 </div>
 
+<p align="center">
+  <img src="play-store/feature-graphic-1024x500.png" alt="Habitly — household routines, shopping lists and an offline AI assistant" width="100%" />
+</p>
+
+<p align="center">
+  <img src="play-store/screenshots/phone/01-inicio.png" alt="Habitly home dashboard" width="30%" />
+  <img src="play-store/screenshots/phone/03-ia.png" alt="Habitly on-device AI assistant" width="30%" />
+  <img src="play-store/screenshots/phone/04-rutinas.png" alt="Habitly shared routines" width="30%" />
+</p>
+
 ---
 
 Security issues should be reported privately as described in [SECURITY.md](SECURITY.md). Before a
 production release, follow the [production security checklist](docs/production-security-checklist.md).
 Contributions are welcome through [CONTRIBUTING.md](CONTRIBUTING.md). Brand and listing assets have
-separate terms in [ASSETS_LICENSE.md](ASSETS_LICENSE.md).
+separate terms in [ASSETS_LICENSE.md](ASSETS_LICENSE.md). See [CHANGELOG.md](CHANGELOG.md) for shipped
+versions and [docs/releasing.md](docs/releasing.md) for the release process.
 
 ---
 
@@ -33,9 +44,11 @@ Habitly is a modern Android app designed to simplify household coordination. Man
 
 - **Authentication** — Email/password login & registration, Google Sign-In, email verification, and password recovery
 - **Household Management** — Create or join households with invite codes, multi-user support with member management
-- **Shopping List** — Add, edit, and remove items in real-time, mark items as purchased, and view shopping history
-- **Routines** — Create and manage household routines, track recurring tasks
+- **Shopping & Pantry** — Manage a real-time shopping list, purchase history, custom stores, and pantry items
+- **Routines** — Create flexible personal or shared routines, reminders, templates, and fair household rotation
+- **Notes** — Searchable personal and household notes with pinning and rich editing
 - **AI Assistant** — 100% on-device inference with LiteRT-LM, downloadable models (Gemma 4), generate recipe suggestions and auto-generate shopping lists, persistent chat sessions with Room database
+- **Android Integration** — Home-screen widget, launcher shortcuts, notifications, and text sharing into Habitly
 
 ### Tech Stack
 
@@ -69,9 +82,14 @@ app/src/main/java/com/monsteraltech/habitly/
 │   ├── household/               # Household & member management
 │   ├── login/                   # Authentication (email + Google)
 │   ├── main/                    # Main screen with bottom navigation
+│   ├── notes/                   # Personal and household notes
+│   ├── pantry/                  # Pantry inventory
 │   ├── register/                # Registration & email verification
 │   ├── routines/                # Routine management
-│   └── shopping/                # Shopping list & history
+│   ├── settings/                # Preferences and legal links
+│   ├── share/                   # Import text shared from other apps
+│   ├── shopping/                # Shopping list & history
+│   └── widget/                  # Home-screen widget
 ├── navigation/                  # Navigation graphs
 └── ui/theme/                    # Compose theming (colors, typography)
 ```
@@ -114,9 +132,11 @@ Habitly es una aplicación Android moderna diseñada para simplificar la coordin
 
 - **Autenticación** — Inicio de sesión y registro con email/contraseña, Google Sign-In, verificación de email y recuperación de contraseña
 - **Gestión del Hogar** — Crea o únete a hogares con códigos de invitación, soporte multiusuario con gestión de miembros
-- **Lista de la Compra** — Añade, edita y elimina artículos en tiempo real, marca artículos como comprados y consulta el historial
-- **Rutinas** — Crea y gestiona rutinas del hogar, haz seguimiento de tareas recurrentes
+- **Compra y Despensa** — Gestiona en tiempo real la lista, el historial, tiendas personalizadas y productos de despensa
+- **Rutinas** — Crea rutinas personales o compartidas, recordatorios, plantillas y reparto justo de tareas
+- **Notas** — Notas personales y del hogar con búsqueda, fijado y edición enriquecida
 - **Asistente de IA** — Inferencia 100% local con LiteRT-LM, modelos descargables (Gemma 4), genera sugerencias de recetas y listas de la compra automáticas, sesiones de chat persistentes con base de datos Room
+- **Integración con Android** — Widget, atajos del launcher, notificaciones y recepción de texto compartido
 
 ### Tecnologías
 
@@ -150,9 +170,14 @@ app/src/main/java/com/monsteraltech/habitly/
 │   ├── household/               # Gestión del hogar y miembros
 │   ├── login/                   # Autenticación (email + Google)
 │   ├── main/                    # Pantalla principal con navegación inferior
+│   ├── notes/                   # Notas personales y del hogar
+│   ├── pantry/                  # Inventario de despensa
 │   ├── register/                # Registro y verificación de email
 │   ├── routines/                # Gestión de rutinas
-│   └── shopping/                # Lista de la compra e historial
+│   ├── settings/                # Preferencias y enlaces legales
+│   ├── share/                   # Importación de texto compartido
+│   ├── shopping/                # Lista de la compra e historial
+│   └── widget/                  # Widget de pantalla de inicio
 ├── navigation/                  # Grafos de navegación
 └── ui/theme/                    # Theming de Compose (colores, tipografía)
 ```
@@ -195,9 +220,11 @@ Habitly é unha aplicación Android moderna deseñada para simplificar a coordin
 
 - **Autenticación** — Inicio de sesión e rexistro con email/contrasinal, Google Sign-In, verificación de email e recuperación de contrasinal
 - **Xestión do Fogar** — Crea ou únete a fogares con códigos de invitación, soporte multiusuario con xestión de membros
-- **Lista da Compra** — Engade, edita e elimina artigos en tempo real, marca artigos como comprados e consulta o historial
-- **Rutinas** — Crea e xestiona rutinas do fogar, fai seguimento de tarefas recorrentes
+- **Compra e Despensa** — Xestiona en tempo real a lista, o historial, tendas personalizadas e produtos da despensa
+- **Rutinas** — Crea rutinas persoais ou compartidas, recordatorios, modelos e reparto xusto de tarefas
+- **Notas** — Notas persoais e do fogar con busca, fixado e edición enriquecida
 - **Asistente de IA** — Inferencia 100% local con LiteRT-LM, modelos descargables (Gemma 4), xera suxestións de receitas e listas da compra automáticas, sesións de chat persistentes con base de datos Room
+- **Integración con Android** — Widget, atallos do launcher, notificacións e recepción de texto compartido
 
 ### Tecnoloxías
 
@@ -231,9 +258,14 @@ app/src/main/java/com/monsteraltech/habitly/
 │   ├── household/               # Xestión do fogar e membros
 │   ├── login/                   # Autenticación (email + Google)
 │   ├── main/                    # Pantalla principal con navegación inferior
+│   ├── notes/                   # Notas persoais e do fogar
+│   ├── pantry/                  # Inventario da despensa
 │   ├── register/                # Rexistro e verificación de email
 │   ├── routines/                # Xestión de rutinas
-│   └── shopping/                # Lista da compra e historial
+│   ├── settings/                # Preferencias e ligazóns legais
+│   ├── share/                   # Importación de texto compartido
+│   ├── shopping/                # Lista da compra e historial
+│   └── widget/                  # Widget da pantalla de inicio
 ├── navigation/                  # Grafos de navegación
 └── ui/theme/                    # Theming de Compose (cores, tipografía)
 ```

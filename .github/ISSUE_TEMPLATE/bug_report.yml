@@ -1,0 +1,54 @@
+name: Bug report
+description: Report a reproducible problem in Habitly
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Habitly. Do not include passwords, invite codes, user data,
+        Firebase identifiers, logs containing personal information, or security exploit details.
+        Report vulnerabilities privately through the Security tab.
+  - type: input
+    id: version
+    attributes:
+      label: Habitly version
+      placeholder: "1.0.3"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: "Pixel 8, Android 16"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Tap ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed personal data, credentials, invite codes, and sensitive logs.
+          required: true

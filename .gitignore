@@ -17,6 +17,7 @@ out/
 
 # Gradle files
 .gradle/
+.gradle-user-home/
 build/
 
 # Local configuration file (sdk path, etc)
@@ -144,3 +145,6 @@ coverage/
 
 # Graphify
 graphify-out/
+
+# Physical-device test artifacts (screenshots, UI dumps, videos and logcat)
+test-evidence/
