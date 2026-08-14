@@ -1,0 +1,1 @@
+Actualización de mantenimiento con componentes renovados de Firebase, inicio de sesión con Google e inyección de dependencias, además de las últimas herramientas de compilación de Android. Sin cambios en los flujos de uso.

@@ -3,6 +3,17 @@
 All notable user-facing changes to Habitly are documented here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.4] - 2026-08-14
+
+### Changed
+
+- Maintenance release updating Firebase, Google Sign-In, Hilt, and the Android build toolchain.
+- Upgraded to Android Gradle Plugin 9.3.1 and Gradle 9.5.0.
+
+### Security
+
+- Expanded CodeQL analysis across the Android app and repository tooling.
+
 ## [1.0.3] - 2026-08-11
 
 ### Added
@@ -24,4 +35,5 @@ All notable user-facing changes to Habitly are documented here. Versions follow
 - Fixed release-only issues involving R8, Room, LiteRT-LM, widgets, and model loading.
 - Resolved the lint backlog and a collection of device-tested usability issues.
 
+[1.0.4]: https://github.com/sogekingdabest/Habitly/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/sogekingdabest/Habitly/commits/v1.0.3

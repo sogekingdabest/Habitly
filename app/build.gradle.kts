@@ -22,7 +22,7 @@ val keystoreProperties = Properties().apply {
 // Al publicar solo se toca esto: el versionCode se deriva del versionName, así que no hay forma
 // de olvidarse de subirlo (Play rechaza reutilizar un versionCode) ni de que los dos se
 // desincronicen. MAJOR.MINOR.PATCH -> MAJOR*10000 + MINOR*100 + PATCH, monótono si el semver lo es.
-val habitlyVersionName = "1.0.3"
+val habitlyVersionName = "1.0.4"
 val habitlyVersionCode = habitlyVersionName.split(".").let { parts ->
     val numbers = parts.mapNotNull(String::toIntOrNull)
     require(numbers.size == 3 && numbers.all { it in 0..99 }) {
