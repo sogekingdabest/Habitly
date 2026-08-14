@@ -1,0 +1,1 @@
+Maintenance update with refreshed Firebase, Google Sign-In and dependency-injection components, plus the latest Android build toolchain. No user-facing workflow changes.
