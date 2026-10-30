@@ -32,7 +32,9 @@ val ControlOutline = Color(0xFF7E948A) // outline of toggles and fields — 3.2:
 // --- Text -----------------------------------------------------------------
 // Every colour that carries text clears 4.5:1 on the paper.
 val InkPrimary = Color(0xFF2F3D38)   // primary text
-val InkSecondary = Color(0xFF5C7268) // secondary text, descriptions, inactive tabs — 4.7:1
+// 4.7:1 against the mesh background and 5.7:1 against the paper. The lighter #5C7268 cleared AA
+// on a card but landed at 4.28:1 on the background, and plenty of secondary text sits there.
+val InkSecondary = Color(0xFF566B61) // secondary text, descriptions, inactive tabs
 val InkMuted = Color(0xFF7E948A)     // Material `outline` — never text
 
 // --- Mesh gradient blobs (background radials) -----------------------------

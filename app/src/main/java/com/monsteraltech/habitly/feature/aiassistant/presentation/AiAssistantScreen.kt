@@ -107,6 +107,7 @@ import com.monsteraltech.habitly.feature.aiassistant.presentation.components.Sho
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.SuggestionPreparingCard
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
 import com.monsteraltech.habitly.ui.components.MeshArrangement
+import com.monsteraltech.habitly.ui.theme.habitly
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
@@ -813,7 +814,8 @@ fun AiAssistantScreen(
                         Text(
                             text = stringResource(R.string.ai_disclaimer),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            // No alpha: at 0.7 this line sat at 2.6:1 against the background.
+                            color = MaterialTheme.habitly.textSecondary,
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .fillMaxWidth()

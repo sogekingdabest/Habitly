@@ -677,7 +677,7 @@ fun CompletedSectionCard(
                         Text(
                             "($totalCompleted)",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            color = MaterialTheme.habitly.textSecondary,
                             modifier = Modifier.padding(end = 4.dp)
                         )
                         Icon(
@@ -703,7 +703,7 @@ fun CompletedSectionCard(
                             store,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            color = MaterialTheme.habitly.textSecondary,
                             modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
                         )
                         items.forEach { item ->

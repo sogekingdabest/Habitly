@@ -154,7 +154,7 @@ fun OnboardingScreen(
                     Text(
                         text = stringResource(R.string.onboarding_create_desc),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
@@ -206,7 +206,7 @@ fun OnboardingScreen(
                     Text(
                         text = stringResource(R.string.onboarding_join_desc),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
