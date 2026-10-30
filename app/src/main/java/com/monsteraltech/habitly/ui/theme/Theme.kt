@@ -22,13 +22,15 @@ import androidx.core.view.WindowCompat
  * badges (streak, mustard) live in `tertiary` and in [HabitlyColors].
  */
 private val LightColorScheme = lightColorScheme(
-    primary = Sage,
+    // Actions fill with the deep green (5.3:1 against the cream label); Sage stays for rings,
+    // bars and anything decorative that carries no text — see `HabitlyColors.accent`.
+    primary = SageText,
     onPrimary = Cream,
     primaryContainer = SageSoft,
     onPrimaryContainer = SageHover,
     inversePrimary = Sage,
 
-    secondary = SageText,
+    secondary = SageHover,
     onSecondary = Cream,
     secondaryContainer = SageMist,
     onSecondaryContainer = SageDark,
@@ -45,7 +47,7 @@ private val LightColorScheme = lightColorScheme(
 
     background = MeshBase,
     onBackground = InkPrimary,
-    surface = Cream,
+    surface = Paper,
     onSurface = InkPrimary,
     surfaceVariant = BoxIdle,
     onSurfaceVariant = InkSecondary,
@@ -53,13 +55,13 @@ private val LightColorScheme = lightColorScheme(
     inverseSurface = InkPrimary,
     inverseOnSurface = Cream,
 
-    surfaceDim = Color(0xFFDDE6E0),
-    surfaceBright = Cream,
-    surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Cream,
-    surfaceContainer = Color(0xFFF1F6F1),
-    surfaceContainerHigh = MeshBase,
-    surfaceContainerHighest = Color(0xFFE4EDE7),
+    surfaceDim = Color(0xFFD5E0D8),
+    surfaceBright = Paper,
+    surfaceContainerLowest = Paper,
+    surfaceContainerLow = Color(0xFFF7FAF8),
+    surfaceContainer = Color(0xFFF2F7F3),
+    surfaceContainerHigh = Color(0xFFEAF1EC),
+    surfaceContainerHighest = Color(0xFFE1EAE4),
 
     outline = InkMuted,
     outlineVariant = MistBorder,
@@ -149,6 +151,7 @@ fun HabitlyTheme(
 
     CompositionLocalProvider(
         LocalSpacing provides Spacing(),
+        LocalSizing provides Sizing(),
         LocalHabitlyColors provides habitlyColors,
     ) {
         MaterialTheme(

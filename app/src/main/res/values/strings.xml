@@ -12,6 +12,7 @@
     <string name="routines_group_upcoming">Próximamente</string>
     <string name="routines_group_finished">Finalizadas</string>
     <string name="routines_add_routine">Añadir rutina</string>
+    <string name="routines_new">Nueva</string>
     <string name="routines_new_routine_title">Nueva Rutina</string>
     <string name="routines_field_title">Título</string>
     <string name="routines_field_description">Descripción (opcional)</string>
@@ -273,6 +274,7 @@
     <string name="common_done">Listo</string>
     <string name="common_or">o</string>
     <string name="cd_back">Volver</string>
+    <string name="cd_loading">Cargando…</string>
     <string name="cd_delete">Eliminar</string>
 
     <!-- Bottom navigation -->
@@ -368,10 +370,12 @@
     <string name="shopping_store_name">Nombre del supermercado</string>
     <string name="shopping_add">Añadir</string>
     <string name="shopping_add_product">Añadir producto</string>
+    <string name="shopping_more_actions">Más acciones</string>
+    <string name="shopping_add_hint">Añade un producto…</string>
+    <string name="shopping_add_options">Más opciones del producto</string>
     <string name="shopping_view_history">Ver historial</string>
     <string name="shopping_archive">Guardar en historial</string>
     <string name="shopping_new_store">Nuevo</string>
-    <string name="shopping_quick_add">Añade rápido:</string>
     <string name="shopping_empty_title">Tu lista está vacía</string>
     <string name="shopping_empty_subtitle">Añade tu primer producto para empezar</string>
     <string name="shopping_check_all">Marcar todo</string>

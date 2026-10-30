@@ -25,6 +25,7 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.shopping.presentation.components.ItemQuantityLabel
 import java.text.SimpleDateFormat
 import java.util.*
+import com.monsteraltech.habitly.ui.theme.habitly
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +75,7 @@ fun HistoryScreen(
                     Text(
                         text = stringResource(R.string.history_empty_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        color = MaterialTheme.habitly.textSecondary
                     )
                 }
             } else {

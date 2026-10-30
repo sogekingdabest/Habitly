@@ -352,7 +352,7 @@ private fun OptionDropdown(
                 focusedContainerColor = habitly.card,
                 unfocusedContainerColor = habitly.card,
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = habitly.border,
+                unfocusedBorderColor = habitly.controlOutline,
                 focusedLabelColor = habitly.accentText,
             )
         )

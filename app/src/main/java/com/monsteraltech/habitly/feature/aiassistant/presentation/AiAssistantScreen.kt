@@ -28,10 +28,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Menu
@@ -105,6 +107,7 @@ import com.monsteraltech.habitly.feature.aiassistant.presentation.components.Sho
 import com.monsteraltech.habitly.feature.aiassistant.presentation.components.SuggestionPreparingCard
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
 import com.monsteraltech.habitly.ui.components.MeshArrangement
+import com.monsteraltech.habitly.ui.theme.habitly
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
@@ -214,6 +217,7 @@ private fun ContextCompactBanner(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiAssistantScreen(
+    onNavigateBack: (() -> Unit)? = null,
     viewModel: AiAssistantViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -505,11 +509,31 @@ fun AiAssistantScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.ai_menu))
+                        // The assistant is no longer a tab but a screen that opens over the one
+                        // you were on, so the navigation slot is the way back and the list of
+                        // conversations moves to the actions, as a history icon.
+                        if (onNavigateBack != null) {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = stringResource(R.string.cd_back)
+                                )
+                            }
+                        } else {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.ai_menu))
+                            }
                         }
                     },
                     actions = {
+                        if (onNavigateBack != null) {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(
+                                    Icons.Default.History,
+                                    contentDescription = stringResource(R.string.ai_menu)
+                                )
+                            }
+                        }
                         if (uiState.chatSession.messages.isNotEmpty()) {
                             IconButton(onClick = { viewModel.onNewChat() }) {
                                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.ai_new_chat))
@@ -717,9 +741,11 @@ fun AiAssistantScreen(
                                     if (total > 0) listState.animateScrollToItem(total - 1)
                                 }
                             },
+                            // Bottom right, not centred: in the middle it sat on top of the last
+                            // line of the answer, which is exactly the line being read.
                             modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = 8.dp)
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 8.dp, bottom = 8.dp)
                         )
                         }
 
@@ -788,7 +814,8 @@ fun AiAssistantScreen(
                         Text(
                             text = stringResource(R.string.ai_disclaimer),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            // No alpha: at 0.7 this line sat at 2.6:1 against the background.
+                            color = MaterialTheme.habitly.textSecondary,
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
