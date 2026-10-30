@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -47,6 +48,9 @@ fun HabitlyListSection(
     modifier: Modifier = Modifier,
     title: String? = null,
     shape: Shape = LeafCornerLarge,
+    // Opaque on purpose: a row that draws a swipe background underneath has to paint this very
+    // colour over it, and with a translucent section the two would not match.
+    color: Color = MaterialTheme.habitly.card,
     trailing: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -55,7 +59,7 @@ fun HabitlyListSection(
             .fillMaxWidth()
             .habitlyShadow(MaterialTheme.sizing.elevationRaised, shape)
             .clip(shape)
-            .background(MaterialTheme.habitly.card)
+            .background(color)
             .border(1.dp, MaterialTheme.habitly.cardBorder, shape),
     ) {
         if (title != null || trailing != null) {

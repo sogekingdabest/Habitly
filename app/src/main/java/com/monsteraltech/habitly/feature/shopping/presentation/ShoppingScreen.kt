@@ -9,21 +9,27 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DoneAll
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -33,7 +39,11 @@ import com.monsteraltech.habitly.feature.shopping.presentation.add.QuickAddSheet
 import com.monsteraltech.habitly.feature.shopping.presentation.components.ItemQuantityLabel
 import com.monsteraltech.habitly.feature.shopping.presentation.components.PantryContent
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
-import com.monsteraltech.habitly.ui.components.HabitlyCard
+import com.monsteraltech.habitly.ui.components.HabitlyEmptyState
+import com.monsteraltech.habitly.ui.components.HabitlyListSection
+import com.monsteraltech.habitly.ui.components.HabitlyListSkeleton
+import com.monsteraltech.habitly.ui.components.HabitlyRowDivider
+import com.monsteraltech.habitly.ui.components.HabitlyTopBar
 import com.monsteraltech.habitly.ui.components.HabitlySwipeRow
 import com.monsteraltech.habitly.ui.components.HabitlyTextField
 import com.monsteraltech.habitly.ui.components.MeshArrangement
@@ -76,6 +86,17 @@ fun ShoppingScreen(
     var newStoreName by remember { mutableStateOf("") }
     var showArchiveDialog by remember { mutableStateOf(false) }
     var showClearDialog by remember { mutableStateOf(false) }
+
+    // The search box no longer sits permanently between the header and the list: it is one of the
+    // header actions, and it unfolds when it is asked for.
+    var showSearch by remember { mutableStateOf(false) }
+    var showOverflow by remember { mutableStateOf(false) }
+
+    // Inline "add": typing a name and pressing + is the most repeated action of the screen, and it
+    // used to cost a trip to a floating button and a sheet. The sheet is still one tap away for
+    // when the product needs a store, a quantity or a note.
+    var quickAddText by remember { mutableStateOf("") }
+    var quickAddFocused by remember { mutableStateOf(false) }
 
     // skipPartiallyExpanded: the sheet opens fully, keyboard and all; a halfway state would only
     // cover the field you have to type in.
@@ -246,61 +267,87 @@ fun ShoppingScreen(
     Scaffold(
         containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = viewModel::onOpenQuickAdd,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.shopping_add_product))
-            }
+        topBar = {
+            HabitlyTopBar(
+                title = stringResource(R.string.shopping_title),
+                subtitle = if (uiState.totalItems > 0) {
+                    pluralStringResource(
+                        R.plurals.shopping_progress,
+                        uiState.totalItems,
+                        uiState.checkedCount,
+                        uiState.totalItems
+                    )
+                } else {
+                    null
+                },
+                actions = {
+                    // Mic in the header: with your hands busy in the kitchen, dictating "leche,
+                    // huevos y pan" is the shortest path to the list. The button does not appear
+                    // when the device has no speech recogniser.
+                    VoiceInputButton(onSpokenText = viewModel::onVoiceProducts)
+                    IconButton(onClick = {
+                        showSearch = !showSearch
+                        if (!showSearch) viewModel.onClearSearch()
+                    }) {
+                        Icon(
+                            if (showSearch) Icons.Filled.SearchOff else Icons.Filled.Search,
+                            contentDescription = stringResource(R.string.shopping_search)
+                        )
+                    }
+                    // History and archiving are occasional: they cost a tap here and give the
+                    // title back the width it was losing to three icons.
+                    Box {
+                        IconButton(onClick = { showOverflow = true }) {
+                            Icon(
+                                Icons.Filled.MoreVert,
+                                contentDescription = stringResource(R.string.shopping_more_actions)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showOverflow,
+                            onDismissRequest = { showOverflow = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.shopping_view_history)) },
+                                leadingIcon = { Icon(Icons.Filled.History, contentDescription = null) },
+                                onClick = {
+                                    showOverflow = false
+                                    onNavigateToHistory()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.shopping_archive)) },
+                                leadingIcon = { Icon(Icons.Filled.Archive, contentDescription = null) },
+                                enabled = uiState.allItems.isNotEmpty(),
+                                onClick = {
+                                    showOverflow = false
+                                    showArchiveDialog = true
+                                }
+                            )
+                        }
+                    }
+                }
+            )
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .padding(top = 16.dp, bottom = 8.dp)
                 .padding(paddingValues)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 8.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // weight: with the mic the header carries three icons; without this, on narrow
-                // screens or at large font sizes the title would push them off instead of wrapping.
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.shopping_title),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    if (uiState.totalItems > 0) {
-                        Text(
-                            pluralStringResource(
-                                R.plurals.shopping_progress,
-                                uiState.totalItems,
-                                uiState.checkedCount,
-                                uiState.totalItems
-                            ),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Row {
-                    // Mic in the header: with your hands busy in the kitchen, dictating "leche,
-                    // huevos y pan" is the shortest path to the list. The button does not appear
-                    // when the device has no speech recogniser.
-                    VoiceInputButton(onSpokenText = viewModel::onVoiceProducts)
-                    IconButton(onClick = onNavigateToHistory) {
-                        Icon(Icons.Filled.History, contentDescription = stringResource(R.string.shopping_view_history))
-                    }
-                    IconButton(onClick = { showArchiveDialog = true }, enabled = uiState.allItems.isNotEmpty()) {
-                        Icon(Icons.Filled.Archive, contentDescription = stringResource(R.string.shopping_archive))
-                    }
-                }
+            // The progress reads as the underline of the header, not as one more block of its own.
+            if (uiState.totalItems > 0) {
+                LinearProgressIndicator(
+                    progress = { uiState.progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -329,33 +376,63 @@ fun ShoppingScreen(
                 return@Column
             }
 
-            SearchField(
-                query = uiState.searchQuery,
-                onQueryChange = viewModel::onSearchQueryChange,
-                onClear = viewModel::onClearSearch
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (uiState.totalItems > 0) {
-                LinearProgressIndicator(
-                    progress = { uiState.progress },
-                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    color = MaterialTheme.colorScheme.primary
+            if (showSearch) {
+                SearchField(
+                    query = uiState.searchQuery,
+                    onQueryChange = viewModel::onSearchQueryChange,
+                    onClear = viewModel::onClearSearch
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // Frequents sit above the store filter: they are the most tapped thing on the whole
-            // screen and used to be buried underneath it.
-            if (uiState.frequentItems.isNotEmpty()) {
-                Text(
-                    stringResource(R.string.shopping_quick_add),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
+            // Adding, inline and always in reach: it is the most repeated action of the screen and
+            // it used to cost a trip to a floating button and a sheet. The sheet still handles the
+            // product that needs a store, a quantity or a note.
+            val submitQuickAdd = {
+                if (quickAddText.isNotBlank()) {
+                    viewModel.onQuickAdd(quickAddText.trim())
+                    quickAddText = ""
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                HabitlyTextField(
+                    value = quickAddText,
+                    onValueChange = { quickAddText = it },
+                    label = stringResource(R.string.shopping_add_hint),
+                    modifier = Modifier
+                        .weight(1f)
+                        .onFocusChanged { quickAddFocused = it.isFocused },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { submitQuickAdd() }),
+                    trailingIcon = {
+                        IconButton(
+                            onClick = submitQuickAdd,
+                            enabled = quickAddText.isNotBlank()
+                        ) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = stringResource(R.string.shopping_add_product)
+                            )
+                        }
+                    }
                 )
+                IconButton(onClick = viewModel::onOpenQuickAdd) {
+                    Icon(
+                        Icons.Filled.Tune,
+                        contentDescription = stringResource(R.string.shopping_add_options),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            // Frequents belong to the act of adding, so they show while that field has the focus
+            // instead of standing between the header and the list all day long.
+            if (uiState.frequentItems.isNotEmpty() && (quickAddFocused || quickAddText.isNotBlank())) {
+                Spacer(modifier = Modifier.height(8.dp))
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -373,8 +450,9 @@ fun ShoppingScreen(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
@@ -403,57 +481,24 @@ fun ShoppingScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                HabitlyListSkeleton(loadingLabel = stringResource(R.string.cd_loading))
             } else if (uiState.allItems.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        Icons.Filled.ShoppingCart,
-                        contentDescription = null,
-                        modifier = Modifier.size(80.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        stringResource(R.string.shopping_empty_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        stringResource(R.string.shopping_empty_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
+                HabitlyEmptyState(
+                    icon = Icons.Outlined.ShoppingCart,
+                    title = stringResource(R.string.shopping_empty_title),
+                    description = stringResource(R.string.shopping_empty_subtitle)
+                )
             } else if (uiState.isSearching &&
                 uiState.filteredPendingItems.isEmpty() &&
                 uiState.filteredCompletedItems.isEmpty()
             ) {
                 // A search finding nothing is the useful answer: it means the product is not on the
                 // list and can be added without fear of duplicating it.
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        stringResource(R.string.shopping_search_empty, uiState.searchQuery),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        stringResource(R.string.shopping_search_empty_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
+                HabitlyEmptyState(
+                    icon = Icons.Outlined.SearchOff,
+                    title = stringResource(R.string.shopping_search_empty, uiState.searchQuery),
+                    description = stringResource(R.string.shopping_search_empty_subtitle)
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -559,46 +604,30 @@ fun StoreSectionCard(
     onToggle: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    HabitlyCard(
+    HabitlyListSection(
         modifier = Modifier.fillMaxWidth(),
         shape = LeafCornerMedium,
-        contentPadding = PaddingValues(0.dp)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = store,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    pluralStringResource(R.plurals.shopping_products_count, items.size, items.size),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        title = store,
+        trailing = {
+            Text(
+                pluralStringResource(R.plurals.shopping_products_count, items.size, items.size),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.habitly.textSecondary
             )
-            val rowColor = MaterialTheme.habitly.card
-            items.forEach { item ->
-                // key by id: without it the gesture state would be reused across rows when the list
-                // reorders, and a freshly arrived row would show up already swiped.
-                key(item.id) {
-                    ShoppingItemRow(
-                        item = item,
-                        onToggle = { onToggle(item.id) },
-                        onDelete = { onDelete(item.id) },
-                        containerColor = rowColor
-                    )
-                }
+        }
+    ) {
+        val rowColor = MaterialTheme.habitly.card
+        items.forEach { item ->
+            // key by id: without it the gesture state would be reused across rows when the list
+            // reorders, and a freshly arrived row would show up already swiped.
+            key(item.id) {
+                HabitlyRowDivider()
+                ShoppingItemRow(
+                    item = item,
+                    onToggle = { onToggle(item.id) },
+                    onDelete = { onDelete(item.id) },
+                    containerColor = rowColor
+                )
             }
         }
     }
@@ -616,12 +645,10 @@ fun CompletedSectionCard(
     // and with a translucent card the colours would not match.
     val cardColor = MaterialTheme.colorScheme.surfaceVariant
 
-    HabitlyCard(
+    HabitlyListSection(
         modifier = Modifier.fillMaxWidth(),
         shape = LeafCornerMedium,
-        color = cardColor,
-        elevation = 6.dp,
-        contentPadding = PaddingValues(0.dp)
+        color = cardColor
     ) {
         Column {
             TextButton(

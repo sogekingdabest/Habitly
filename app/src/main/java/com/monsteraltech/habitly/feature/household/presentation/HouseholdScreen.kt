@@ -37,10 +37,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.graphics.Color
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
 import com.monsteraltech.habitly.ui.components.HabitlyCard
+import com.monsteraltech.habitly.ui.components.HabitlyListSection
+import com.monsteraltech.habitly.ui.components.HabitlyListSkeleton
+import com.monsteraltech.habitly.ui.components.HabitlyRow
+import com.monsteraltech.habitly.ui.components.HabitlyRowDivider
+import com.monsteraltech.habitly.ui.components.HabitlyTopBar
 import com.monsteraltech.habitly.ui.components.MeshArrangement
 import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
 import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
 import com.monsteraltech.habitly.ui.theme.habitly
+import com.monsteraltech.habitly.ui.theme.sizing
 import java.util.concurrent.TimeUnit
 
 @Composable
@@ -89,95 +95,91 @@ fun HouseholdScreen(
     HabitlyBackground(arrangement = MeshArrangement.Household) {
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = Color.Transparent
+        containerColor = Color.Transparent,
+        topBar = {
+            HabitlyTopBar(
+                title = stringResource(R.string.household_title),
+                subtitle = if (uiState.household != null) {
+                    stringResource(R.string.household_members, uiState.memberProfiles.size)
+                } else {
+                    null
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Filled.Tune, contentDescription = stringResource(R.string.settings_title))
+                    }
+                }
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.household_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                IconButton(onClick = onNavigateToSettings) {
-                    Icon(Icons.Filled.Tune, contentDescription = stringResource(R.string.settings_title))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             if (uiState.isLoading) {
-                CircularProgressIndicator()
+                HabitlyListSkeleton(loadingLabel = stringResource(R.string.cd_loading))
             } else if (uiState.household != null) {
                 
-                // Your profile
-                HabitlyCard(
+                // Your profile, as a row: one editable name does not need a centred avatar and
+                // three stacked lines, which is what used to eat the top of the screen.
+                val nickname = uiState.userProfile?.nickname ?: ""
+                val initial = nickname.firstOrNull()?.uppercase() ?: "?"
+                HabitlyListSection(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = LeafCornerLarge,
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    contentPadding = PaddingValues(0.dp)
+                    color = MaterialTheme.colorScheme.secondaryContainer
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Avatar with initial
-                        val nickname = uiState.userProfile?.nickname ?: ""
-                        val initial = nickname.firstOrNull()?.uppercase() ?: "?"
-                        
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = initial,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = nickname.ifBlank { stringResource(R.string.household_no_nickname) },
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
+                    HabitlyRow(
+                        leading = {
+                            Box(
+                                modifier = Modifier
+                                    .size(MaterialTheme.sizing.avatar)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = initial,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        },
+                        trailing = {
                             IconButton(onClick = {
                                 editNicknameInput = nickname
                                 showEditNicknameDialog = true
                             }) {
-                                Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.household_edit_nickname), modifier = Modifier.size(18.dp))
+                                Icon(
+                                    Icons.Filled.Edit,
+                                    contentDescription = stringResource(R.string.household_edit_nickname),
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
-
+                    ) {
+                        Text(
+                            text = nickname.ifBlank { stringResource(R.string.household_no_nickname) },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
                         Text(
                             text = stringResource(R.string.household_nickname_subtitle),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(24.dp))
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Household info
                 HabitlyCard(
@@ -282,77 +284,63 @@ fun HouseholdScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Members
-                Text(
-                    text = stringResource(R.string.household_members, uiState.memberProfiles.size),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                uiState.memberProfiles.forEach { member ->
-                    // A member who has not opened the app since the update has no profile copied
-                    // into the household: shown as unknown rather than as a blank row.
-                    val memberName = member.nickname.ifBlank { member.displayName }
-                        .ifBlank { stringResource(R.string.household_member_unknown) }
-                    val memberInitial = memberName.firstOrNull()?.uppercase() ?: "?"
-                    val isYou = member.id == uiState.currentUserId
-                    val isMemberOwner = uiState.household?.isOwner(member.id) == true
+                // Members: one card for the lot, not one card each.
+                HabitlyListSection(
+                    modifier = Modifier.fillMaxWidth(),
+                    title = stringResource(R.string.household_members, uiState.memberProfiles.size)
+                ) {
+                    uiState.memberProfiles.forEachIndexed { index, member ->
+                        // A member who has not opened the app since the update has no profile
+                        // copied into the household: shown as unknown rather than as a blank row.
+                        val memberName = member.nickname.ifBlank { member.displayName }
+                            .ifBlank { stringResource(R.string.household_member_unknown) }
+                        val memberInitial = memberName.firstOrNull()?.uppercase() ?: "?"
+                        val isYou = member.id == uiState.currentUserId
+                        val isMemberOwner = uiState.household?.isOwner(member.id) == true
 
-                    HabitlyCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        shape = LeafCornerMedium,
-                        elevation = 6.dp,
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.tertiary),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = memberInitial,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onTertiary
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = if (isYou) stringResource(R.string.household_you, memberName) else memberName,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = if (isYou) FontWeight.Bold else FontWeight.Normal
-                                )
-                                if (isMemberOwner) {
+                        if (index > 0) HabitlyRowDivider()
+                        HabitlyRow(
+                            leading = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(MaterialTheme.sizing.avatarSmall)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.tertiary),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Text(
-                                        text = stringResource(R.string.household_owner_badge),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.habitly.accentText
+                                        text = memberInitial,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onTertiary
                                     )
+                                }
+                            },
+                            trailing = {
+                                // Removing members is the owner's business. It used to be visible
+                                // to every member, and the Firestore rule did not stop it either.
+                                if (!isYou && uiState.isOwner) {
+                                    IconButton(onClick = { memberToRemove = member }) {
+                                        Icon(
+                                            Icons.Filled.PersonRemove,
+                                            contentDescription = stringResource(R.string.household_remove_member),
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
                                 }
                             }
-                            // Removing members is the owner's business. It used to be visible to
-                            // every member, and the Firestore rule did not stop it either.
-                            if (!isYou && uiState.isOwner) {
-                                IconButton(onClick = { memberToRemove = member }) {
-                                    Icon(
-                                        Icons.Filled.PersonRemove,
-                                        contentDescription = stringResource(R.string.household_remove_member),
-                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                                    )
-                                }
+                        ) {
+                            Text(
+                                text = if (isYou) stringResource(R.string.household_you, memberName) else memberName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isYou) FontWeight.Bold else FontWeight.Normal
+                            )
+                            if (isMemberOwner) {
+                                Text(
+                                    text = stringResource(R.string.household_owner_badge),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.habitly.accentText
+                                )
                             }
                         }
                     }

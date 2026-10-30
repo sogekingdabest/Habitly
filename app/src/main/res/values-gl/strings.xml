@@ -9,6 +9,7 @@
     <string name="routines_group_upcoming">Próximamente</string>
     <string name="routines_group_finished">Finalizadas</string>
     <string name="routines_add_routine">Engadir rutina</string>
+    <string name="routines_new">Nova</string>
     <string name="routines_new_routine_title">Nova Rutina</string>
     <string name="routines_field_title">Título</string>
     <string name="routines_field_description">Descrición (opcional)</string>
@@ -333,10 +334,12 @@
     <string name="shopping_store_name">Nome do supermercado</string>
     <string name="shopping_add">Engadir</string>
     <string name="shopping_add_product">Engadir produto</string>
+    <string name="shopping_more_actions">Máis accións</string>
+    <string name="shopping_add_hint">Engade un produto…</string>
+    <string name="shopping_add_options">Máis opcións do produto</string>
     <string name="shopping_view_history">Ver historial</string>
     <string name="shopping_archive">Gardar no historial</string>
     <string name="shopping_new_store">Novo</string>
-    <string name="shopping_quick_add">Engade rápido:</string>
     <string name="shopping_empty_title">A túa lista está baleira</string>
     <string name="shopping_empty_subtitle">Engade o teu primeiro produto para comezar</string>
     <string name="shopping_check_all">Marcar todo</string>

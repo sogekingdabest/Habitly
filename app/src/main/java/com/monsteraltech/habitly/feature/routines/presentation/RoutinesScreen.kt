@@ -1,6 +1,5 @@
 package com.monsteraltech.habitly.feature.routines.presentation
 
-import android.content.res.Configuration
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -40,6 +39,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -59,12 +59,20 @@ import com.monsteraltech.habitly.feature.routines.presentation.components.Interv
 import com.monsteraltech.habitly.feature.routines.presentation.components.NotificationLevelSelector
 import com.monsteraltech.habitly.feature.routines.presentation.components.formatRoutineDate
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
+import com.monsteraltech.habitly.ui.components.HabitlyEmptyState
+import com.monsteraltech.habitly.ui.components.HabitlyListSkeleton
+import com.monsteraltech.habitly.ui.components.HabitlyPrimaryButton
+import com.monsteraltech.habitly.ui.components.HabitlyRowMeta
+import com.monsteraltech.habitly.ui.components.HabitlyTopBar
+import com.monsteraltech.habitly.ui.components.MetaChip
+import com.monsteraltech.habitly.ui.components.MetaChipTone
 import com.monsteraltech.habitly.ui.components.HabitlySwipeRow
 import com.monsteraltech.habitly.ui.components.HabitlyCard
 import com.monsteraltech.habitly.ui.components.MeshArrangement
 import com.monsteraltech.habitly.ui.components.RitualToggle
 import com.monsteraltech.habitly.ui.components.swipeRowSemantics
 import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
+import com.monsteraltech.habitly.ui.theme.habitly
 import androidx.compose.ui.graphics.Color
 import java.time.LocalDate
 import java.util.Calendar
@@ -99,7 +107,6 @@ fun RoutinesScreen(
     var selectedTypeIndex by rememberSaveable { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
     val today = LocalDate.now()
-    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val selectedRoutineType = if (selectedTypeIndex == 0) {
         RoutineType.PERSONAL
     } else {
@@ -127,16 +134,23 @@ fun RoutinesScreen(
     Scaffold(
         containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            if (!isLandscape) {
-                FloatingActionButton(
-                    onClick = { onNavigateToAddRoutine(selectedRoutineType) },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.routines_add_routine))
+        topBar = {
+            // "New" moves into the header, in both orientations: the floating button covered the
+            // last row of the list and competed with the assistant's own circle below it.
+            HabitlyTopBar(
+                title = stringResource(R.string.nav_routines),
+                actions = {
+                    TextButton(onClick = { onNavigateToAddRoutine(selectedRoutineType) }) {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = stringResource(R.string.routines_add_routine),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(stringResource(R.string.routines_new))
+                    }
                 }
-            }
+            )
         }
     ) { paddingValues ->
         BoxWithConstraints(
@@ -183,22 +197,13 @@ fun RoutinesScreen(
                         }
                     }
                 }
-                if (isLandscape) {
-                    FilledTonalIconButton(
-                        onClick = { onNavigateToAddRoutine(selectedRoutineType) }
-                    ) {
-                        Icon(
-                            Icons.Filled.Add,
-                            contentDescription = stringResource(R.string.routines_add_routine)
-                        )
-                    }
-                }
             }
 
             if (uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                HabitlyListSkeleton(
+                    loadingLabel = stringResource(R.string.cd_loading),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
             } else {
                 val currentType = selectedRoutineType
                 val currentMode = if (selectedModeIndex == 0) RoutineListMode.TODAY else RoutineListMode.ALL
@@ -232,15 +237,19 @@ fun RoutinesScreen(
                 }
 
                 if (routineGroups.all { it.second.isEmpty() }) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = stringResource(
-                                if (currentMode == RoutineListMode.TODAY) R.string.routines_empty_today
-                                else R.string.routines_empty_message
-                            ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    HabitlyEmptyState(
+                        icon = Icons.Filled.Checklist,
+                        title = stringResource(
+                            if (currentMode == RoutineListMode.TODAY) R.string.routines_empty_today
+                            else R.string.routines_empty_message
+                        ),
+                        action = {
+                            HabitlyPrimaryButton(
+                                text = stringResource(R.string.routines_add_routine),
+                                onClick = { onNavigateToAddRoutine(selectedRoutineType) }
+                            )
+                        }
+                    )
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -769,7 +778,7 @@ fun RoutineCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -797,97 +806,109 @@ fun RoutineCard(
                     textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
                     color = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
                 )
-                if (routine.description.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = routine.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
 
-                if (isCompleted && routine.type == RoutineType.HOUSEHOLD && routine.lastCompletedBy != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(
-                            R.string.routines_completed_by,
-                            completedByName ?: stringResource(R.string.routines_completed_by_unknown)
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                if (isPaused) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.routines_pause_title),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                // Whose turn it is. "It's your turn" stands out because it is the actionable part.
-                if (routine.assignedTo != null && !isCompleted) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (isAssignedToMe) {
-                            stringResource(R.string.routines_assigned_to_me)
-                        } else {
-                            stringResource(
-                                R.string.routines_assigned_to,
-                                assignedToName ?: stringResource(R.string.routines_completed_by_unknown)
+                // A routine used to say all eight things it knows about itself, one under the
+                // other and all with the same weight. Two chips at most now — the state that
+                // applies and the streak — and the rest lives in the detail sheet, one tap away.
+                val cardToday = LocalDate.now()
+                val stateChip: (@Composable () -> Unit)? = when {
+                    RoutineSchedule.isFinishedOn(routine, cardToday) -> {
+                        { MetaChip(stringResource(R.string.routines_finished_badge)) }
+                    }
+                    RoutineSchedule.isNotStartedOn(routine, cardToday) && routine.startDate != null -> {
+                        {
+                            MetaChip(
+                                stringResource(
+                                    R.string.routines_starts_on,
+                                    formatRoutineDate(routine.startDate)
+                                )
                             )
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isAssignedToMe) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = if (isAssignedToMe) FontWeight.Bold else FontWeight.SemiBold
-                    )
+                        }
+                    }
+                    isPaused -> {
+                        { MetaChip(stringResource(R.string.routines_pause_title)) }
+                    }
+                    isCompleted && routine.type == RoutineType.HOUSEHOLD && routine.lastCompletedBy != null -> {
+                        {
+                            MetaChip(
+                                stringResource(
+                                    R.string.routines_completed_by,
+                                    completedByName ?: stringResource(R.string.routines_completed_by_unknown)
+                                )
+                            )
+                        }
+                    }
+                    routine.assignedTo != null && !isCompleted -> {
+                        {
+                            MetaChip(
+                                text = if (isAssignedToMe) {
+                                    stringResource(R.string.routines_assigned_to_me)
+                                } else {
+                                    stringResource(
+                                        R.string.routines_assigned_to,
+                                        assignedToName ?: stringResource(R.string.routines_completed_by_unknown)
+                                    )
+                                },
+                                tone = if (isAssignedToMe) MetaChipTone.ACCENT else MetaChipTone.NEUTRAL
+                            )
+                        }
+                    }
+                    else -> null
                 }
+                val streakChip: (@Composable () -> Unit)? =
+                    if (routine.currentStreak >= MIN_STREAK_SHOWN) {
+                        {
+                            MetaChip(
+                                text = pluralStringResource(
+                                    R.plurals.routines_streak,
+                                    routine.currentStreak,
+                                    routine.currentStreak
+                                ),
+                                tone = MetaChipTone.WARM
+                            )
+                        }
+                    } else {
+                        null
+                    }
 
-                if (routine.currentStreak >= MIN_STREAK_SHOWN) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = pluralStringResource(
-                            R.plurals.routines_streak,
-                            routine.currentStreak,
-                            routine.currentStreak
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    if (routine.streakGraceUsed) {
-                        Text(
-                            text = stringResource(R.string.routines_streak_protected),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                if (stateChip != null || streakChip != null || routine.description.isNotBlank()) {
+                    HabitlyRowMeta {
+                        stateChip?.invoke()
+                        streakChip?.invoke()
+                        if (routine.description.isNotBlank()) {
+                            Text(
+                                text = routine.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.habitly.textSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                        }
                     }
                 }
 
-                // Every shared routine shows how to enter the conversation, including an empty one.
+                // Comments stay on the row — making the conversation of a shared routine findable
+                // was its own fix. What changes is the target, which measured about 26dp.
                 if (routine.type == RoutineType.HOUSEHOLD) {
                     val commentsTint = if (hasNewComments) {
                         MaterialTheme.colorScheme.primary
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        MaterialTheme.habitly.textSecondary
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .clickable(role = Role.Button, onClick = onOpenComments)
-                            .padding(vertical = 4.dp, horizontal = 6.dp)
+                            .sizeIn(minHeight = 44.dp)
+                            .padding(vertical = 6.dp, horizontal = 8.dp)
                     ) {
                         Icon(
                             Icons.Filled.ChatBubbleOutline,
                             contentDescription = null,
                             tint = commentsTint,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
@@ -900,7 +921,7 @@ fun RoutineCard(
                             } else {
                                 stringResource(R.string.routines_comments_add)
                             },
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelMedium,
                             color = commentsTint,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -916,32 +937,6 @@ fun RoutineCard(
                                     }
                             )
                         }
-                    }
-                }
-
-                // Lifetime window badge: finished (end passed) or not started yet.
-                val cardToday = LocalDate.now()
-                when {
-                    RoutineSchedule.isFinishedOn(routine, cardToday) -> {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.routines_finished_badge),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    RoutineSchedule.isNotStartedOn(routine, cardToday) && routine.startDate != null -> {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(
-                                R.string.routines_starts_on,
-                                formatRoutineDate(routine.startDate)
-                            ),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold
-                        )
                     }
                 }
             }
