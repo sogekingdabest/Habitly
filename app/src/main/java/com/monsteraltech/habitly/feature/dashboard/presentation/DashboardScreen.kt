@@ -2,6 +2,9 @@ package com.monsteraltech.habitly.feature.dashboard.presentation
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -67,6 +70,7 @@ import com.monsteraltech.habitly.ui.components.RitualToggle
 import com.monsteraltech.habitly.ui.components.StreakBadge
 import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
 import com.monsteraltech.habitly.ui.theme.habitly
+import com.monsteraltech.habitly.ui.theme.sizing
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.util.Date
@@ -143,10 +147,18 @@ fun DashboardScreen(
                 return@Scaffold
             }
 
-            LazyColumn(
+            // The content stops growing at 600dp and centres. On a tablet the same row otherwise
+            // stretches the whole width, with the toggle at one edge and the title at the other.
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
+                contentAlignment = Alignment.TopCenter
+            ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .widthIn(max = MaterialTheme.sizing.contentMaxWidth),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -218,6 +230,7 @@ fun DashboardScreen(
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                     )
                 }
+            }
             }
         }
     }

@@ -51,6 +51,7 @@ import com.monsteraltech.habitly.ui.components.VoiceInputButton
 import com.monsteraltech.habitly.ui.components.swipeRowSemantics
 import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
 import com.monsteraltech.habitly.ui.theme.habitly
+import com.monsteraltech.habitly.ui.theme.sizing
 
 /**
  * [openQuickAdd] arrives `true` when entering from the launcher icon's "Add to shopping" shortcut:
@@ -334,6 +335,10 @@ fun ShoppingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                // Caps the content and centres it: on a tablet a product row would otherwise run
+                // the whole width, with the checkbox at one edge and the name at the other.
+                .wrapContentWidth()
+                .widthIn(max = MaterialTheme.sizing.contentMaxWidth)
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 8.dp)
         ) {

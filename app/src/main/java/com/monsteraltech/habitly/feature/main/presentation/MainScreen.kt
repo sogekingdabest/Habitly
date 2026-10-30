@@ -4,12 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -209,48 +212,66 @@ private fun MainContent(
         currentDestination?.hierarchy?.any { destination -> destination.route == item.route } == true
     }
 
+    val openAssistant = {
+        // A plain navigate, not the tab switch: the assistant sits on top of the tab, and back
+        // returns to it.
+        navController.navigate(BottomNavRoute.AiAssistant.route) {
+            launchSingleTop = true
+        }
+    }
+    val selectTab: (BottomNavRoute) -> Unit = { screen ->
+        navController.navigate(screen.route) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    // A bottom bar across a tablet, or across a phone held sideways, puts the tabs as far from the
+    // thumb as they can get. From 600dp of width the navigation moves to the side, which is the
+    // Material breakpoint between a compact window and a medium one.
+    BoxWithConstraints {
+    val isCompactWidth = maxWidth < MEDIUM_WIDTH
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            if (showBottomBar) {
-                AssistantFab(
-                    onClick = {
-                        // A plain navigate, not the tab switch: the assistant sits on top of the
-                        // tab, and back returns to it.
-                        navController.navigate(BottomNavRoute.AiAssistant.route) {
-                            launchSingleTop = true
-                        }
-                    }
-                )
+            if (showBottomBar && isCompactWidth) {
+                AssistantFab(onClick = openAssistant)
             }
         },
         bottomBar = {
-            if (showBottomBar) {
+            if (showBottomBar && isCompactWidth) {
                 HabitlyBottomBar(
                     items = items,
                     currentDestination = currentDestination,
-                    onSelect = { screen ->
-                        navController.navigate(screen.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+                    onSelect = selectTab
                 )
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = BottomNavRoute.Dashboard.route,
+        Row(
             // consumeWindowInsets marks these insets as already applied. Without it every inner
             // Scaffold added the status and navigation bars again, leaving a double margin at the
             // top and dead space above the tab bar.
             modifier = Modifier
+                .fillMaxSize()
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
+        ) {
+            if (showBottomBar && !isCompactWidth) {
+                HabitlyNavRail(
+                    items = items,
+                    currentDestination = currentDestination,
+                    onSelect = selectTab,
+                    onOpenAssistant = openAssistant
+                )
+            }
+        NavHost(
+            navController = navController,
+            startDestination = BottomNavRoute.Dashboard.route,
+            modifier = Modifier.fillMaxSize()
         ) {
             composable(BottomNavRoute.Dashboard.route) {
                 DashboardScreen(
@@ -342,6 +363,109 @@ private fun MainContent(
                 )
             }
         }
+        }
+    }
+    }
+}
+
+/** Material's breakpoint between a compact window and a medium one. */
+private val MEDIUM_WIDTH = 600.dp
+
+/**
+ * The same four tabs down the side, for a tablet or a phone held sideways. A bottom bar there
+ * puts the tabs as far from the thumb as the window allows, and eats height that a landscape
+ * screen does not have to spare.
+ */
+@Composable
+private fun HabitlyNavRail(
+    items: List<BottomNavRoute>,
+    currentDestination: NavDestination?,
+    onSelect: (BottomNavRoute) -> Unit,
+    onOpenAssistant: () -> Unit,
+) {
+    val habitly = MaterialTheme.habitly
+    Row(modifier = Modifier.fillMaxHeight()) {
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(88.dp)
+                .background(habitly.card)
+                .padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            AssistantRailButton(onClick = onOpenAssistant)
+            Spacer(Modifier.height(12.dp))
+            items.forEach { screen ->
+                val selected =
+                    currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                HabitlyRailItem(screen, selected) { onSelect(screen) }
+            }
+        }
+        VerticalDivider(thickness = 1.dp, color = habitly.border)
+    }
+}
+
+@Composable
+private fun HabitlyRailItem(
+    route: BottomNavRoute,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val habitly = MaterialTheme.habitly
+    val contentColor = if (selected) MaterialTheme.colorScheme.onBackground else habitly.navIdle
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, onClick = onClick, role = Role.Tab)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 44.dp, height = 30.dp)
+                .clip(CircleShape)
+                .background(
+                    if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                route.icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Text(
+            text = stringResource(route.titleRes),
+            style = MaterialTheme.typography.labelSmall,
+            color = contentColor,
+            maxLines = 1,
+        )
+    }
+}
+
+/** The assistant at the top of the rail: icon only, since 88dp cannot hold the label. */
+@Composable
+private fun AssistantRailButton(onClick: () -> Unit) {
+    val primary = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .shadow(elevation = 14.dp, shape = CircleShape, spotColor = primary, ambientColor = primary)
+            .clip(CircleShape)
+            .background(primary)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Rounded.AutoAwesome,
+            contentDescription = stringResource(R.string.nav_assistant),
+            tint = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.size(24.dp),
+        )
     }
 }
 

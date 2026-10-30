@@ -116,6 +116,10 @@ fun HouseholdScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                // Caps the content and centres it: on a tablet a member row would otherwise run
+                // the whole width, with the avatar at one edge and the menu at the other.
+                .wrapContentWidth()
+                .widthIn(max = MaterialTheme.sizing.contentMaxWidth)
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 16.dp)
                 .verticalScroll(rememberScrollState()),
