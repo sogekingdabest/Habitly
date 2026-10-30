@@ -18,16 +18,22 @@ val Sage = Color(0xFF5F8F82)        // primary / accent — the brand green
 val SageSoft = Color(0xFFDBE8E2)    // primarySoft — icon halo, primary container
 val SageMist = Color(0xFFD7E6DF)    // accentSoft — "View" pill, secondary container
 
-// --- Surfaces (cream paper + mist) ----------------------------------------
-val Cream = Color(0xFFF9FBF6)       // surface / card — the "paper"
-val MeshBase = Color(0xFFEAF1EC)    // mesh gradient base
+// --- Surfaces (paper + mist) ----------------------------------------------
+// Paper and background used to sit at 1.1:1, so a card only existed thanks to its shadow. The
+// background drops a step and the paper goes white: the card now has an edge of its own.
+val Paper = Color(0xFFFFFFFF)       // surface / card — the "paper"
+val Cream = Color(0xFFF9FBF6)       // text and icons on top of the accent green
+val MeshBase = Color(0xFFE3ECE5)    // mesh gradient base / background
 val BoxIdle = Color(0xFFEAF0EC)     // surfaceVariant — empty checkbox, hints
-val MistBorder = Color(0xFFD1DDD6)  // borders, dividers, field outlines
+val MistBorder = Color(0xFFD1DDD6)  // dividers and hairlines (decorative only)
+val CardBorder = Color(0xFFCBDAD2)  // card edge, so paper does not float on the background
+val ControlOutline = Color(0xFF7E948A) // outline of toggles and fields — 3.2:1 on paper
 
 // --- Text -----------------------------------------------------------------
+// Every colour that carries text clears 4.5:1 on the paper.
 val InkPrimary = Color(0xFF2F3D38)   // primary text
-val InkSecondary = Color(0xFF7F938C) // secondary text / descriptions
-val InkMuted = Color(0xFFA6B6AE)     // muted labels, inactive nav icons
+val InkSecondary = Color(0xFF5C7268) // secondary text, descriptions, inactive tabs — 4.7:1
+val InkMuted = Color(0xFF7E948A)     // Material `outline` — never text
 
 // --- Mesh gradient blobs (background radials) -----------------------------
 val Mesh1 = Color(0xFFCFE6DC)
@@ -38,8 +44,8 @@ val Mesh5 = Color(0xFFEEF5F0)
 
 // --- Streak / mustard (warm badges) ---------------------------------------
 val StreakBg = Color(0xFFF6E6C8)   // streak pill background
-val StreakFg = Color(0xFFB57A1F)   // streak text/emoji, mustard accent
-val Mustard = Color(0xFFD99A4E)    // warm mustard accent (tertiary)
+val StreakFg = Color(0xFF8A5A10)   // streak text/emoji — 4.8:1 on its own pill
+val Mustard = Color(0xFFD99A4E)    // warm mustard accent, decorative only
 
 // --- Tinted shadow (the warm signature, never Material grey) --------------
 val WarmShadow = Color(0x663C6E5F) // rgba(60,110,95,0.40) — translucent deep green
