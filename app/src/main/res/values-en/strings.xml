@@ -271,6 +271,7 @@
     <string name="common_done">Done</string>
     <string name="common_or">or</string>
     <string name="cd_back">Back</string>
+    <string name="cd_loading">Loading…</string>
     <string name="cd_delete">Delete</string>
 
     <!-- Bottom navigation -->

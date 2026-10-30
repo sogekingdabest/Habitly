@@ -151,6 +151,7 @@ fun HabitlyTheme(
 
     CompositionLocalProvider(
         LocalSpacing provides Spacing(),
+        LocalSizing provides Sizing(),
         LocalHabitlyColors provides habitlyColors,
     ) {
         MaterialTheme(

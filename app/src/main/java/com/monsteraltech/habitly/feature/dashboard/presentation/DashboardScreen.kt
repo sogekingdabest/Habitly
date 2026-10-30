@@ -2,7 +2,6 @@ package com.monsteraltech.habitly.feature.dashboard.presentation
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,17 +9,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ShoppingCart
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -41,9 +38,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,16 +50,22 @@ import com.monsteraltech.habitly.feature.notes.domain.model.NoteType
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
 import com.monsteraltech.habitly.ui.components.HabitlyBackground
 import com.monsteraltech.habitly.ui.components.HabitlyCard
+import com.monsteraltech.habitly.ui.components.HabitlyEmptyState
+import com.monsteraltech.habitly.ui.components.HabitlyListSection
+import com.monsteraltech.habitly.ui.components.HabitlyListSkeleton
 import com.monsteraltech.habitly.ui.components.HabitlyPill
 import com.monsteraltech.habitly.ui.components.HabitlyPrimaryButton
-import com.monsteraltech.habitly.ui.components.HabitlyToggleCard
+import com.monsteraltech.habitly.ui.components.HabitlyRowDivider
+import com.monsteraltech.habitly.ui.components.HabitlyRowMeta
+import com.monsteraltech.habitly.ui.components.HabitlySkeleton
+import com.monsteraltech.habitly.ui.components.HabitlyToggleRow
+import com.monsteraltech.habitly.ui.components.HabitlyTopBar
 import com.monsteraltech.habitly.ui.components.IconHalo
 import com.monsteraltech.habitly.ui.components.MeshArrangement
 import com.monsteraltech.habitly.ui.components.MineBadge
 import com.monsteraltech.habitly.ui.components.RitualToggle
 import com.monsteraltech.habitly.ui.components.StreakBadge
 import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
-import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
 import com.monsteraltech.habitly.ui.theme.habitly
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -72,6 +74,9 @@ import java.util.Locale
 
 /** Products named on the summary card before collapsing into "and N more". */
 private const val SHOPPING_PREVIEW_COUNT = 3
+
+/** A streak only earns a badge once it is worth bragging about. */
+private const val MIN_STREAK_SHOWN = 2
 
 @Composable
 fun DashboardScreen(
@@ -110,14 +115,30 @@ fun DashboardScreen(
     HabitlyBackground(arrangement = MeshArrangement.Home) {
         Scaffold(
             containerColor = Color.Transparent,
-            snackbarHost = { SnackbarHost(snackbarHostState) }
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                HabitlyTopBar(
+                    overline = today,
+                    title = stringResource(
+                        R.string.dashboard_greeting,
+                        uiState.household?.name ?: stringResource(R.string.dashboard_your_home)
+                    ),
+                    actions = { if (uiState.isOffline) OfflineBadge() }
+                )
+            }
         ) { innerPadding ->
             if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentAlignment = Alignment.Center
+                // A skeleton with the shape of the list, not a centred spinner: the spinner made
+                // the whole page jump into place the moment the data arrived.
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    CircularProgressIndicator()
+                    HabitlySkeleton(width = 180.dp, height = 22.dp)
+                    HabitlyListSkeleton(loadingLabel = stringResource(R.string.cd_loading))
                 }
                 return@Scaffold
             }
@@ -129,16 +150,6 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Compressed header: the date and greeting used to eat the whole first screen,
-                // which is exactly where the actionable content belongs.
-                item {
-                    DashboardHeader(
-                        today = today,
-                        householdName = uiState.household?.name,
-                        isOffline = uiState.isOffline
-                    )
-                }
-
                 item {
                     TodayProgressCard(
                         done = uiState.todayRoutinesDone,
@@ -174,28 +185,28 @@ fun DashboardScreen(
                     )
                 }
 
-                if (uiState.pendingRoutines.isEmpty()) {
-                    item {
-                        HabitlyCard(shape = LeafCornerLarge) {
-                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = stringResource(R.string.dashboard_routines_done),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.habitly.textSecondary
+                // One card for the whole list instead of one per routine: the same rows go from
+                // ~92dp to 56dp, so the day fits on screen instead of being scrolled through.
+                item {
+                    HabitlyListSection {
+                        if (uiState.pendingRoutines.isEmpty()) {
+                            HabitlyEmptyState(
+                                icon = Icons.Outlined.TaskAlt,
+                                title = stringResource(R.string.dashboard_routines_done)
+                            )
+                        } else {
+                            uiState.pendingRoutines.forEachIndexed { index, routine ->
+                                if (index > 0) HabitlyRowDivider()
+                                val isMine = routine.type == RoutineType.HOUSEHOLD &&
+                                    uiState.currentUserId.isNotBlank() &&
+                                    routine.assignedTo == uiState.currentUserId
+                                RoutineDashboardRow(
+                                    routine = routine,
+                                    isMine = isMine,
+                                    onToggle = { viewModel.onToggleRoutine(routine) }
                                 )
                             }
                         }
-                    }
-                } else {
-                    items(uiState.pendingRoutines, key = { it.id }) { routine ->
-                        val isMine = routine.type == RoutineType.HOUSEHOLD &&
-                            uiState.currentUserId.isNotBlank() &&
-                            routine.assignedTo == uiState.currentUserId
-                        RoutineDashboardItem(
-                            routine = routine,
-                            isMine = isMine,
-                            onToggle = { viewModel.onToggleRoutine(routine) }
-                        )
                     }
                 }
 
@@ -209,29 +220,6 @@ fun DashboardScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun DashboardHeader(today: String, householdName: String?, isOffline: Boolean) {
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = today,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.habitly.accentText,
-                modifier = Modifier.weight(1f)
-            )
-            if (isOffline) OfflineBadge()
-        }
-        Text(
-            text = stringResource(
-                R.string.dashboard_greeting,
-                householdName ?: stringResource(R.string.dashboard_your_home)
-            ),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground
-        )
     }
 }
 
@@ -461,7 +449,7 @@ private fun ShoppingSummaryCard(
 }
 
 @Composable
-private fun RoutineDashboardItem(
+private fun RoutineDashboardRow(
     routine: Routine,
     isMine: Boolean,
     onToggle: () -> Unit
@@ -474,44 +462,38 @@ private fun RoutineDashboardItem(
         else R.string.dashboard_routine_state_pending
     )
 
-    HabitlyToggleCard(
+    HabitlyToggleRow(
         checked = isCompleted,
         onCheckedChange = { onToggle() },
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .semantics { stateDescription = state },
-        shape = LeafCornerMedium,
-        contentPadding = PaddingValues(16.dp)
+        stateLabel = state,
+        // Only draws the state; the row announces it, since the row is the toggle.
+        leading = { RitualToggle(checked = isCompleted, size = 28.dp) }
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // Only draws the state; the card announces it, since the card is the clickable.
-            RitualToggle(checked = isCompleted, size = 34.dp)
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = routine.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Row(
-                    modifier = Modifier.padding(top = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (routine.description.isNotBlank()) {
-                        Text(
-                            text = routine.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.habitly.textSecondary
-                        )
-                    }
-                    if (routine.currentStreak >= 2) {
-                        StreakBadge(routine.currentStreak)
-                    }
-                    if (isMine) {
-                        MineBadge(stringResource(R.string.routines_assigned_to_me))
-                    }
+        Text(
+            text = routine.title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        val hasMeta = routine.description.isNotBlank() ||
+            routine.currentStreak >= MIN_STREAK_SHOWN ||
+            isMine
+        if (hasMeta) {
+            HabitlyRowMeta {
+                if (routine.description.isNotBlank()) {
+                    Text(
+                        text = routine.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.habitly.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
+                if (routine.currentStreak >= MIN_STREAK_SHOWN) {
+                    StreakBadge(routine.currentStreak)
+                }
+                if (isMine) {
+                    MineBadge(stringResource(R.string.routines_assigned_to_me))
                 }
             }
         }

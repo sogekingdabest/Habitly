@@ -246,6 +246,7 @@
     <string name="common_undo">Desfacer</string>
     <string name="common_or">ou</string>
     <string name="cd_back">Volver</string>
+    <string name="cd_loading">Cargando…</string>
     <string name="cd_delete">Eliminar</string>
 
     <!-- Bottom navigation -->

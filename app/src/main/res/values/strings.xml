@@ -273,6 +273,7 @@
     <string name="common_done">Listo</string>
     <string name="common_or">o</string>
     <string name="cd_back">Volver</string>
+    <string name="cd_loading">Cargando…</string>
     <string name="cd_delete">Eliminar</string>
 
     <!-- Bottom navigation -->
