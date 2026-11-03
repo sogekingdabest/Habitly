@@ -41,7 +41,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.monsteraltech.habitly.navigation.ExternalDestination
 import com.monsteraltech.habitly.feature.share.presentation.ImportSharedTextSheet
+import com.monsteraltech.habitly.ui.theme.LocalAssistantInset
 import com.monsteraltech.habitly.ui.theme.habitly
+import com.monsteraltech.habitly.ui.theme.sizing
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -234,10 +236,18 @@ private fun MainContent(
     // Material breakpoint between a compact window and a medium one.
     BoxWithConstraints {
     val isCompactWidth = maxWidth < MEDIUM_WIDTH
+    // The pill floats over whatever the tab is showing, so the screens under it have to know how
+    // much room to leave at the end of their scroll. Beside the rail, or on a screen with no bar,
+    // there is no pill and the inset stays at zero.
+    val showAssistantFab = showBottomBar && isCompactWidth
+    CompositionLocalProvider(
+        LocalAssistantInset provides
+            if (showAssistantFab) MaterialTheme.sizing.assistantInset else 0.dp
+    ) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            if (showBottomBar && isCompactWidth) {
+            if (showAssistantFab) {
                 AssistantFab(onClick = openAssistant)
             }
         },
@@ -364,6 +374,7 @@ private fun MainContent(
             }
         }
         }
+    }
     }
     }
 }

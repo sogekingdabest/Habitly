@@ -50,6 +50,7 @@ import com.monsteraltech.habitly.ui.components.MeshArrangement
 import com.monsteraltech.habitly.ui.components.VoiceInputButton
 import com.monsteraltech.habitly.ui.components.swipeRowSemantics
 import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
+import com.monsteraltech.habitly.ui.theme.assistantInset
 import com.monsteraltech.habitly.ui.theme.habitly
 import com.monsteraltech.habitly.ui.theme.sizing
 
@@ -507,6 +508,8 @@ fun ShoppingScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
+                    // The assistant pill floats over the end of this list.
+                    contentPadding = PaddingValues(bottom = assistantInset),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     uiState.pendingItemsByStore.forEach { (store, items) ->

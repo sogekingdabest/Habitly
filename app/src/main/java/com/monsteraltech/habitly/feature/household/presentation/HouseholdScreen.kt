@@ -44,6 +44,7 @@ import com.monsteraltech.habitly.ui.components.HabitlyRowDivider
 import com.monsteraltech.habitly.ui.components.HabitlyTopBar
 import com.monsteraltech.habitly.ui.components.MeshArrangement
 import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
+import com.monsteraltech.habitly.ui.theme.assistantInset
 import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
 import com.monsteraltech.habitly.ui.theme.habitly
 import com.monsteraltech.habitly.ui.theme.sizing
@@ -121,8 +122,10 @@ fun HouseholdScreen(
                 .wrapContentWidth()
                 .widthIn(max = MaterialTheme.sizing.contentMaxWidth)
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                // After verticalScroll, so this room is *inside* the scroll: "Salir de la casa"
+                // used to end up under the assistant pill, which stole half its touch target.
+                .padding(bottom = 16.dp + assistantInset),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(8.dp))

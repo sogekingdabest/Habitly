@@ -72,6 +72,7 @@ import com.monsteraltech.habitly.ui.components.MeshArrangement
 import com.monsteraltech.habitly.ui.components.RitualToggle
 import com.monsteraltech.habitly.ui.components.swipeRowSemantics
 import com.monsteraltech.habitly.ui.theme.LeafCornerMedium
+import com.monsteraltech.habitly.ui.theme.assistantInset
 import com.monsteraltech.habitly.ui.theme.habitly
 import androidx.compose.ui.graphics.Color
 import java.time.LocalDate
@@ -253,7 +254,13 @@ fun RoutinesScreen(
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 16.dp,
+                            // The assistant pill floats over the end of this list.
+                            bottom = 16.dp + assistantInset
+                        ),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         routineGroups.forEach { (titleRes, groupedRoutines) ->

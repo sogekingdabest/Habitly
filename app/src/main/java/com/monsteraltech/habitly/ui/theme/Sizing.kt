@@ -35,6 +35,11 @@ data class Sizing(
     /** Blur of the warm shadow, by how lifted the surface is. */
     val elevationRaised: Dp = 12.dp,
     val elevationFloating: Dp = 16.dp,
+    /**
+     * 64dp — the room the assistant pill needs at the bottom of a scroll: its own 48dp plus the
+     * 16dp the Scaffold keeps around a floating action.
+     */
+    val assistantInset: Dp = 64.dp,
 )
 
 /** Durations of the three motions the app uses. Anything else is an exception worth a comment. */
@@ -48,6 +53,22 @@ object Motion {
 }
 
 val LocalSizing = staticCompositionLocalOf { Sizing() }
+
+/**
+ * Extra room a scrolling screen leaves at its bottom so the assistant pill does not land on the
+ * last row. `MainScreen` provides it only on the tabs that actually show the pill — on a detail
+ * screen, or beside the navigation rail, it stays at zero and no screen grows a phantom margin.
+ *
+ * It goes *inside* the scroll, as content padding or a trailing spacer, never as an outer
+ * `padding`: the content should still pass under the pill, and only need to clear it at the end.
+ */
+val LocalAssistantInset = staticCompositionLocalOf { 0.dp }
+
+/** The bottom room the assistant pill needs here, 0dp where there is no pill. */
+val assistantInset: Dp
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalAssistantInset.current
 
 /** Access to the sizing scale from any composable under `HabitlyTheme`. */
 val MaterialTheme.sizing: Sizing

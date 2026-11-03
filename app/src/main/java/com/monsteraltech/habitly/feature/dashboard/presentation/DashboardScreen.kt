@@ -69,6 +69,7 @@ import com.monsteraltech.habitly.ui.components.MineBadge
 import com.monsteraltech.habitly.ui.components.RitualToggle
 import com.monsteraltech.habitly.ui.components.StreakBadge
 import com.monsteraltech.habitly.ui.theme.LeafCornerLarge
+import com.monsteraltech.habitly.ui.theme.assistantInset
 import com.monsteraltech.habitly.ui.theme.habitly
 import com.monsteraltech.habitly.ui.theme.sizing
 import java.text.SimpleDateFormat
@@ -159,7 +160,13 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxHeight()
                     .widthIn(max = MaterialTheme.sizing.contentMaxWidth),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 28.dp),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 12.dp,
+                    // The assistant pill floats over the end of this list.
+                    bottom = 28.dp + assistantInset
+                ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
