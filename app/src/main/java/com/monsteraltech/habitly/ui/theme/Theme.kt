@@ -63,8 +63,12 @@ private val LightColorScheme = lightColorScheme(
     surfaceContainerHigh = Color(0xFFEAF1EC),
     surfaceContainerHighest = Color(0xFFE1EAE4),
 
-    outline = InkMuted,
-    outlineVariant = MistBorder,
+    // Both of Material's outlines are the edge of a control here: `outline` draws a text field,
+    // and this version of OutlinedButton draws its border from `outlineVariant`. Leaving the
+    // latter on the decorative hairline put "Salir de la casa" at 1.1:1. Dividers do not read
+    // these — they name `habitly.border` themselves, which is still the hairline.
+    outline = ControlOutline,
+    outlineVariant = ControlOutline,
     scrim = Color.Black
 )
 
@@ -109,8 +113,10 @@ private val DarkColorScheme = darkColorScheme(
     surfaceContainerHigh = Color(0xFF2A3B34),
     surfaceContainerHighest = Color(0xFF31433B),
 
+    // Same rule in dark: #778a81 measures 3.2:1 on the card, while #33443c sat at 1.1:1 and was
+    // dressing outlined buttons. It stays the colour of dividers, through `habitly.border`.
     outline = InkDarkMuted,            // #778a81
-    outlineVariant = InkDarkBorder,    // #33443c
+    outlineVariant = InkDarkMuted,     // #778a81
     scrim = Color.Black
 )
 

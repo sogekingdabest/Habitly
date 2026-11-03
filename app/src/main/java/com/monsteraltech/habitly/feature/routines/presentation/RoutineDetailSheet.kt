@@ -50,6 +50,7 @@ import com.monsteraltech.habitly.feature.routines.domain.model.RoutineComment
 import com.monsteraltech.habitly.feature.routines.domain.model.RoutineType
 import com.monsteraltech.habitly.feature.routines.domain.util.RoutineSchedule
 import com.monsteraltech.habitly.feature.routines.presentation.components.CompletionHeatmap
+import com.monsteraltech.habitly.ui.theme.habitly
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -162,7 +163,7 @@ private fun RoutineDetailContent(
                 )
         }
 
-        HorizontalDivider()
+        HorizontalDivider(color = MaterialTheme.habitly.border)
 
         MonthSelector(
                 month = detail.month,
@@ -191,7 +192,7 @@ private fun RoutineDetailContent(
 
         // Keep the conversation above holiday mode: it is the section people revisit.
         if (routine.type == RoutineType.HOUSEHOLD) {
-            HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.habitly.border)
             CommentsSection(
                 detail = detail,
                 currentUserId = currentUserId,
@@ -205,7 +206,7 @@ private fun RoutineDetailContent(
             )
         }
 
-        HorizontalDivider()
+        HorizontalDivider(color = MaterialTheme.habitly.border)
 
         PauseSection(
             pausedUntil = detail.routine.pausedUntil,

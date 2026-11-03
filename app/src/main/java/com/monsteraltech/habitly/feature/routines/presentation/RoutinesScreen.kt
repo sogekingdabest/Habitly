@@ -349,7 +349,7 @@ fun RoutinesScreen(
                     .align(Alignment.TopCenter)
             ) {
                 listPanel(Modifier.weight(0.5f).fillMaxHeight())
-                VerticalDivider()
+                VerticalDivider(color = MaterialTheme.habitly.border)
                 Box(
                     modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     contentAlignment = Alignment.Center
@@ -986,7 +986,7 @@ fun RoutineCard(
                             onMoveDown?.invoke()
                         }
                     )
-                    HorizontalDivider()
+                    HorizontalDivider(color = MaterialTheme.habitly.border)
                     DropdownMenuItem(
                         text = {
                             Text(

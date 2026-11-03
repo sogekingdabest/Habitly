@@ -362,7 +362,7 @@ fun AiAssistantScreen(
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.titleLarge
                 )
-                HorizontalDivider()
+                HorizontalDivider(color = MaterialTheme.habitly.border)
                 
                 Button(
                     onClick = {

@@ -27,7 +27,10 @@ val MeshBase = Color(0xFFE3ECE5)    // mesh gradient base / background
 val BoxIdle = Color(0xFFEAF0EC)     // surfaceVariant — empty checkbox, hints
 val MistBorder = Color(0xFFD1DDD6)  // dividers and hairlines (decorative only)
 val CardBorder = Color(0xFFCBDAD2)  // card edge, so paper does not float on the background
-val ControlOutline = Color(0xFF7E948A) // outline of toggles and fields — 3.2:1 on paper
+// Edge of anything you can touch: a field, a toggle, an outlined button. 3.4:1 against the mesh
+// background and 4.2:1 against the paper. The lighter #7E948A cleared 3:1 on paper but sat at
+// 2.65:1 on the background, and a text field on "Mi Casa" has no card under it.
+val ControlOutline = Color(0xFF6B8177)
 
 // --- Text -----------------------------------------------------------------
 // Every colour that carries text clears 4.5:1 on the paper.
@@ -35,7 +38,6 @@ val InkPrimary = Color(0xFF2F3D38)   // primary text
 // 4.7:1 against the mesh background and 5.7:1 against the paper. The lighter #5C7268 cleared AA
 // on a card but landed at 4.28:1 on the background, and plenty of secondary text sits there.
 val InkSecondary = Color(0xFF566B61) // secondary text, descriptions, inactive tabs
-val InkMuted = Color(0xFF7E948A)     // Material `outline` — never text
 
 // --- Mesh gradient blobs (background radials) -----------------------------
 val Mesh1 = Color(0xFFCFE6DC)
