@@ -56,6 +56,50 @@ fun StreakBadge(streak: Int, modifier: Modifier = Modifier) {
     )
 }
 
+/**
+ * Metadata chip for the second line of a row: an optional icon plus a short label.
+ *
+ * At most two per row. A routine knows eight things about itself — description, who did it,
+ * paused, whose turn, streak, protected streak, comments, start and end date — and used to say
+ * all of them stacked with the same weight; the rest belongs in its detail sheet.
+ */
+@Composable
+fun MetaChip(
+    text: String,
+    modifier: Modifier = Modifier,
+    tone: MetaChipTone = MetaChipTone.NEUTRAL,
+) {
+    val habitly = MaterialTheme.habitly
+    val background = when (tone) {
+        MetaChipTone.NEUTRAL -> habitly.boxIdle
+        MetaChipTone.ACCENT -> habitly.mineBg
+        MetaChipTone.WARM -> habitly.streakBg
+    }
+    val contentColor = when (tone) {
+        MetaChipTone.NEUTRAL -> habitly.textSecondary
+        MetaChipTone.ACCENT -> habitly.mineFg
+        MetaChipTone.WARM -> habitly.streakFg
+    }
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(background)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = contentColor,
+        )
+    }
+}
+
+/** The three tones a [MetaChip] can take: plain, "this concerns you", and streak. */
+enum class MetaChipTone { NEUTRAL, ACCENT, WARM }
+
 /** "Your turn" pill — marks the task assigned to the current user. */
 @Composable
 fun MineBadge(text: String, modifier: Modifier = Modifier) {

@@ -52,7 +52,8 @@ fun RitualToggle(
             .clip(CircleShape)
             .then(
                 if (checked) Modifier.background(primary)
-                else Modifier.background(habitly.boxIdle).border(2.dp, habitly.border, CircleShape)
+                else Modifier.background(habitly.boxIdle)
+                    .border(2.dp, habitly.controlOutline, CircleShape)
             ),
         contentAlignment = Alignment.Center,
     ) {

@@ -318,7 +318,7 @@ fun RegisterScreen(
                             containerColor = MaterialTheme.habitly.card,
                             contentColor = MaterialTheme.colorScheme.onSurface
                         ),
-                        border = BorderStroke(1.5.dp, MaterialTheme.habitly.border)
+                        border = BorderStroke(1.5.dp, MaterialTheme.habitly.controlOutline)
                     ) {
                         if (state.isGoogleSignInLoading) {
                             CircularProgressIndicator(

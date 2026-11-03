@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.monsteraltech.habitly.R
+import com.monsteraltech.habitly.ui.theme.habitly
 
 /** A product's default unit; with it and a quantity of 1 there is nothing worth showing. */
 const val DEFAULT_UNIT = "unidad"
@@ -37,7 +38,7 @@ fun ItemQuantityLabel(quantity: Int, unit: String, modifier: Modifier = Modifier
     Text(
         text = quantityWithUnit(quantity, unit),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+        color = MaterialTheme.habitly.textSecondary,
         modifier = modifier
     )
 }

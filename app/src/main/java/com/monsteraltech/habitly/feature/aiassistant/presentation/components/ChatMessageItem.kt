@@ -128,10 +128,14 @@ fun ChatMessageItem(
                     Text(
                         text = remember(message.timestamp) { formatTimestamp(message.timestamp) },
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (isUser)
-                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        // No alpha over a text colour: it undoes the palette's contrast without
+                        // showing up in it. At 0.5 this timestamp sat at 2:1 on the card. The
+                        // hierarchy is carried by the size, which is already the smallest label.
+                        color = if (isUser) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.habitly.textSecondary
+                        },
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -142,27 +146,23 @@ fun ChatMessageItem(
         // answers only, report — required by Google Play's AI policy. Both hide while streaming,
         // since copying or reporting half an answer is no use.
         if (!isStreaming && displayText.isNotBlank()) {
+            // The buttons keep IconButton's own 48dp: forcing them to 28dp made two targets that
+            // sit side by side smaller than a fingertip. The icon inside stays at 18dp.
             Row {
-                IconButton(
-                    onClick = { onCopy(displayText) },
-                    modifier = Modifier.size(28.dp)
-                ) {
+                IconButton(onClick = { onCopy(displayText) }) {
                     Icon(
                         Icons.Rounded.ContentCopy,
                         contentDescription = stringResource(R.string.ai_copy),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        tint = MaterialTheme.habitly.textSecondary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
                 if (!isUser && !isReported) {
-                    IconButton(
-                        onClick = onReport,
-                        modifier = Modifier.size(28.dp)
-                    ) {
+                    IconButton(onClick = onReport) {
                         Icon(
                             Icons.Outlined.Flag,
                             contentDescription = stringResource(R.string.ai_report),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            tint = MaterialTheme.habitly.textSecondary,
                             modifier = Modifier.size(18.dp)
                         )
                     }

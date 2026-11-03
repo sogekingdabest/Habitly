@@ -29,8 +29,10 @@ data class HabitlyColors(
     val iconHalo: Color,
     /** Background of an unchecked checkbox/toggle. */
     val boxIdle: Color,
-    /** Soft border/outline of fields and cards. */
+    /** Soft border of dividers and hairlines — decorative, never the edge of a control. */
     val border: Color,
+    /** Outline of toggles, fields and outlined buttons: controls need 3:1 to be seen. */
+    val controlOutline: Color,
     /** Secondary text (descriptions, metadata). */
     val textSecondary: Color,
     /** Inactive navigation icons and labels. */
@@ -51,16 +53,17 @@ data class HabitlyColors(
 )
 
 val LightHabitlyColors = HabitlyColors(
-    card = Cream,
-    cardBorder = Color.Transparent,
+    card = Paper,
+    cardBorder = CardBorder,
     shadow = WarmShadow,
     accent = Sage,
     accentText = SageText,
     iconHalo = SageSoft,
     boxIdle = BoxIdle,
     border = MistBorder,
+    controlOutline = ControlOutline,
     textSecondary = InkSecondary,
-    navIdle = InkMuted,
+    navIdle = InkSecondary,
     streakBg = StreakBg,
     streakFg = StreakFg,
     mineBg = SageSoft,
@@ -79,8 +82,9 @@ val DarkHabitlyColors = HabitlyColors(
     iconHalo = SageDarkContainer,   // #2a3b33
     boxIdle = InkDarkBoxIdle,       // #16211c
     border = InkDarkBorder,         // #33443c
+    controlOutline = InkDarkMuted,  // #778a81 — 3.8:1 sobre la tarjeta oscura
     textSecondary = InkDarkSecondary, // #9db2a8
-    navIdle = InkDarkMuted,         // #778a81
+    navIdle = InkDarkSecondary,     // #9db2a8 — la pestaña inactiva es texto: necesita 4,5:1
     streakBg = StreakBgDark,        // #3e3417
     streakFg = StreakFgDark,        // #e0ac4c
     mineBg = SageDarkContainer,     // #2a3b33

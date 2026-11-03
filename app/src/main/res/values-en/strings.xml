@@ -9,6 +9,7 @@
     <string name="routines_group_upcoming">Upcoming</string>
     <string name="routines_group_finished">Finished</string>
     <string name="routines_add_routine">Add routine</string>
+    <string name="routines_new">New</string>
     <string name="routines_new_routine_title">New Routine</string>
     <string name="routines_field_title">Title</string>
     <string name="routines_field_description">Description (optional)</string>
@@ -271,6 +272,7 @@
     <string name="common_done">Done</string>
     <string name="common_or">or</string>
     <string name="cd_back">Back</string>
+    <string name="cd_loading">Loading…</string>
     <string name="cd_delete">Delete</string>
 
     <!-- Bottom navigation -->
@@ -366,10 +368,12 @@
     <string name="shopping_store_name">Store name</string>
     <string name="shopping_add">Add</string>
     <string name="shopping_add_product">Add product</string>
+    <string name="shopping_more_actions">More actions</string>
+    <string name="shopping_add_hint">Add a product…</string>
+    <string name="shopping_add_options">More product options</string>
     <string name="shopping_view_history">View history</string>
     <string name="shopping_archive">Save to history</string>
     <string name="shopping_new_store">New</string>
-    <string name="shopping_quick_add">Quick add:</string>
     <string name="shopping_empty_title">Your list is empty</string>
     <string name="shopping_empty_subtitle">Add your first product to get started</string>
     <string name="shopping_check_all">Check all</string>

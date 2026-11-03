@@ -187,7 +187,7 @@ fun NotesScreen(
                         .align(Alignment.TopCenter)
                 ) {
                     listPanel(Modifier.weight(0.42f).fillMaxHeight())
-                    VerticalDivider()
+                    VerticalDivider(color = MaterialTheme.habitly.border)
                     Box(
                         modifier = Modifier.weight(0.58f).fillMaxHeight().padding(24.dp),
                         contentAlignment = Alignment.TopCenter

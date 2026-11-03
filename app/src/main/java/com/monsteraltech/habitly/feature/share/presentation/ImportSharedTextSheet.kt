@@ -303,7 +303,7 @@ private fun ReviewState(
         if (uiState.routines.isNotEmpty()) {
             item(key = "routines-header") {
                 if (uiState.products.isNotEmpty()) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.habitly.border)
                 }
                 SectionHeader(
                     icon = Icons.Filled.EventRepeat,

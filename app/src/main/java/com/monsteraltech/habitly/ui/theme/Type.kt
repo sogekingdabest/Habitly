@@ -135,18 +135,20 @@ val Typography = Typography(
         lineHeight = 18.sp,
         letterSpacing = 0.1.sp
     ),
+    // 12sp is the floor for anything on screen: below that, tab labels and metadata stop being
+    // readable long before the text itself gets smaller.
     labelMedium = TextStyle(
         fontFamily = BodyFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 11.sp,
+        fontSize = 12.sp,
         lineHeight = 16.sp,
         letterSpacing = 0.4.sp
     ),
     labelSmall = TextStyle(
         fontFamily = BodyFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 10.sp,
-        lineHeight = 14.sp,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
         letterSpacing = 0.4.sp
     )
 )

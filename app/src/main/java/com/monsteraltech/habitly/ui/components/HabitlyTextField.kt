@@ -55,7 +55,7 @@ fun HabitlyTextField(
             disabledContainerColor = habitly.card,
             errorContainerColor = habitly.card,
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = habitly.border,
+            unfocusedBorderColor = habitly.controlOutline,
             focusedLabelColor = habitly.accentText,
             cursorColor = MaterialTheme.colorScheme.primary,
         ),

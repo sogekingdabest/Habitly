@@ -39,6 +39,7 @@ import com.monsteraltech.habitly.R
 import com.monsteraltech.habitly.feature.shopping.domain.model.PantryItem
 import com.monsteraltech.habitly.ui.components.HabitlySwipeRow
 import com.monsteraltech.habitly.ui.components.swipeRowSemantics
+import com.monsteraltech.habitly.ui.theme.habitly
 
 /**
  * The pantry view: what is at home, grouped by category.
@@ -99,7 +100,7 @@ private fun PantryEmptyState(modifier: Modifier = Modifier) {
         Text(
             stringResource(R.string.pantry_empty_subtitle),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            color = MaterialTheme.habitly.textSecondary
         )
     }
 }
