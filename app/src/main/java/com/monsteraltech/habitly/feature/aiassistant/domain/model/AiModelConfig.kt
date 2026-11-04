@@ -83,9 +83,14 @@ object AvailableAiModels {
         id = "lfm2-5-1-2b",
         name = "LFM2.5 (1.2B) - Ligero",
         downloadUrl = "https://huggingface.co/litert-community/LFM2.5-1.2B-Instruct/resolve/main/LFM2.5-1.2B-Instruct_int4.litertlm",
-        sizeBytes = 735_999_360L, // 736 MB
+        // Resubido por litert-community: el 2026-11-04 el puntero LFS pasó a estos valores y los
+        // anteriores (735_999_360 / e51f10c7...) rompían la descarga. El fallo era de los malos:
+        // se bajaban los 736 MB enteros, verifyChecksum lanzaba NonRetryableDownloadException al
+        // final y el .tmp se borraba, así que el modelo de los móviles de 4 GB no había forma de
+        // instalarlo. Conviene revalidar estos dos campos cuando se toque el catálogo.
+        sizeBytes = 736_015_744L, // 736 MB
         filename = "lfm2-5-1-2b-int4.litertlm",
-        sha256 = "e51f10c7b3b8e0568148484e2ece6473f4195ea5a3111b333fdaf9496434fe05",
+        sha256 = "e904729a8a8a0160658cb7cd22992e270a0547c05cc45b08c47ece5c0e29425b",
         // **Measured** thresholds, not estimates: with the 4096 window the app reaches 2.10 GB RSS
         // (1.04 GB private dirty and unreclaimable; the rest are clean file pages the kernel can
         // evict). That fits on a 4 GB phone, but only just — hence 6 GB as the recommendation and

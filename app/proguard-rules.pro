@@ -47,10 +47,10 @@
 }
 
 # --- LiteRT-LM --------------------------------------------------------------------------------
-# El AAR no trae reglas de consumidor (comprobado en litertlm-android-0.14.0.aar: no hay
-# proguard.txt) y su capa JNI resuelve clases y métodos por nombre desde C++ —LiteRtLmJni,
-# JniMessageCallback, JniInferenceCallback, NativeLibraryLoader—. Renombrarlas es
-# NoSuchMethodError al cargar el modelo.
+# El AAR no trae reglas de consumidor (comprobado en litertlm-android-0.14.0.aar y de nuevo en
+# 0.19.0: ninguno trae proguard.txt) y su capa JNI resuelve clases y métodos por nombre desde
+# C++ —LiteRtLmJni, JniMessageCallback, JniInferenceCallback, NativeLibraryLoader—.
+# Renombrarlas es NoSuchMethodError al cargar el modelo.
 -keep class com.google.ai.edge.litertlm.** { *; }
 -keepclasseswithmembernames class * {
     native <methods>;
