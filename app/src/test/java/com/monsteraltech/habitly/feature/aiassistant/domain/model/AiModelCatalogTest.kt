@@ -1,6 +1,8 @@
 package com.monsteraltech.habitly.feature.aiassistant.domain.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -42,6 +44,47 @@ class AiModelCatalogTest {
         val filenames = AvailableAiModels.models.map { it.filename }
         assertEquals("Hay ids duplicados en el catálogo", ids.size, ids.distinct().size)
         assertEquals("Hay filenames duplicados en el catálogo", filenames.size, filenames.distinct().size)
+    }
+
+    @Test
+    fun `una penalizacion de repeticion por debajo de 1 reventaria en el primer mensaje`() {
+        // RepetitionPenaltyConfig exige >= 1.0f en su init: un 0,9 en el catálogo no se vería al
+        // compilar, se vería como IllegalArgumentException al enviar el primer mensaje, en el
+        // móvil del usuario. Y 1.0 exacto es "sin penalización", así que declararlo es ruido.
+        AvailableAiModels.models.forEach { model ->
+            val penalty = model.repetitionPenalty ?: return@forEach
+            assertTrue(
+                "El modelo ${model.id} declara una penalización inválida: $penalty",
+                penalty > 1.0f
+            )
+        }
+    }
+
+    @Test
+    fun `LFM3 declara lo que dice su manifiesto`() {
+        // Cada uno de estos campos sale del litertlm_manifest.json del fichero que descargamos,
+        // no de la model card de Liquid: lo que manda es la variante convertida.
+        val lfm3 = AvailableAiModels.LFM3_1_7B
+
+        // backends [cpu, gpu], default_backend gpu — al contrario que el LFM2.5.
+        assertTrue("LFM3 sí corre en GPU", lfm3.supportsGpu)
+        // El fichero no trae sección de drafter, así que no hay MTP que activar.
+        assertFalse("LFM3 no trae drafter", lfm3.supportsSpeculativeDecoding)
+        // Sus tool calls vienen en XML propio, que LiteRT-LM no parsea: va por el extractor JSON.
+        assertFalse("LFM3 no habla nuestra ruta de tools", lfm3.supportsToolCalling)
+        // "Thinks by default (enable_thinking false turns it off)".
+        assertTrue("Hay que apagarle el pensar en cada turno", lfm3.thinksByDefault)
+        // El fichero declara su propio sampler a temperatura 0,1; es la cifra que acompaña al 1.1.
+        assertNotNull("LFM3 declara penalización de repetición", lfm3.repetitionPenalty)
+        assertEquals(1.1f, lfm3.repetitionPenalty!!, 0.0f)
+        assertEquals(0.1, lfm3.defaultTemperature, 0.0)
+        // Descargamos la variante ekv4096: pedir más ventana de la que el fichero trae no es una
+        // opción, y pedir menos fue el error que ya cometimos con el LFM2.5.
+        assertEquals(4096, lfm3.maxTokens)
+        assertTrue(
+            "LFM3 tiene que ser la variante ekv4096",
+            lfm3.downloadUrl.endsWith("LFM3-1.7B_mixed_int4_ekv4096.litertlm")
+        )
     }
 
     @Test

@@ -12,10 +12,12 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ExperimentalFlags
+import com.google.ai.edge.litertlm.RepetitionPenaltyConfig
 import com.google.ai.edge.litertlm.ResponseFormat
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.google.ai.edge.litertlm.SpeculativeDecodingConfig
 import com.google.ai.edge.litertlm.SpeculativeDecodingMode
+import com.google.ai.edge.litertlm.ThinkingConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.Content
@@ -387,10 +389,17 @@ class AiAssistantRepositoryImpl @Inject constructor(
      * Unlimited buffer: with the default of 64, the native callback's `trySend` would drop tokens
      * whenever the collector fell momentarily behind.
      */
+    /**
+     * Every generation in this class goes through here, which is why the per-message knobs that
+     * depend on the model live here and not at each of the seven call sites.
+     *
+     * [penaliseRepetition] is off for the structured turns: see [AiModelConfig.repetitionPenalty].
+     */
     private fun streamGeneration(
         conv: Conversation,
         prompt: String,
-        responseFormat: ResponseFormat? = null
+        responseFormat: ResponseFormat? = null,
+        penaliseRepetition: Boolean = true
     ): Flow<String> =
         callbackFlow {
             val generation = NativeGeneration(conv)
@@ -411,13 +420,38 @@ class AiAssistantRepositoryImpl @Inject constructor(
                 }
             }
             try {
-                conv.sendMessageAsync(prompt, callback, responseFormat = responseFormat)
+                conv.sendMessageAsync(
+                    prompt,
+                    callback,
+                    repetitionPenaltyConfig = repetitionPenaltyConfig(penaliseRepetition),
+                    thinkingConfig = thinkingConfig(),
+                    responseFormat = responseFormat
+                )
             } catch (e: Exception) {
                 generation.markFinished()
                 throw e
             }
             awaitClose { generation.cancel() }
         }.buffer(Channel.UNLIMITED)
+
+    /**
+     * Silences the reasoning channel on a model that would otherwise use it (LFM3). `null` — a
+     * model that does not reason — leaves the engine with whatever the file's metadata declares,
+     * which is what every model in the catalogue did before this existed.
+     *
+     * It is set per message rather than on the `ConversationConfig` so it cannot be forgotten on
+     * one of the conversations this class creates: the extraction turns, the title, the summary
+     * and the warmup each build their own.
+     */
+    private fun thinkingConfig(): ThinkingConfig? =
+        if (_selectedModel.value.thinksByDefault) ThinkingConfig(enableThinking = false) else null
+
+    /** The model's repetition penalty, on the turns where penalising a repeat is the right call. */
+    private fun repetitionPenaltyConfig(penalise: Boolean): RepetitionPenaltyConfig? {
+        if (!penalise) return null
+        val penalty = _selectedModel.value.repetitionPenalty ?: return null
+        return RepetitionPenaltyConfig(repetitionPenalty = penalty)
+    }
 
     /**
      * Cancels the in-flight native generation if it is still alive and waits for the engine to
@@ -603,7 +637,12 @@ class AiAssistantRepositoryImpl @Inject constructor(
         )
         return try {
             val builder = StringBuilder()
-            streamGeneration(extractionConv, sourceText, responseFormat).collect { chunk ->
+            streamGeneration(
+                extractionConv,
+                sourceText,
+                responseFormat,
+                penaliseRepetition = false
+            ).collect { chunk ->
                 builder.append(chunk)
             }
             builder.toString()
@@ -643,7 +682,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
         )
         try {
             // The emitted text is ignored: the routines arrive through the tool callback.
-            streamGeneration(extractionConv, sourceText).collect { }
+            streamGeneration(extractionConv, sourceText, penaliseRepetition = false).collect { }
         } finally {
             closeConversationSafely(extractionConv)
             ExperimentalFlags.enableConversationConstrainedDecoding = false

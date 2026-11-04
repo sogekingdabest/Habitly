@@ -18,14 +18,14 @@ class ModelCompatibilityTest {
     }
 
     @Test
-    fun `un movil de 4 GB no puede con ninguno de los Gemma 4`() {
+    fun `un movil de 4 GB solo puede con el modelo ligero`() {
         assertEquals(
             ModelCompatibility.Unsupported,
             AvailableAiModels.Gemma4_E2B_IT.compatibilityWith(POCO_M4_5G)
         )
         assertEquals(
             ModelCompatibility.Unsupported,
-            AvailableAiModels.Gemma4_E4B_IT.compatibilityWith(POCO_M4_5G)
+            AvailableAiModels.LFM3_1_7B.compatibilityWith(POCO_M4_5G)
         )
     }
 
@@ -56,6 +56,25 @@ class ModelCompatibilityTest {
     }
 
     @Test
+    fun `el modelo que se elige solo depende del orden del catalogo`() {
+        // Replica la regla de `bestModelForDevice`: el ÚLTIMO del catálogo que el dispositivo
+        // aguante. Nada en el nombre de la lista lo dice, así que reordenarla cambia en silencio
+        // el modelo que estrena cada usuario — y esta es la red que lo detecta.
+        fun chosenAt(ram: Long) = AvailableAiModels.models.lastOrNull { it.compatibilityWith(ram).canUse }
+
+        assertEquals(AvailableAiModels.LFM2_5_1_2B_Instruct, chosenAt(4 * GB))
+        assertEquals(AvailableAiModels.LFM3_1_7B, chosenAt(6 * GB))
+        assertEquals(AvailableAiModels.LFM3_1_7B, chosenAt(8 * GB))
+        assertEquals(AvailableAiModels.LFM3_1_7B, chosenAt(12 * GB))
+
+        assertEquals(
+            "LFM3 tiene que ir último para ser el recomendado",
+            AvailableAiModels.LFM3_1_7B,
+            AvailableAiModels.models.last()
+        )
+    }
+
+    @Test
     fun `entre el minimo y el recomendado se avisa pero se deja continuar`() {
         // 6 GB cumple el mínimo del E2B (6) pero no lo recomendado (8): aviso, no bloqueo.
         val compatibility = AvailableAiModels.Gemma4_E2B_IT.compatibilityWith(6 * GB)
@@ -67,7 +86,7 @@ class ModelCompatibilityTest {
     fun `una lectura de RAM fallida avisa en vez de bloquear o dar via libre`() {
         // Si no sabemos la memoria, ni cerramos la puerta a un dispositivo capaz ni dejamos
         // pasar en silencio a uno que no lo es.
-        val compatibility = AvailableAiModels.Gemma4_E4B_IT.compatibilityWith(0L)
+        val compatibility = AvailableAiModels.LFM3_1_7B.compatibilityWith(0L)
         assertEquals(ModelCompatibility.Tight, compatibility)
     }
 
