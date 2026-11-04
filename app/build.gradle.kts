@@ -116,11 +116,16 @@ android {
     }
 }
 
-// litertlm 0.14.0 se compiló con Kotlin 2.2 (-Xjvm-default=all), así que llama a
-// SendChannel.close$default(...) como método ESTÁTICO SOBRE LA INTERFAZ. En coroutines 1.9.0 y
-// 1.10.2 ese método vive en SendChannel$DefaultImpls, no en la interfaz -> NoSuchMethodError al
-// enviar cualquier mensaje. Solo coroutines >= 1.11.0 (compilado con Kotlin 2.2+) lo expone en la
-// interfaz. Forzamos 1.11.0 en todo el grafo para que coincida con el ABI que litertlm espera.
+// Historia: litertlm 0.14.0 se compiló con Kotlin 2.2 (-Xjvm-default=all) pero su POM pedía
+// coroutines 1.9.0. Llamaba a SendChannel.close$default(...) como método ESTÁTICO SOBRE LA
+// INTERFAZ, y en 1.9.0 y 1.10.2 ese método vive en SendChannel$DefaultImpls -> NoSuchMethodError
+// al enviar cualquier mensaje. Solo coroutines >= 1.11.0 lo expone en la interfaz.
+//
+// Desde litertlm 0.19.0 su POM ya pide 1.11.0, así que el desajuste original está arreglado en
+// origen y este force no es lo que nos salva. Se queda como suelo: androidx.navigationevent 1.0.0
+// sigue pidiendo 1.9.0 por transitividad, y si algún día desaparecen los dos que piden 1.11.0
+// (litertlm y coroutines-play-services) la resolución por versión más alta nos devolvería ahí sin
+// avisar, y el síntoma sería de nuevo un NoSuchMethodError en tiempo de ejecución, no al compilar.
 configurations.all {
     resolutionStrategy {
         force(

@@ -13,6 +13,8 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.google.ai.edge.litertlm.SpeculativeDecodingConfig
+import com.google.ai.edge.litertlm.SpeculativeDecodingMode
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.Content
@@ -715,12 +717,10 @@ class AiAssistantRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Builds and initialises the engine on a specific backend. MTP (speculative decoding) is a
-     * global LiteRT-LM flag, enabled only when [speculative] holds (GPU plus a model with a
-     * drafter). If initialisation fails the engine is closed before propagating, so a retry is
-     * possible.
+     * Builds and initialises the engine on a specific backend. MTP (speculative decoding) is
+     * enabled only when [speculative] holds (GPU plus a model with a drafter). If initialisation
+     * fails the engine is closed before propagating, so a retry is possible.
      */
-    @OptIn(ExperimentalApi::class)
     private fun buildEngine(
         config: AiModelConfig,
         modelPath: String,
@@ -728,12 +728,19 @@ class AiAssistantRepositoryImpl @Inject constructor(
         speculative: Boolean,
         maxTokens: Int = config.maxTokens
     ): Engine {
-        ExperimentalFlags.enableSpeculativeDecoding = speculative
         val engineConfig = EngineConfig(
             modelPath = modelPath,
             backend = backend,
             maxNumTokens = maxTokens,
-            cacheDir = context.cacheDir.path
+            cacheDir = context.cacheDir.path,
+            // Per engine since LiteRT-LM 0.19.0. It used to be the global
+            // `ExperimentalFlags.enableSpeculativeDecoding`, read whenever an Engine was created;
+            // the config says the same thing without a process-wide mutable flag, and MODE is
+            // explicit rather than inherited. ADAPTIVE (speculate only while it measures faster)
+            // is the interesting option, but switching to it is a behaviour change, not a bump.
+            speculativeDecodingConfig = SpeculativeDecodingConfig(
+                mode = if (speculative) SpeculativeDecodingMode.ON else SpeculativeDecodingMode.OFF
+            )
         )
         val eng = Engine(engineConfig)
         try {
