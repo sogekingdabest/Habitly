@@ -135,6 +135,14 @@ class FakeAiAssistantRepository : AiAssistantRepository {
         resetSessionCallCount++
     }
 
+    /** How many times the screen asked for the engine to be loaded ahead of the first message. */
+    var preloadCallCount = 0
+        private set
+
+    override suspend fun preloadModel() {
+        preloadCallCount++
+    }
+
     override fun isModelLoaded(): Boolean = true
 
     override fun observeChatHistory(): Flow<List<AiChatSession>> = _chatHistory

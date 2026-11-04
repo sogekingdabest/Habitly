@@ -112,6 +112,27 @@ class AiAssistantViewModelTest {
     }
 
     @Test
+    fun `abrir la pantalla pide la precarga del motor`() {
+        // Sin esto los ~8 s de carga los paga el usuario en su primer mensaje, porque nadie más
+        // carga el modelo. Y una sola vez: la precarga no pasa por launchChatOperation, así que
+        // nada la cancela ni la repite.
+        advance()
+
+        assertEquals(1, fakeRepository.preloadCallCount)
+    }
+
+    @Test
+    fun `enviar un mensaje no vuelve a pedir la precarga`() {
+        advance()
+
+        viewModel.onInputChange("Hola")
+        viewModel.onSendMessage()
+        advance()
+
+        assertEquals(1, fakeRepository.preloadCallCount)
+    }
+
+    @Test
     fun `initial state has available models`() {
         val state = viewModel.uiState.value
 

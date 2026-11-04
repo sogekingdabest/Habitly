@@ -748,6 +748,29 @@ class AiAssistantRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun preloadModel() {
+        if (engine != null) return
+
+        val config = _selectedModel.value
+        // Each of these is a reason the screen is already showing something else — a download
+        // card, an "it does not fit" notice, a crash notice. Letting `loadModelLocked` discover
+        // them would overwrite that state with an error the user never asked for, just for having
+        // opened the assistant.
+        if (localModelManager.getModelPath(config) == null) return
+        if (config.compatibilityWith(deviceMemoryProbe.totalRamBytes()) == ModelCompatibility.Unsupported) return
+        if (modelLoadWatchdog.failedAttempts(config.id) >= MAX_LOAD_ATTEMPTS) return
+
+        // The active session on purpose, not null: coming back to an existing chat it already
+        // carries its system prompt, so the conversation is built complete here and the first
+        // message reuses it. On a brand-new chat the prompt is still empty — it is computed when
+        // the message is sent — and the conversation is rebuilt then, which is correct.
+        //
+        // No separate job and no cancelling of anything: `loadModel` takes the engine mutex, so a
+        // message sent mid-preload waits for it instead of starting a second load.
+        Log.d(tag, "Precargando ${config.id}")
+        loadModel(_activeSession.value)
+    }
+
     override fun isModelLoaded(): Boolean = engine != null
 
     @OptIn(ExperimentalApi::class)
