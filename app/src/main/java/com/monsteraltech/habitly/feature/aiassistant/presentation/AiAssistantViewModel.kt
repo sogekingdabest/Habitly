@@ -100,6 +100,12 @@ class AiAssistantViewModel @Inject constructor(
                 _uiState.update { it.copy(chatHistory = history) }
             }
         }
+
+        // Start loading the engine now, not when the first message is sent. Deliberately **not**
+        // through `launchChatOperation`: this is not a user operation, and going through it would
+        // have the first send cancel the very load it is waiting for. The repository's engine
+        // mutex already does the serialising — a message sent mid-preload waits for it.
+        viewModelScope.launch { repository.preloadModel() }
     }
 
     /**

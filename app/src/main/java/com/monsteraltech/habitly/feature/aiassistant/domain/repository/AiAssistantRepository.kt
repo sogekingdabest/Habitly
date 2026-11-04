@@ -77,6 +77,18 @@ interface AiAssistantRepository {
     suspend fun summarizeConversation(sourceText: String): String
 
     suspend fun resetSession()
+
+    /**
+     * Loads the engine ahead of the first message, while the user is still reading the screen or
+     * typing. Without it the whole load — around eight seconds on a Galaxy S25+ — is charged to
+     * the first answer, because nothing else ever loads the model.
+     *
+     * Safe to call on every screen open: it returns immediately when the model is already loaded,
+     * is not downloaded, does not fit the device, or has already taken the process down. It never
+     * reports an error of its own, since the user did not ask for it.
+     */
+    suspend fun preloadModel()
+
     fun isModelLoaded(): Boolean
 
     // Chat History
