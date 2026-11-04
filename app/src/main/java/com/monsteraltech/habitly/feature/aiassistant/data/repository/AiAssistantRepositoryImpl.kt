@@ -104,6 +104,24 @@ class AiAssistantRepositoryImpl @Inject constructor(
     private var conversationHistoryKey: String? = null
 
     /**
+     * What the native conversation was built from, and the only safe thing to compare against
+     * before reusing it.
+     *
+     * The session id alone is **not** enough, and the gap is not theoretical: a new chat is
+     * created with an empty system prompt and the real one is set a moment later, on the same
+     * session id. Keyed by id, that conversation looked reusable and the model answered the first
+     * message of every new chat with no instructions at all.
+     *
+     * The history is deliberately absent. It changes with every turn, but so does the native
+     * conversation, in step: that is the whole point of reusing it. What must invalidate is the
+     * context being rebuilt underneath — another session, a system prompt that arrived late, or a
+     * compaction that rewrote the summary.
+     */
+    private fun AiChatSession?.conversationKey(): String? = this?.let {
+        "${it.id}|${it.systemPrompt.hashCode()}|${it.contextSummary.hashCode()}|${it.summarizedUpTo}"
+    }
+
+    /**
      * The in-flight native generation (the last one launched). Cancelling the collecting coroutine
      * does **not** stop the engine, so this is the only source of truth for whether it is safe to
      * close or recreate a conversation, or close the engine.
@@ -328,7 +346,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
         val sessionNow = _activeSession.value ?: session
 
         // If the session has changed, recreate the conversation with correct history and system instruction.
-        if (sessionNow.id != conversationHistoryKey || conversation == null) {
+        if (sessionNow.conversationKey() != conversationHistoryKey || conversation == null) {
             engineMutex.withLock {
                 recreateConversation(sessionNow)
             }
@@ -353,7 +371,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
         var emittedAny = false
         try {
-            streamGeneration(conv, prompt).collect { chunk ->
+            streamGeneration(conv, prompt, maxOutputToken = CHAT_MAX_OUTPUT_TOKENS).collect { chunk ->
                 emittedAny = true
                 emit(chunk)
             }
@@ -369,11 +387,11 @@ class AiAssistantRepositoryImpl @Inject constructor(
                 recreateConversation(sessionNow, HISTORY_CHAR_BUDGET_RETRY)
                 conversation
             } ?: throw e
-            streamGeneration(retryConv, prompt).collect { chunk ->
+            streamGeneration(retryConv, prompt, maxOutputToken = CHAT_MAX_OUTPUT_TOKENS).collect { chunk ->
                 emit(chunk)
             }
         }
-        conversationHistoryKey = sessionNow.id
+        conversationHistoryKey = sessionNow.conversationKey()
     }.flowOn(Dispatchers.Default)
 
     /**
@@ -394,12 +412,19 @@ class AiAssistantRepositoryImpl @Inject constructor(
      * depend on the model live here and not at each of the seven call sites.
      *
      * [penaliseRepetition] is off for the structured turns: see [AiModelConfig.repetitionPenalty].
+     *
+     * [maxOutputToken] is a hard ceiling on the answer, and every caller states its own because
+     * the right ceiling is a property of the turn, not of the model. It is **null for the
+     * extraction turns**: a schema guarantees well-formed JSON, not *complete* JSON, so a cut at
+     * the ceiling would hand the parser a valid prefix of an object that never closes. The prose
+     * turns can be cut and still be useful; the structured ones cannot.
      */
     private fun streamGeneration(
         conv: Conversation,
         prompt: String,
         responseFormat: ResponseFormat? = null,
-        penaliseRepetition: Boolean = true
+        penaliseRepetition: Boolean = true,
+        maxOutputToken: Int? = null
     ): Flow<String> =
         callbackFlow {
             val generation = NativeGeneration(conv)
@@ -424,6 +449,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
                     prompt,
                     callback,
                     repetitionPenaltyConfig = repetitionPenaltyConfig(penaliseRepetition),
+                    maxOutputToken = maxOutputToken,
                     thinkingConfig = thinkingConfig(),
                     responseFormat = responseFormat
                 )
@@ -530,9 +556,8 @@ class AiAssistantRepositoryImpl @Inject constructor(
                 val builder = StringBuilder()
                 val source = "Usuario: ${userMessage.take(TITLE_SOURCE_MAX_CHARS)}\n" +
                     "Asistente: ${assistantReply.take(TITLE_SOURCE_MAX_CHARS)}"
-                streamGeneration(titleConv, source).collect { chunk ->
-                    builder.append(chunk)
-                }
+                streamGeneration(titleConv, source, maxOutputToken = TITLE_MAX_OUTPUT_TOKENS)
+                    .collect { chunk -> builder.append(chunk) }
                 sanitizeTitle(builder.toString())
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -560,7 +585,8 @@ class AiAssistantRepositoryImpl @Inject constructor(
             )
             try {
                 val builder = StringBuilder()
-                streamGeneration(summaryConv, sourceText).collect { builder.append(it) }
+                streamGeneration(summaryConv, sourceText, maxOutputToken = SUMMARY_MAX_OUTPUT_TOKENS)
+                    .collect { builder.append(it) }
                 builder.toString().trim()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -715,7 +741,8 @@ class AiAssistantRepositoryImpl @Inject constructor(
     override suspend fun resetSession() {
         withContext(Dispatchers.Default) {
             engineMutex.withLock {
-                conversationHistoryKey = null
+                // `recreateConversation` now owns the key on both sides: null while there is no
+                // conversation, set to the session once there is one.
                 recreateConversation(_activeSession.value)
             }
         }
@@ -859,7 +886,12 @@ class AiAssistantRepositoryImpl @Inject constructor(
                     // take(1) cancels the rest, and with the hand-rolled bridge that cancellation
                     // actually **stops** the native decode. Previously it kept generating and the
                     // close blocked until the whole greeting had been answered.
-                    streamGeneration(conv, "Hola").take(1).collect { }
+                    // One token is all a warmup needs, and asking the engine to stop there is
+                    // cleaner than letting it generate a greeting and then cancelling it. The
+                    // take(1) stays as the belt to that pair of braces.
+                    streamGeneration(conv, "Hola", maxOutputToken = WARMUP_MAX_OUTPUT_TOKENS)
+                        .take(1)
+                        .collect { }
                 } finally {
                     closeConversationSafely(conv)
                 }
@@ -892,10 +924,24 @@ class AiAssistantRepositoryImpl @Inject constructor(
                 temperature = _selectedModel.value.defaultTemperature
             ),
             systemInstruction = systemInstruction?.let { Contents.of(it) },
-            initialMessages = history
+            initialMessages = history,
+            // The system prompt and the history are prefilled here instead of on the first
+            // message. The work is the same; what changes is where it lands, and here it lands on
+            // `Dispatchers.Default` (this flow) or `Dispatchers.IO` (the model load), never on the
+            // main thread. It only pays off because the conversation built during the load is now
+            // actually reused — see the key below.
+            prefillPrefaceOnInit = true
         )
 
         conversation = eng.createConversation(configBuilder)
+        // The conversation now matches this session, so say so. Without this the key stayed null
+        // after a load and the very first `sendMessage` threw away the conversation the load had
+        // just built, to build an identical one. Cheap when nothing is prefilled; not cheap now.
+        //
+        // This is only the *creation* half of the invariant. A generation that ends badly still
+        // invalidates the key where it always did, because by then the native conversation has
+        // moved on from what the session says.
+        conversationHistoryKey = session.conversationKey()
         Log.d(tag, "Conversation created. System prompt length: ${systemInstruction?.length ?: 0}. History size: ${history.size}")
     }
 
@@ -937,6 +983,9 @@ class AiAssistantRepositoryImpl @Inject constructor(
     ) {
         conversation?.let { closeConversationSafely(it) }
         conversation = null
+        // Null while there is nothing: if `createConversation` throws, the key must not still be
+        // claiming that a conversation matching this session exists.
+        conversationHistoryKey = null
         createConversation(session, historyCharBudget)
     }
 
@@ -1041,6 +1090,27 @@ class AiAssistantRepositoryImpl @Inject constructor(
 
         /** Warmup time cap, so a stuck engine cannot block the load. */
         const val WARMUP_TIMEOUT_MS = 8000L
+
+        /**
+         * Ceilings on the answer, per kind of turn. They are a **safety valve, not a style
+         * guide**: the figures sit well above anything measured on device (a chat answer runs
+         * 80-150 tokens), so a normal answer never reaches them and nobody sees a sentence cut in
+         * half. What they stop is the runaway — the model that loops and eats the KV cache until
+         * the next message has no room to prefill.
+         *
+         * Brevity is still asked for in the prompt, which is where it belongs: a ceiling can only
+         * end an answer, never make it concise.
+         */
+        const val CHAT_MAX_OUTPUT_TOKENS = 512
+
+        /** The title generator is asked for 3 to 5 words, and `sanitizeTitle` keeps 40 characters. */
+        const val TITLE_MAX_OUTPUT_TOKENS = 48
+
+        /** `SUMMARY_INSTRUCTION` asks for 900 characters at most; this enforces roughly that. */
+        const val SUMMARY_MAX_OUTPUT_TOKENS = 320
+
+        /** The warmup only needs the kernels compiled, and that happens on the first token. */
+        const val WARMUP_MAX_OUTPUT_TOKENS = 1
 
         /** Maximum wait for the engine to confirm (onDone/onError) the death of a cancelled
          *  generation before closing its conversation. Usually about one token; the margin covers
