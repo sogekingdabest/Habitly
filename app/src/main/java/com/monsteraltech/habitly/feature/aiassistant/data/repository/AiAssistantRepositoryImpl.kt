@@ -12,6 +12,7 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ExperimentalFlags
+import com.google.ai.edge.litertlm.ResponseFormat
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.google.ai.edge.litertlm.SpeculativeDecodingConfig
 import com.google.ai.edge.litertlm.SpeculativeDecodingMode
@@ -47,6 +48,7 @@ import com.monsteraltech.habitly.feature.aiassistant.domain.model.ModelCompatibi
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.compatibilityWith
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.AiAssistantRepository
 import com.monsteraltech.habitly.feature.aiassistant.domain.repository.ModelStatus
+import com.monsteraltech.habitly.feature.aiassistant.domain.util.AiExtractionSchemas
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -385,7 +387,11 @@ class AiAssistantRepositoryImpl @Inject constructor(
      * Unlimited buffer: with the default of 64, the native callback's `trySend` would drop tokens
      * whenever the collector fell momentarily behind.
      */
-    private fun streamGeneration(conv: Conversation, prompt: String): Flow<String> =
+    private fun streamGeneration(
+        conv: Conversation,
+        prompt: String,
+        responseFormat: ResponseFormat? = null
+    ): Flow<String> =
         callbackFlow {
             val generation = NativeGeneration(conv)
             activeGeneration = generation
@@ -405,7 +411,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
                 }
             }
             try {
-                conv.sendMessageAsync(prompt, callback)
+                conv.sendMessageAsync(prompt, callback, responseFormat = responseFormat)
             } catch (e: Exception) {
                 generation.markFinished()
                 throw e
@@ -463,7 +469,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
                     Log.w(tag, "Extracción de rutinas por function-calling falló; se reintenta por JSON", e)
                 }
             }
-            jsonExtraction(sourceText, ROUTINE_JSON_INSTRUCTION)
+            jsonExtraction(sourceText, ROUTINE_JSON_INSTRUCTION, AiExtractionSchemas.ROUTINES)
         }
 
     override suspend fun extractShopping(sourceText: String): String =
@@ -472,7 +478,7 @@ class AiAssistantRepositoryImpl @Inject constructor(
             if (engine == null) loadModel(_activeSession.value)
             // A shopping item has 4 fields, and tool calling with 4 arguments proved unreliable on
             // E2B in the field, so this path always uses the JSON extractor.
-            jsonExtraction(sourceText, SHOPPING_JSON_INSTRUCTION)
+            jsonExtraction(sourceText, SHOPPING_JSON_INSTRUCTION, AiExtractionSchemas.SHOPPING)
         }
 
     override suspend fun generateSessionTitle(userMessage: String, assistantReply: String): String =
@@ -540,28 +546,74 @@ class AiAssistantRepositoryImpl @Inject constructor(
             ?.take(MAX_SESSION_TITLE_CHARS)
             ?: ""
 
-    /** JSON extractor: asks for the JSON with [instruction] and returns it verbatim. */
-    private suspend fun jsonExtraction(sourceText: String, instruction: String): String {
+    /**
+     * JSON extractor: asks for the JSON with [instruction] and returns it verbatim.
+     *
+     * The first attempt goes with **constrained decoding** against [schema] (LiteRT-LM 0.19.0 and
+     * up). The engine masks the logits at each step, so the model *cannot* emit anything the
+     * schema does not allow: no prose around the JSON, no ```json fence, no invented key, no value
+     * outside an enum and no string where an integer belongs. That is a guarantee, not a request,
+     * and it replaces asking nicely in the prompt and hoping.
+     *
+     * [instruction] still goes in, and still describes the shape. It is not redundant: it tells
+     * the model *what* to extract (the schema only says how to write it down), and it is all the
+     * free fallback has.
+     *
+     * The parsers stay as tolerant as they were. Constrained decoding guarantees the structure,
+     * never the content, and it cannot save a generation that runs out of token budget halfway —
+     * a truncated answer is still truncated, just well-formed up to the cut. Besides, the same
+     * parsers read the `@@RUTINA@@` blocks the model appends to an ordinary chat answer, where
+     * there is no schema to constrain.
+     */
+    private suspend fun jsonExtraction(
+        sourceText: String,
+        instruction: String,
+        schema: String
+    ): String {
         val eng = engine ?: return ""
         prepareForEphemeralConversation()
 
+        val constrained = extractionAttempt(eng, sourceText, instruction, ResponseFormat.json(schema))
+        if (!constrained.isNullOrBlank()) return constrained
+
+        // Blank counts as a failure, not as "nothing to extract": with a schema in force the model
+        // cannot answer less than `{"routines":[]}`, so an empty string means the turn itself went
+        // wrong. Same lesson as the function-calling path, which also retries on empty.
+        Log.w(tag, "Extracción con esquema sin resultado; se reintenta sin restringir")
+        return extractionAttempt(eng, sourceText, instruction, responseFormat = null).orEmpty()
+    }
+
+    /**
+     * One extraction turn. Returns `null` when it failed, so [jsonExtraction] can decide whether
+     * a retry is worth it; the caller is responsible for the conversation being ephemeral.
+     */
+    private suspend fun extractionAttempt(
+        eng: Engine,
+        sourceText: String,
+        instruction: String,
+        responseFormat: ResponseFormat?
+    ): String? {
         val extractionConv = eng.createConversation(
             ConversationConfig(
                 samplerConfig = SamplerConfig(topK = 40, topP = 0.9, temperature = EXTRACTION_TEMPERATURE),
-                systemInstruction = Contents.of(instruction)
+                systemInstruction = Contents.of(instruction),
+                // Required by the runtime: passing a responseFormat without this throws.
+                enableResponseFormat = responseFormat != null
             )
         )
         return try {
             val builder = StringBuilder()
-            streamGeneration(extractionConv, sourceText).collect { chunk ->
+            streamGeneration(extractionConv, sourceText, responseFormat).collect { chunk ->
                 builder.append(chunk)
             }
             builder.toString()
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e(tag, "Error en la extracción por JSON", e)
-            ""
+            // A model or backend that will not take the schema fails here, and the retry without
+            // it keeps the feature alive instead of losing the extraction altogether.
+            Log.e(tag, "Error en la extracción por JSON (esquema: ${responseFormat != null})", e)
+            null
         } finally {
             closeConversationSafely(extractionConv)
         }
