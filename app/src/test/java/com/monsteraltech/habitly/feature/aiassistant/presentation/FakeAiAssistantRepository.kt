@@ -131,8 +131,17 @@ class FakeAiAssistantRepository : AiAssistantRepository {
         return shoppingResult
     }
 
+    /**
+     * System prompt the active session carried the last time the native conversation was rebuilt.
+     * The real repository prefills whatever is there at that moment, so this is what says whether
+     * the conversation was built complete or had to be thrown away later.
+     */
+    var systemPromptAtReset: String? = null
+        private set
+
     override suspend fun resetSession() {
         resetSessionCallCount++
+        systemPromptAtReset = _activeSession.value?.systemPrompt
     }
 
     /** How many times the screen asked for the engine to be loaded ahead of the first message. */
@@ -181,6 +190,7 @@ class FakeAiAssistantRepository : AiAssistantRepository {
         savedSessions.clear()
         deletedSessionIds.clear()
         resetSessionCallCount = 0
+        systemPromptAtReset = null
         sendMessageCallCount = 0
         extractRoutinesCallCount = 0
         extractShoppingCallCount = 0
