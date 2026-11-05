@@ -760,15 +760,15 @@ class AiAssistantRepositoryImpl @Inject constructor(
         if (config.compatibilityWith(deviceMemoryProbe.totalRamBytes()) == ModelCompatibility.Unsupported) return
         if (modelLoadWatchdog.failedAttempts(config.id) >= MAX_LOAD_ATTEMPTS) return
 
-        // The active session on purpose, not null: coming back to an existing chat it already
-        // carries its system prompt, so the conversation is built complete here and the first
-        // message reuses it. On a brand-new chat the prompt is still empty — it is computed when
-        // the message is sent — and the conversation is rebuilt then, which is correct.
+        // No session is captured here on purpose: [loadModelLocked] reads the active one when it
+        // actually builds the conversation, seconds later. The screen computes the hidden context
+        // at the same time this starts, and waiting for it would delay a multi-second load for a
+        // read of the household.
         //
         // No separate job and no cancelling of anything: `loadModel` takes the engine mutex, so a
         // message sent mid-preload waits for it instead of starting a second load.
         Log.d(tag, "Precargando ${config.id}")
-        loadModel(_activeSession.value)
+        loadModel()
     }
 
     override fun isModelLoaded(): Boolean = engine != null
@@ -835,7 +835,13 @@ class AiAssistantRepositoryImpl @Inject constructor(
             }
 
             warmUp(engine!!)
-            createConversation(session)
+            // Resolved **here**, not when the load was requested. The preload starts the moment
+            // the screen opens, before the hidden context has been computed — it has to read the
+            // household — and the engine is not up for several seconds yet. A session captured at
+            // call time would build the conversation without that context, and the first message
+            // would have to throw it away and build it again, which is the whole thing the
+            // preload exists to avoid.
+            createConversation(session ?: _activeSession.value)
             // The marker is cleared only here: the engine exists and produced its warmup token.
             modelLoadWatchdog.onLoadSucceeded(config.id)
             Log.d(tag, "LiteRT-LM engine loaded from: $modelPath")

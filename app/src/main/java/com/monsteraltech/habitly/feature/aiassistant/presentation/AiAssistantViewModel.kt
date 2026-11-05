@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
@@ -101,11 +102,60 @@ class AiAssistantViewModel @Inject constructor(
             }
         }
 
+        // These two go together and must go in parallel.
+        //
         // Start loading the engine now, not when the first message is sent. Deliberately **not**
         // through `launchChatOperation`: this is not a user operation, and going through it would
         // have the first send cancel the very load it is waiting for. The repository's engine
         // mutex already does the serialising — a message sent mid-preload waits for it.
         viewModelScope.launch { repository.preloadModel() }
+        // And compute the hidden context now too, so the conversation the load builds is the one
+        // the first message uses. Separate job because the load takes seconds and must not wait
+        // on a read of the household; the repository resolves the active session at the moment it
+        // builds the conversation, by which time this has long finished.
+        viewModelScope.launch { primeActiveSession() }
+    }
+
+    /**
+     * Computes the hidden context and leaves it on the active session before anything is sent.
+     *
+     * It used to be computed inside `onSendMessage`, which meant the preloaded conversation was
+     * always built with an empty system prompt and the first message threw it away to build the
+     * real one — the prefill of some 2.400 characters landing exactly where it is most visible,
+     * on the wait for the first token.
+     *
+     * Gives up quietly on anything unexpected: [getAiContextUseCase] already bounds its own reads,
+     * and the send path still computes the context when the session reaches it without one, so the
+     * worst case here is the behaviour as it was.
+     */
+    private suspend fun primeActiveSession() {
+        val target = _uiState.value.chatSession
+        if (target.messages.isNotEmpty() || target.systemPrompt.isNotBlank()) return
+
+        val context = try {
+            getAiContextUseCase()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(tag, "No se pudo adelantar el contexto; se calculará al enviar", e)
+            return
+        }
+        if (context.isBlank()) return
+
+        // The chat may have moved on while the household was being read — a message sent, a new
+        // chat started — and then this context is for a session that is no longer the one on
+        // screen. Checked inside the update so the decision and the write are one step.
+        val primed = _uiState.updateAndGet { state ->
+            if (state.chatSession.id == target.id && state.chatSession.systemPrompt.isBlank()) {
+                state.copy(chatSession = state.chatSession.copy(systemPrompt = context))
+            } else {
+                state
+            }
+        }.chatSession
+
+        if (primed.id == target.id && primed.systemPrompt == context) {
+            repository.setActiveSession(primed)
+        }
     }
 
     /**
@@ -185,8 +235,11 @@ class AiAssistantViewModel @Inject constructor(
 
             var session = _uiState.value.chatSession.addUserMessage(input)
 
-            // On the first message, inject the system instruction into the session object.
-            // The repository will then use it to configure the LiteRT-LM conversation.
+            // The net, not the usual path: `primeActiveSession` puts the context on the session
+            // when the screen opens and when a chat is started, so by here it is normally already
+            // there. It still runs when the household could not be read in time, or when a
+            // message arrives before that finished — and then the conversation is rebuilt, which
+            // is what used to happen every single time.
             if (session.messages.size == 1 && session.systemPrompt.isBlank()) {
                 val aiContext = getAiContextUseCase()
                 session = session.copy(systemPrompt = aiContext)
@@ -683,7 +736,6 @@ class AiAssistantViewModel @Inject constructor(
     private suspend fun startNewSession() {
         val newSession = AiChatSession(modelId = _uiState.value.selectedModel?.id ?: "")
         repository.setActiveSession(newSession)
-        repository.resetSession()
         repository.saveSession(newSession)
         _uiState.update {
             it.copy(
@@ -700,6 +752,13 @@ class AiAssistantViewModel @Inject constructor(
                 contextUsage = 0f
             )
         }
+
+        // Only now, with the chat already cleared on screen, is the context computed and the
+        // native conversation built — in that order, and once. Building it first gave the model a
+        // conversation with no system prompt that the first message had to discard; the log said
+        // it plainly, one `System prompt length: 0` followed by the real one.
+        primeActiveSession()
+        repository.resetSession()
     }
 
     fun onLoadChat(sessionId: String) {

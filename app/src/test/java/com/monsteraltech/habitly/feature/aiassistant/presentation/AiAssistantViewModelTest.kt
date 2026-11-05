@@ -122,6 +122,29 @@ class AiAssistantViewModelTest {
     }
 
     @Test
+    fun `abrir la pantalla deja el contexto puesto antes de que se envíe nada`() {
+        // El motivo de que la precarga sirva de algo: la conversación que construye la carga se
+        // prefillea con lo que la sesión activa lleve en ese momento. Si el contexto se calculara
+        // al enviar, esa conversación nacería sin system prompt y el primer mensaje tendría que
+        // tirarla y construir otra, que es justo el prefill que se quería adelantar.
+        advance()
+
+        assertTrue(viewModel.uiState.value.chatSession.systemPrompt.isNotBlank())
+    }
+
+    @Test
+    fun `un chat nuevo tiene su contexto antes de construir la conversación`() {
+        advance()
+
+        viewModel.onNewChat()
+        advance()
+
+        // No basta con que el contexto acabe puesto: tiene que estarlo **cuando** se reconstruye
+        // la conversación nativa, que es lo que esta aserción fija.
+        assertTrue(fakeRepository.systemPromptAtReset.orEmpty().isNotBlank())
+    }
+
+    @Test
     fun `enviar un mensaje no vuelve a pedir la precarga`() {
         advance()
 
