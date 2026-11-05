@@ -633,8 +633,21 @@ class AiAssistantRepositoryImpl @Inject constructor(
         val eng = engine ?: return ""
         prepareForEphemeralConversation()
 
-        val constrained = extractionAttempt(eng, sourceText, instruction, ResponseFormat.json(schema))
+        // `ResponseFormat.json` parses the schema and compiles its grammar, and it reports a schema
+        // it will not take by throwing. Built inside the call it used to throw past the catch in
+        // [extractionAttempt] — the one put there for exactly this — and the extraction died with
+        // it, so a schema the runtime dislikes cost the whole feature instead of only the
+        // constraining. What a given runtime accepts is not something a unit test can answer: the
+        // grammar is compiled by the engine, on the device.
+        val responseFormat = runCatching { ResponseFormat.json(schema) }.getOrElse { e ->
+            Log.e(tag, "El runtime rechazó el esquema; se extrae sin restringir", e)
+            null
+        }
+
+        val constrained = extractionAttempt(eng, sourceText, instruction, responseFormat)
         if (!constrained.isNullOrBlank()) return constrained
+        // Nothing to fall back to: that attempt was already the unconstrained one.
+        if (responseFormat == null) return ""
 
         // Blank counts as a failure, not as "nothing to extract": with a schema in force the model
         // cannot answer less than `{"routines":[]}`, so an empty string means the turn itself went
@@ -1170,8 +1183,12 @@ class AiAssistantRepositoryImpl @Inject constructor(
                 "rutinas o hábitos que se proponen CREAR. Devuelve EXCLUSIVAMENTE un JSON en una " +
                 "sola línea con esta forma: " +
                 "{\"routines\":[{\"title\":\"...\",\"frequency\":\"diaria|semanal|cada_n_dias\"}]}. " +
-                "El \"title\" debe ser corto y empezar por verbo. Si el texto no propone crear " +
-                "ninguna rutina, devuelve {\"routines\":[]}. No añadas texto fuera del JSON."
+                "El \"title\" debe ser corto y empezar por verbo. Si la frecuencia es \"semanal\", " +
+                "añade \"days\" con EXACTAMENTE los días que menciona el texto y ninguno más, en " +
+                "minúsculas y sin acentos (lunes, martes, miercoles, jueves, viernes, sabado, " +
+                "domingo); si es \"cada_n_dias\", añade \"interval_days\" con cada cuántos días. " +
+                "Con \"diaria\" no añadas ninguno de los dos. Si el texto no propone crear ninguna " +
+                "rutina, devuelve {\"routines\":[]}. No añadas texto fuera del JSON."
 
         /** System prompt of the shopping list extractor (JSON). */
         const val SHOPPING_JSON_INSTRUCTION =
@@ -1179,8 +1196,12 @@ class AiAssistantRepositoryImpl @Inject constructor(
                 "que se recomienda COMPRAR. Devuelve EXCLUSIVAMENTE un JSON en una sola línea: " +
                 "{\"shopping_list\":[{\"name\":\"...\",\"quantity\":1,\"unit\":\"unidad\",\"category\":\"...\"}]}. " +
                 "'name' corto y en singular; 'quantity' entero; 'unit' una de: unidad, kg, g, L, ml, " +
-                "docena, paquete; 'category' una de: Frutas y Verduras, Carnes y Pescados, Lacteos y " +
-                "Huevos, Panaderia y Cereales, Despensa y Conservas, Limpieza y Hogar, Bebidas. Si no " +
-                "se recomienda comprar nada, devuelve {\"shopping_list\":[]}. No añadas texto fuera del JSON."
+                "docena, paquete; 'category' una de estas claves, en minúsculas y tal cual: frutas " +
+                "(frutas y verduras), lacteos (leche, huevos, queso, yogur), carnes (carnes y " +
+                "pescados), panaderia (pan, bollería, cereales), bebidas (para beber), limpieza " +
+                "(detergente, lejía, productos del hogar), snacks, congelados (helados y " +
+                "ultracongelados), especias (especias y condimentos), otros si no encaja en " +
+                "ninguna. Si no se recomienda comprar nada, devuelve {\"shopping_list\":[]}. No " +
+                "añadas texto fuera del JSON."
     }
 }
