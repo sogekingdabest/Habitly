@@ -1,6 +1,7 @@
 package com.monsteraltech.habitly.feature.aiassistant.domain.usecase
 
 import com.monsteraltech.habitly.feature.aiassistant.domain.model.AiShoppingSuggestion
+import com.monsteraltech.habitly.feature.aiassistant.domain.util.AiShoppingCategories
 import com.monsteraltech.habitly.feature.household.domain.repository.HouseholdRepository
 import com.monsteraltech.habitly.feature.login.domain.repository.AuthRepository
 import com.monsteraltech.habitly.feature.shopping.domain.model.ShoppingItem
@@ -40,7 +41,9 @@ class AddAiItemsToShoppingListUseCase @Inject constructor(
                 authorId = user.uid,
                 quantity = suggestion.quantity,
                 unit = suggestion.unit,
-                category = suggestion.category
+                // The one place a suggestion turns into a real product, and so the place where the
+                // category has to become one the app actually offers — or none at all.
+                category = AiShoppingCategories.resolve(suggestion.category)
             )
         }
 

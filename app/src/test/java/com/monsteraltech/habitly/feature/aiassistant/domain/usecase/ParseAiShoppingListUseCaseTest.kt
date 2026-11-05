@@ -56,6 +56,10 @@ class ParseAiShoppingListUseCaseTest {
 
     @Test
     fun `parses spanish field names`() {
+        // «Despensa y Conservas» no es una categoría de la app, y está a propósito: el parser tiene
+        // que seguir aceptando cualquier cadena. El esquema de extracción cierra el vocabulario
+        // (AiExtractionSchemas), pero no rige ni en el fallback sin esquema ni en los bloques
+        // @@LISTA@@ de una respuesta normal, que es justo lo que este parser lee.
         val text = """@@LISTA@@ {"lista":[{"nombre":"Arroz","cantidad":1,"unidad":"kg","categoria":"Despensa y Conservas"}]}"""
 
         val result = useCase(text)
