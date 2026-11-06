@@ -138,6 +138,20 @@ configurations.all {
 }
 
 dependencies {
+    // Guava llega sola, por io.grpc:grpc-* -> firebase-firestore, y la versión que
+    // traía (32.1.3-android) está dentro del rango vulnerable de GHSA de
+    // deserialización de CompactHashMap/CompactHashSet (<= 33.7.1).
+    //
+    // Es una constraint y no un force a propósito: solo sube el suelo. Si un día el
+    // BOM de Firebase pide una guava más nueva, se la lleva sin que esto estorbe;
+    // un force la frenaría. (El force de arriba es para coroutines, donde sí hace
+    // falta clavar la versión por ABI.)
+    constraints {
+        implementation(libs.guava) {
+            because("32.1.3-android es vulnerable; el parche está en 33.7.2")
+        }
+    }
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
